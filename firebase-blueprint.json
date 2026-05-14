@@ -1,0 +1,62 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "Authenticated user student profile data.",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "Display name" },
+        "email": { "type": "string", "format": "email" },
+        "studentId": { "type": "string", "description": "University Student ID" },
+        "major": { "type": "string", "description": "Academic major" },
+        "avatarUrl": { "type": "string", "format": "uri" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["name", "email", "studentId", "createdAt"]
+    },
+    "Case": {
+      "title": "Academic Appeal Case",
+      "description": "An active or historical grade appeal case.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "ref": { "type": "string", "description": "Reference number" },
+        "status": { "type": "string", "enum": ["Under Review", "Resolved", "Draft Ready"] },
+        "progress": { "type": "number" },
+        "evidenceLogged": { "type": "boolean" },
+        "facultyReview": { "type": "boolean" },
+        "userId": { "type": "string", "description": "Owner of the case" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "userId", "createdAt"]
+    },
+    "Milestone": {
+      "title": "Case Milestone",
+      "description": "Discrete step in the appeal process.",
+      "type": "object",
+      "properties": {
+        "title": { "type": "string" },
+        "date": { "type": "string" },
+        "completed": { "type": "boolean" },
+        "active": { "type": "boolean" }
+      }
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles keyed by UID."
+    },
+    "/cases/{caseId}": {
+      "schema": "Case",
+      "description": "Appeal cases."
+    },
+    "/cases/{caseId}/milestones/{milestoneId}": {
+      "schema": "Milestone",
+      "description": "Timeline of events for a case."
+    }
+  }
+}

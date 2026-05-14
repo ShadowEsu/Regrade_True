@@ -1,0 +1,50 @@
+{
+  "name": "regrade",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Regrade — an AI-assisted grade-appeal assistant for students. Upload graded coursework, get a rubric-aware analysis, and draft an appeal letter.",
+  "author": {
+    "name": "Preston Jay Susanto"
+  },
+  "license": "SEE LICENSE IN LICENSE",
+  "homepage": "https://regrade.app",
+  "bugs": {
+    "url": "mailto:support@regrade.app"
+  },
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port=3000 --host localhost",
+    "dev:api": "npm --prefix server run dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist",
+    "lint": "tsc --noEmit",
+    "licenses": "npx --yes license-checker --production --json > THIRD_PARTY_LICENSES.json",
+    "deploy:hosting": "npm run build && firebase deploy --only hosting:regrade",
+    "deploy:rules": "firebase deploy --only firestore:rules"
+  },
+  "dependencies": {
+    "@firebase/eslint-plugin-security-rules": "^0.0.2",
+    "@tailwindcss/vite": "^4.1.14",
+    "@types/dompurify": "^3.0.5",
+    "@vitejs/plugin-react": "^5.0.4",
+    "dompurify": "^3.4.2",
+    "dotenv": "^17.2.3",
+    "express": "^4.21.2",
+    "firebase": "^12.12.1",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.23.24",
+    "pdfjs-dist": "^4.10.38",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.14.0",
+    "autoprefixer": "^10.4.21",
+    "tailwindcss": "^4.1.14",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.3"
+  }
+}

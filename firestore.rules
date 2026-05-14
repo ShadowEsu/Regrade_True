@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 0. Default Deny — nothing is readable/writable unless explicitly allowed below.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Allowed field sets ---
+
+    // User profile: only these top-level fields are permitted.
+    // hasAll checks required fields exist; hasOnly prevents shadow-field injection.
+    // `studentId` is legacy (no longer collected) — accepted but not required.
+    function isValidUserCreate(data) {
+      return data.keys().hasAll(['name', 'email', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly(['name', 'email', 'studentId', 'major', 'avatarUrl', 'createdAt', 'updatedAt']) &&
+             data.name is string && data.name.size() <= 256 &&
+             data.email is string && data.email.size() <= 320 &&
+             (!('studentId' in data) || (data.studentId is string && data.studentId.size() <= 64)) &&
+             data.createdAt == request.time &&
+             data.updatedAt == request.time;
+    }
+
+    // Case: only these fields are permitted at create time.
+    function isValidCaseCreate(data) {
+      return data.keys().hasAll(['title', 'userId', 'createdAt', 'updatedAt', 'ref', 'status']) &&
+             data.keys().hasOnly(['title', 'description', 'ref', 'status', 'progress',
+                                   'evidenceLogged', 'facultyReview', 'userId',
+                                   'analysis', 'rawInput', 'createdAt', 'updatedAt']) &&
+             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             data.userId == request.auth.uid &&
+             data.createdAt == request.time &&
+             data.updatedAt == request.time;
+    }
+
+    // --- Rules ---
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUserCreate(incoming());
+      allow update: if isOwner(userId) &&
+                      incoming().updatedAt == request.time &&
+                      incoming().createdAt == existing().createdAt &&
+                      incoming().email == existing().email &&
+                      incoming().diff(existing()).affectedKeys().hasOnly(['name', 'major', 'avatarUrl', 'updatedAt']);
+      // No list or delete — users cannot enumerate other profiles.
+    }
+
+    match /cases/{caseId} {
+      allow get: if isSignedIn() && existing().userId == request.auth.uid;
+      // list: evaluated per-document; the client query must include a userId == uid filter.
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && isValidCaseCreate(incoming()) && isValidId(caseId);
+      allow update: if isSignedIn() &&
+                      existing().userId == request.auth.uid &&
+                      incoming().userId == request.auth.uid &&
+                      incoming().updatedAt == request.time &&
+                      incoming().createdAt == existing().createdAt &&
+                      incoming().diff(existing()).affectedKeys().hasOnly([
+                        'title', 'description', 'status', 'progress',
+                        'evidenceLogged', 'facultyReview', 'analysis', 'rawInput', 'updatedAt'
+                      ]);
+      allow delete: if isSignedIn() && existing().userId == request.auth.uid;
+
+      match /milestones/{milestoneId} {
+        allow read, write: if isSignedIn() &&
+          get(/databases/$(database)/documents/cases/$(caseId)).data.userId == request.auth.uid;
+      }
+    }
+  }
+}

@@ -1,0 +1,111 @@
+Regrade — Proprietary Software License Agreement
+==================================================
+
+Copyright (c) 2026 Preston Jay Susanto. All rights reserved.
+
+This software and the accompanying source code, design assets, written content,
+prompts, models, and documentation contained in this repository (collectively,
+the "Software") are the proprietary and confidential property of
+Preston Jay Susanto ("Licensor"). The Software is protected by United States
+and international copyright, trademark, trade secret, and other intellectual
+property laws.
+
+1. NO LICENSE GRANTED BY DEFAULT
+   Unless you have a separate, signed written agreement with the Licensor that
+   expressly grants you broader rights, you are NOT granted any license to use,
+   copy, modify, merge, publish, distribute, sublicense, sell, lease, rent,
+   loan, host, display publicly, perform publicly, create derivative works of,
+   or otherwise exploit the Software, in whole or in part, in any form or by
+   any means.
+
+2. PERMITTED PERSONAL REVIEW
+   The Licensor permits any individual who has obtained a copy of this
+   repository through a lawful channel (e.g. authorized GitHub access) to:
+     (a) read the source code for personal, non-commercial educational review;
+         and
+     (b) make a single local archival copy solely for that purpose.
+   No other use is permitted under this clause.
+
+3. NO REDISTRIBUTION
+   You may not redistribute the Software, in source or compiled form, in
+   whole or in part, by any means, including but not limited to public
+   repositories, package registries, app stores, file hosts, or peer-to-peer
+   networks.
+
+4. NO REVERSE ENGINEERING
+   You may not decompile, disassemble, reverse engineer, or otherwise attempt
+   to derive the source code, underlying ideas, algorithms, file formats, or
+   protocols of any compiled binary form of the Software, except to the
+   limited extent that applicable law expressly permits despite this
+   limitation.
+
+5. TRADEMARKS
+   "Regrade" and the Regrade logo are trademarks of the Licensor. Nothing in
+   this license grants you any right to use any Licensor trademark, trade
+   name, service mark, or logo without prior written permission.
+
+6. THIRD-PARTY COMPONENTS
+   The Software incorporates third-party open-source components, each of
+   which remains subject to its own license. A list of those components and
+   their licenses is provided in the file NOTICE.md at the root of this
+   repository. Nothing in this license modifies the terms under which those
+   third-party components are made available.
+
+7. END USERS OF THE COMPILED APPLICATION
+   End users who install the Regrade mobile or web application from an
+   authorized distribution channel (e.g. the Apple App Store, the Google
+   Play Store, or an official Regrade web property) are licensed to use that
+   compiled application solely under the Regrade End User License Agreement
+   ("EULA") and the Regrade Terms of Service, available at
+   https://regrade.app/terms and within the application itself. This file
+   governs the SOURCE CODE in this repository, not the end-user application.
+
+8. CONTRIBUTIONS
+   By submitting any code, content, suggestion, bug report, or other material
+   ("Contribution") to the Licensor in connection with the Software, you
+   agree that the Licensor may use, modify, sublicense, and relicense your
+   Contribution under any terms, without obligation or compensation to you,
+   and you represent that you have the right to grant such permission.
+
+9. DISCLAIMER OF WARRANTY
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE, TITLE, AND NONINFRINGEMENT. THE LICENSOR
+   MAKES NO REPRESENTATION OR WARRANTY THAT THE SOFTWARE WILL BE
+   UNINTERRUPTED, ERROR-FREE, SECURE, OR FREE OF HARMFUL COMPONENTS.
+
+10. LIMITATION OF LIABILITY
+    TO THE MAXIMUM EXTENT PERMITTED BY APPLICABLE LAW, IN NO EVENT WILL THE
+    LICENSOR BE LIABLE FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL,
+    EXEMPLARY, OR PUNITIVE DAMAGES, INCLUDING BUT NOT LIMITED TO LOSS OF
+    PROFITS, DATA, GOODWILL, OR OTHER INTANGIBLE LOSSES, ARISING OUT OF OR
+    RELATING TO YOUR USE OF OR INABILITY TO USE THE SOFTWARE, EVEN IF THE
+    LICENSOR HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES. THE
+    LICENSOR'S TOTAL LIABILITY ARISING OUT OF OR RELATING TO THIS LICENSE OR
+    THE SOFTWARE WILL NOT EXCEED ONE HUNDRED U.S. DOLLARS (USD $100.00).
+
+11. TERMINATION
+    Any breach of this license terminates your rights under it automatically,
+    without notice. Upon termination you must cease all use of the Software
+    and destroy any copies in your possession or control. Sections 3, 4, 5,
+    8, 9, 10, 11, and 12 survive termination.
+
+12. GOVERNING LAW AND DISPUTES
+    This license is governed by the laws of the State of California, USA,
+    without regard to its conflict of laws rules. The exclusive venue for
+    any dispute arising out of or relating to this license is the state or
+    federal courts located in Los Angeles County, California, and you
+    consent to personal jurisdiction in those courts.
+
+13. ENTIRE AGREEMENT
+    This file is the entire agreement between you and the Licensor regarding
+    the source code in this repository and supersedes any prior or
+    contemporaneous understandings or agreements on that subject. If any
+    provision of this license is held unenforceable, the remaining
+    provisions remain in full force and effect.
+
+For licensing inquiries, partnership requests, or written permissions,
+contact Preston Jay Susanto. The current contact channel of record is
+listed in the README and on https://regrade.app .
+
+END OF LICENSE
