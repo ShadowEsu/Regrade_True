@@ -32,7 +32,7 @@ const Logo: React.FC<LogoProps> = ({ className = '', size = 'lg', showTagline = 
         className="inline-block"
       >
         <h1
-          className={`font-serif ${sizes[size]} text-primary font-semibold tracking-[0.12em] mb-3 uppercase`}
+          className={`font-serif ${sizes[size]} text-primary font-bold tracking-[0.14em] mb-3 uppercase`}
         >
           Regrade
         </h1>
@@ -40,7 +40,7 @@ const Logo: React.FC<LogoProps> = ({ className = '', size = 'lg', showTagline = 
       </motion.div>
       {showTagline && (
         <p
-          className={`text-on-surface-variant font-sans font-light opacity-60 ${taglineSizes[size]} uppercase tracking-[0.35em] text-center`}
+          className={`text-on-surface-variant font-sans font-semibold opacity-70 ${taglineSizes[size]} uppercase tracking-[0.35em] text-center`}
         >
           Secure Academic Advocacy Portal
         </p>

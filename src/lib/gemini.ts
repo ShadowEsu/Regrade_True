@@ -1,5 +1,7 @@
 import { apiFetch } from './api';
-import type { AnalysisResult } from '../types';
+import { isPreviewMode } from './previewMode';
+import { PREVIEW_ANALYSIS } from './previewFixtures';
+import type { AiEngine, AnalysisResult } from '../types';
 
 type InlineImagePart = { mimeType: string; data: string };
 
@@ -18,8 +20,13 @@ export async function performComprehensiveAnalysis(
   assignmentData: string,
   rubricData: string,
   feedbackData: string,
-  options?: { inlineImages?: InlineImagePart[] },
+  options?: { inlineImages?: InlineImagePart[]; aiEngine?: AiEngine },
 ) {
+  if (isPreviewMode()) {
+    await new Promise((r) => setTimeout(r, 900));
+    return { ...PREVIEW_ANALYSIS };
+  }
+
   try {
     const res = await apiFetch('/v1/gemini/analyze', {
       method: 'POST',
@@ -28,6 +35,7 @@ export async function performComprehensiveAnalysis(
         rubricData,
         feedbackData,
         inlineImages: options?.inlineImages ?? [],
+        aiEngine: options?.aiEngine ?? 'hybrid',
       }),
     });
     if (!res.ok) {
@@ -45,6 +53,14 @@ export async function chatWithAdvocate(
   message: string,
   history: { role: 'user' | 'model'; text: string }[],
 ) {
+  if (isPreviewMode()) {
+    await new Promise((r) => setTimeout(r, 400));
+    return (
+      'Preview mode: this is a sample reply. In the full app, the appeal assistant uses your case context and course uploads. ' +
+      `You asked: “${message.slice(0, 120)}${message.length > 120 ? '…' : ''}”`
+    );
+  }
+
   try {
     const res = await apiFetch('/v1/gemini/advocate', {
       method: 'POST',

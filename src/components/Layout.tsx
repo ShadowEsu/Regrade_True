@@ -39,7 +39,7 @@ export default function Layout({ children, activeTab, onTabChange }: LayoutProps
                 <button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
-                  className={`font-sans text-sm font-light uppercase tracking-[0.28em] transition-all relative py-2 ${
+                  className={`font-sans text-sm font-semibold uppercase tracking-[0.28em] transition-all relative py-2 ${
                     activeTab === tab.id ? 'text-primary' : 'text-on-surface-variant/50 hover:text-primary'
                   }`}
                 >
@@ -60,10 +60,10 @@ export default function Layout({ children, activeTab, onTabChange }: LayoutProps
             >
               {firstName && (
                 <div className="text-right hidden sm:block">
-                  <p className="text-[11px] font-light uppercase tracking-[0.28em] text-primary opacity-45 leading-none mb-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.28em] text-primary opacity-45 leading-none mb-1">
                     Signed in as
                   </p>
-                  <p className="text-sm font-light text-primary uppercase tracking-wide">{firstName}</p>
+                  <p className="text-sm font-medium text-primary uppercase tracking-wide">{firstName}</p>
                 </div>
               )}
               <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl border-2 border-primary/10 p-0.5 overflow-hidden bg-white shadow-xl transition-all group-hover:border-primary/40">

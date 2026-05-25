@@ -1,6 +1,6 @@
 # Regrade — End User License Agreement (EULA)
 
-**Effective date:** May 13, 2026
+**Effective date:** May 14, 2026
 
 This End User License Agreement ("EULA") is a binding agreement between
 you and Preston Jay Susanto ("Regrade") for the Regrade mobile and web

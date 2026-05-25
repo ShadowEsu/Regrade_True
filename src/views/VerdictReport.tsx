@@ -16,6 +16,25 @@ export default function VerdictReport({ caseId }: { caseId: string | null }) {
 
   const analysis = currentCase?.analysis;
 
+  const platformLabel = (() => {
+    const p = analysis?.source_platform;
+    if (!p || p === 'unknown') return null;
+    const names: Record<string, string> = {
+      gradescope: 'Gradescope',
+      canvas: 'Canvas',
+      moodle: 'Moodle',
+      blackboard: 'Blackboard',
+      brightspace: 'D2L Brightspace',
+      google_classroom: 'Google Classroom',
+      turnitin: 'Turnitin',
+      paper: 'Marked paper',
+      schoology: 'Schoology',
+      teams: 'Microsoft Teams',
+      mixed: 'Multiple platforms',
+    };
+    return names[p] ?? p;
+  })();
+
   const recoverablePts =
     (analysis?.case_analysis.potential_calculation_errors?.reduce((a, c) => a + (Number(c.discrepancy) || 0), 0) ?? 0) +
     (analysis?.case_analysis.unexplained_deductions?.reduce((a, c) => a + (Number(c.points_lost) || 0), 0) ?? 0);
@@ -38,47 +57,54 @@ export default function VerdictReport({ caseId }: { caseId: string | null }) {
       <section className="space-y-16 py-12">
         <div className="flex items-center gap-6">
           <div className="h-px bg-primary/20 w-32" />
-          <span className="text-[13px] sm:text-sm font-light tracking-[0.45em] text-primary opacity-50 uppercase">
-            Case ID: {currentCase?.ref || '—'}
-          </span>
+          <div className="flex flex-wrap items-center gap-4">
+            <span className="text-[13px] sm:text-sm font-medium tracking-[0.45em] text-primary opacity-50 uppercase">
+              Case ID: {currentCase?.ref || '—'}
+            </span>
+            {platformLabel ? (
+              <span className="text-[10px] font-bold uppercase tracking-[0.28em] text-primary/55 px-3 py-1 rounded-full border border-primary/15 bg-primary/[0.04]">
+                Detected: {platformLabel}
+              </span>
+            ) : null}
+          </div>
         </div>
         
-        <h1 className="font-serif text-6xl md:text-8xl lg:text-9xl text-primary font-light leading-none tracking-tight -ml-2">
-          Audit <span className="font-light italic text-primary/60 block lg:inline">Verdict</span>
+        <h1 className="text-6xl md:text-8xl lg:text-9xl text-primary font-semibold leading-none tracking-tight -ml-2">
+          Audit <span className="font-medium italic text-primary/60 block lg:inline">Verdict</span>
         </h1>
 
         <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-12 border-t border-primary/10 pt-12">
           <div className="space-y-6 max-w-4xl">
-            <h2 className="font-serif text-4xl md:text-6xl text-primary font-light uppercase tracking-tight leading-none">
+            <h2 className="text-4xl md:text-6xl text-primary font-semibold uppercase tracking-tight leading-none">
               {analysis?.case_analysis.overall_case_strength === 'strong' ? 'Strong Grounds for Appeal' :
                analysis?.case_analysis.overall_case_strength === 'moderate' ? 'Some Grounds for Appeal' :
                analysis?.case_analysis.overall_case_strength === 'weak' ? 'Limited Grounds for Appeal' : 'Analyzing Your Case'}
             </h2>
-            <p className="text-2xl md:text-3xl text-primary/70 font-serif italic leading-relaxed font-medium">
+            <p className="text-2xl md:text-3xl text-primary/70 italic leading-relaxed font-medium">
               {analysis?.case_analysis.case_strength_reason || "Review the findings below to understand your options."}
             </p>
           </div>
           
           <div className="flex flex-col items-center xl:items-end gap-2 bg-primary/[0.03] p-8 sm:p-10 rounded-[3rem] border border-primary/10 max-w-full">
-            <div className="text-[11px] font-light uppercase tracking-[0.32em] text-primary/50 mb-1 text-center xl:text-right">
+            <div className="text-[11px] font-semibold uppercase tracking-[0.32em] text-primary/50 mb-1 text-center xl:text-right">
               Possible point issues flagged
             </div>
             {analysis && recoverablePts > 0 ? (
               <div className="flex items-baseline gap-3">
-                <span className="text-6xl sm:text-7xl md:text-8xl font-serif font-light text-primary tracking-tight leading-none">
+                <span className="font-serif text-6xl sm:text-7xl md:text-8xl font-semibold text-primary tracking-tight leading-none">
                   +{recoverablePts}
                 </span>
-                <span className="text-xl font-serif font-light text-primary/50 italic">pts</span>
+                <span className="text-xl font-medium text-primary/50 italic">pts</span>
               </div>
             ) : analysis ? (
-              <p className="font-serif text-lg sm:text-xl font-light text-primary/65 text-center xl:text-right max-w-sm leading-snug">
+              <p className="text-lg sm:text-xl font-medium text-primary/65 text-center xl:text-right max-w-sm leading-snug">
                 No extra points were automatically estimated from the text you supplied. That does not mean an appeal is
                 impossible—only that the model did not find a clear arithmetic or rubric mismatch.
               </p>
             ) : (
-              <p className="font-serif text-base font-light text-primary/50">Loading analysis…</p>
+              <p className="text-base font-medium text-primary/50">Loading analysis…</p>
             )}
-            <p className="text-[10px] font-light uppercase tracking-[0.28em] text-primary/40 mt-3 text-center xl:text-right leading-relaxed">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-primary/40 mt-3 text-center xl:text-right leading-relaxed">
               Not a grade guarantee — educational review only
             </p>
           </div>
@@ -87,14 +113,14 @@ export default function VerdictReport({ caseId }: { caseId: string | null }) {
         <div className="flex flex-wrap gap-6 pt-12">
           <button
             type="button"
-            className="bg-primary text-white px-10 sm:px-16 py-6 sm:py-8 rounded-[2.5rem] font-light uppercase tracking-[0.32em] text-[11px] sm:text-xs hover:shadow-[0_20px_50px_rgba(0,35,111,0.3)] hover:-translate-y-1 transition-all flex items-center gap-6 group w-full sm:w-auto justify-center"
+            className="bg-primary text-white px-10 sm:px-16 py-6 sm:py-8 rounded-[2.5rem] font-semibold uppercase tracking-[0.32em] text-[11px] sm:text-xs hover:shadow-[0_20px_50px_rgba(0,35,111,0.3)] hover:-translate-y-1 transition-all flex items-center gap-6 group w-full sm:w-auto justify-center"
           >
             Write appeal letter
             <ICONS.ArrowRight className="w-5 h-5 group-hover:translate-x-3 transition-transform" />
           </button>
           <button
             type="button"
-            className="bg-white border-2 border-primary/10 text-primary px-10 sm:px-16 py-6 sm:py-8 rounded-[2.5rem] font-light uppercase tracking-[0.32em] text-[11px] sm:text-xs hover:bg-primary/5 transition-all w-full sm:w-auto"
+            className="bg-white border-2 border-primary/10 text-primary px-10 sm:px-16 py-6 sm:py-8 rounded-[2.5rem] font-semibold uppercase tracking-[0.32em] text-[11px] sm:text-xs hover:bg-primary/5 transition-all w-full sm:w-auto"
           >
             Download evidence
           </button>
@@ -113,7 +139,7 @@ export default function VerdictReport({ caseId }: { caseId: string | null }) {
           <div className="absolute inset-0 paper-texture opacity-10 pointer-events-none" />
           
           <div className="space-y-4 mb-20">
-            <h3 className="text-[13px] font-light uppercase tracking-[0.55em] text-primary opacity-60">Analysis signal</h3>
+            <h3 className="text-[13px] font-semibold uppercase tracking-[0.55em] text-primary opacity-60">Analysis signal</h3>
             <div className="h-px w-32 bg-primary/20 mx-auto" />
           </div>
           
@@ -123,35 +149,35 @@ export default function VerdictReport({ caseId }: { caseId: string | null }) {
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.8 }}
-                  className="font-serif text-7xl sm:text-8xl md:text-[10rem] font-light text-primary tracking-tight leading-none"
+                  className="text-7xl sm:text-8xl md:text-[10rem] font-semibold text-primary tracking-tight leading-none"
                 >
                   {confPct ?? '—'}
                 </motion.span>
                 <div className="flex flex-col items-start">
-                  <span className="text-6xl md:text-8xl font-serif text-primary/20 font-light leading-none">%</span>
+                  <span className="font-serif text-6xl md:text-8xl text-primary/20 font-semibold leading-none">%</span>
                 </div>
              </div>
-             <p className="text-lg sm:text-xl md:text-2xl font-serif italic text-primary/60 mt-4 font-light max-w-2xl mx-auto px-2">
+             <p className="text-lg sm:text-xl md:text-2xl italic text-primary/60 mt-4 font-medium max-w-2xl mx-auto px-2">
                Model confidence in this reading — not your odds of winning a formal appeal
              </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-16 w-full mt-24 pt-16 border-t border-primary/5">
              <div className="space-y-4">
-                <p className="text-[11px] font-light uppercase tracking-[0.32em] text-primary/45">Rubric alignment (model)</p>
-                <p className="text-4xl sm:text-5xl font-serif font-light text-primary tracking-tight">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-primary/45">Rubric alignment (model)</p>
+                <p className="font-serif text-4xl sm:text-5xl font-semibold text-primary tracking-tight">
                   {alignPct != null ? `${alignPct}%` : '—'}
                 </p>
              </div>
              <div className="space-y-4">
-                <p className="text-[11px] font-light uppercase tracking-[0.32em] text-primary/45">Points lost (from extract)</p>
-                <p className="text-4xl sm:text-5xl font-serif font-light text-primary tracking-tight">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-primary/45">Points lost (from extract)</p>
+                <p className="font-serif text-4xl sm:text-5xl font-semibold text-primary tracking-tight">
                   {totalPointsLost != null && qCount > 0 ? totalPointsLost : '—'}
                 </p>
              </div>
              <div className="space-y-4">
-                <p className="text-[11px] font-light uppercase tracking-[0.32em] text-primary/45">Questions parsed</p>
-                <p className="text-4xl sm:text-5xl font-serif font-light text-primary tracking-tight">{qCount > 0 ? qCount : '—'}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-primary/45">Questions parsed</p>
+                <p className="font-serif text-4xl sm:text-5xl font-semibold text-primary tracking-tight">{qCount > 0 ? qCount : '—'}</p>
              </div>
           </div>
         </motion.div>
@@ -159,7 +185,7 @@ export default function VerdictReport({ caseId }: { caseId: string | null }) {
         {/* Intelligence Table */}
         <motion.div className="lg:col-span-7 space-y-8">
            <div className="flex items-center gap-4 mb-2">
-              <h3 className="font-serif text-3xl text-primary font-light">Critical Findings</h3>
+              <h3 className="text-3xl text-primary font-semibold">Critical Findings</h3>
               <div className="h-px flex-1 bg-primary/10" />
            </div>
            
@@ -172,13 +198,13 @@ export default function VerdictReport({ caseId }: { caseId: string | null }) {
                         <ICONS.ShieldAlert size={20} />
                      </div>
                      <div>
-                       <h4 className="font-serif text-xl text-primary font-medium">{finding.question_id}</h4>
+                       <h4 className="text-xl text-primary font-semibold">{finding.question_id}</h4>
                        <p className="text-[10px] font-mono opacity-40 uppercase tracking-tighter">Deduction: -{finding.points_lost} pts</p>
                      </div>
                    </div>
                    <span className="text-[9px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-full bg-primary/5 text-primary/60">Missing Feedback</span>
                  </div>
-                 <p className="text-sm text-on-surface-variant font-serif italic leading-relaxed mb-6 opacity-80">{finding.what_is_missing}</p>
+                 <p className="text-sm text-on-surface-variant italic leading-relaxed mb-6 opacity-80">{finding.what_is_missing}</p>
                  <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary/40 group-hover:text-primary transition-all">
                     <span>View Details</span>
                     <ICONS.ArrowRight size={14} className="group-hover:translate-x-1" />
@@ -194,13 +220,13 @@ export default function VerdictReport({ caseId }: { caseId: string | null }) {
                          <ICONS.TrendingUp size={20} />
                       </div>
                       <div>
-                        <h4 className="font-serif text-xl text-primary font-medium">Strategic Leverage</h4>
+                        <h4 className="text-xl text-primary font-semibold">Strategic Leverage</h4>
                         <p className="text-[10px] font-mono opacity-40 uppercase tracking-tighter">Appeal Angle {i+1}</p>
                       </div>
                     </div>
                     <span className="text-[9px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-full bg-secondary/10 text-secondary">Verified Strength</span>
                   </div>
-                  <p className="text-sm text-on-surface-variant font-serif italic leading-relaxed mb-6 opacity-80">{point}</p>
+                  <p className="text-sm text-on-surface-variant italic leading-relaxed mb-6 opacity-80">{point}</p>
                   <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-primary/40 group-hover:text-primary transition-all">
                      <span>Use This Point</span>
                      <ICONS.ArrowRight size={14} className="group-hover:translate-x-1" />
@@ -211,28 +237,110 @@ export default function VerdictReport({ caseId }: { caseId: string | null }) {
         </motion.div>
       </div>
 
+      {analysis?.ai_notes && (
+        <section className="glass-panel rounded-[3rem] p-10 sm:p-16 border border-primary/10 bg-white/95 space-y-8">
+          <div className="space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-primary/40">How the AI read this</p>
+            <h3 className="text-3xl sm:text-4xl text-primary font-semibold tracking-tight">
+              {analysis.ai_notes.engines_used.length > 1
+                ? 'Two readers reviewed your worksheet'
+                : 'One reader reviewed your worksheet'}
+            </h3>
+            <p className="text-[13px] sm:text-sm font-medium text-on-surface-variant leading-relaxed max-w-3xl">
+              Each step below shows what the AI did. Use this when talking to your instructor — you can point to exactly
+              what the tool saw and where it was unsure.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-primary/45">Step 1 · Reading the worksheet</p>
+              <p className="text-[14px] sm:text-[15px] italic text-primary/85 leading-relaxed">
+                {analysis.ai_notes.extraction_summary}
+              </p>
+              {analysis.ai_notes.extraction_uncertainties.length > 0 && (
+                <ul className="pt-2 space-y-1 text-[12.5px] text-on-surface-variant/85 list-disc list-inside marker:text-primary/40">
+                  {analysis.ai_notes.extraction_uncertainties.slice(0, 4).map((u, i) => (
+                    <li key={i} className="leading-snug">
+                      {u}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-primary/45">Step 2 · Judging the marking</p>
+              <p className="text-[14px] sm:text-[15px] italic text-primary/85 leading-relaxed">
+                {analysis.ai_notes.reasoning_summary}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-primary/45">Step 3 · Cross-check</p>
+              <p className="text-[14px] sm:text-[15px] italic text-primary/85 leading-relaxed">
+                {analysis.ai_notes.cross_check_summary}
+              </p>
+              {analysis.ai_notes.disagreements.length > 0 && (
+                <ul className="pt-2 space-y-1 text-[12.5px] text-on-surface-variant/85">
+                  {analysis.ai_notes.disagreements.slice(0, 4).map((d, i) => (
+                    <li key={i} className="leading-snug">
+                      <span className="font-mono text-[11px] text-primary/70">{d.field}</span> —{' '}
+                      Gemini: <span className="font-medium text-primary/85">{d.gemini_said}</span> · Claude:{' '}
+                      <span className="font-medium text-primary/85">{d.claude_said}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-primary/5 text-[10.5px] text-primary/45">
+            <span className="font-bold uppercase tracking-[0.28em]">Analyzed with</span>
+            {analysis.ai_notes.engines_used.includes('gemini') && (
+              <span className="px-3 py-1 rounded-full bg-primary/5 border border-primary/10 font-semibold text-primary/65 normal-case">
+                Gemini (Google)
+              </span>
+            )}
+            {analysis.ai_notes.engines_used.includes('claude') && (
+              <span className="px-3 py-1 rounded-full bg-primary/5 border border-primary/10 font-semibold text-primary/65 normal-case">
+                Claude (Anthropic)
+              </span>
+            )}
+            {analysis.ai_notes.fallback_used && (
+              <span className="px-3 py-1 rounded-full bg-amber-50 border border-amber-200/70 font-semibold text-amber-800 normal-case">
+                Fallback used
+              </span>
+            )}
+            <span className="opacity-70 normal-case italic">
+              Gemini is a trademark of Google LLC. Claude is a trademark of Anthropic PBC. Regrade is not affiliated with either.
+            </span>
+          </div>
+        </section>
+      )}
+
       {analysis?.case_analysis.fairness_review && (
         <section className="glass-panel rounded-[3rem] p-10 sm:p-16 border border-primary/10 bg-white/90 space-y-10">
           <div className="space-y-2">
-            <h3 className="font-serif text-3xl sm:text-4xl text-primary font-light tracking-tight">Fairness read</h3>
-            <p className="text-[13px] sm:text-sm font-light text-on-surface-variant leading-relaxed max-w-3xl">
+            <h3 className="text-3xl sm:text-4xl text-primary font-semibold tracking-tight">Fairness read</h3>
+            <p className="text-[13px] sm:text-sm font-medium text-on-surface-variant leading-relaxed max-w-3xl">
               The model compares what you pasted to the rubric and feedback. It is not a legal finding and cannot see
               your full course context.
             </p>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 text-[14px] sm:text-[15px] font-light leading-relaxed text-primary/85">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10 text-[14px] sm:text-[15px] font-medium leading-relaxed text-primary/85">
             <div className="space-y-3">
               <p className="text-[11px] uppercase tracking-[0.28em] text-primary/45">If marking looks consistent</p>
-              <p className="font-serif italic">{analysis.case_analysis.fairness_review.summary_if_marking_sound}</p>
+              <p className="italic">{analysis.case_analysis.fairness_review.summary_if_marking_sound}</p>
             </div>
             <div className="space-y-3">
               <p className="text-[11px] uppercase tracking-[0.28em] text-primary/45">If marking looks questionable</p>
-              <p className="font-serif italic">{analysis.case_analysis.fairness_review.summary_if_marking_questionable}</p>
+              <p className="italic">{analysis.case_analysis.fairness_review.summary_if_marking_questionable}</p>
             </div>
             {analysis.case_analysis.fairness_review.teacher_may_have_erred_because && (
               <div className="md:col-span-2 space-y-3 rounded-2xl bg-primary/[0.04] border border-primary/10 p-6">
                 <p className="text-[11px] uppercase tracking-[0.28em] text-primary/45">Possible grading concern</p>
-                <p className="font-serif italic">{analysis.case_analysis.fairness_review.teacher_may_have_erred_because}</p>
+                <p className="italic">{analysis.case_analysis.fairness_review.teacher_may_have_erred_because}</p>
               </div>
             )}
             <div className="md:col-span-2 text-[13px] text-on-surface-variant/90 border-t border-primary/10 pt-8">
@@ -247,8 +355,8 @@ export default function VerdictReport({ caseId }: { caseId: string | null }) {
         <div className="absolute inset-0 paper-texture opacity-10 mix-blend-overlay pointer-events-none" />
         <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-20 items-center">
           <div className="lg:col-span-5 space-y-10">
-            <h3 className="font-serif text-4xl font-light tracking-tight">Grading Pattern Analysis</h3>
-            <p className="text-white/50 text-lg font-serif italic max-w-sm leading-relaxed">
+            <h3 className="text-4xl font-semibold tracking-tight">Grading Pattern Analysis</h3>
+            <p className="text-white/50 text-lg italic max-w-sm leading-relaxed">
               Synthesized grading methodology based on feedback patterns and rubric adherence.
             </p>
             <div className="space-y-6 pt-10 border-t border-white/10">
@@ -283,7 +391,7 @@ export default function VerdictReport({ caseId }: { caseId: string | null }) {
              ].map((stat, i) => (
                <div key={i} className="space-y-2 group">
                  <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/30 group-hover:text-white/60 transition-colors">{stat.label}</p>
-                 <p className="font-serif text-3xl md:text-4xl font-light tracking-tighter truncate uppercase">{stat.val}</p>
+                 <p className="text-3xl md:text-4xl font-semibold tracking-tighter truncate uppercase">{stat.val}</p>
                  <p className="text-[10px] font-bold uppercase tracking-widest text-white/20">{stat.sub}</p>
                </div>
              ))}
@@ -309,8 +417,8 @@ export default function VerdictReport({ caseId }: { caseId: string | null }) {
                 <div className={`absolute -left-[76px] top-1.5 w-5 h-5 rounded-lg border-2 border-surface shadow-sm ${s.color}`} />
                 <p className="text-[10px] font-bold tracking-[0.3em] uppercase mb-4 text-primary opacity-40">{s.status}</p>
                 <div className="space-y-3">
-                  <p className="font-serif text-4xl text-primary font-light">{s.title}</p>
-                  <p className="text-lg text-on-surface-variant font-serif italic opacity-60 leading-relaxed">{s.desc}</p>
+                  <p className="text-4xl text-primary font-semibold">{s.title}</p>
+                  <p className="text-lg text-on-surface-variant italic opacity-60 leading-relaxed">{s.desc}</p>
                 </div>
               </div>
             ))}

@@ -2,8 +2,19 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ICONS } from '../constants';
 import Advocate from './Advocate';
+import UploadGuidePanel from '../components/UploadGuidePanel';
 import { caseService } from '../services/caseService';
 import { scanContentForThreats } from '../lib/securityScanner';
+import { sanitizeUserText } from '../lib/sanitize';
+import {
+  formatMaxUploadSize,
+  isAllowedUploadFile,
+  MAX_STAGED_UPLOAD_FILES,
+  MAX_UPLOAD_FILE_BYTES,
+} from '../lib/uploadLimits';
+import { userService } from '../services/userService';
+import { auth } from '../lib/firebase';
+import type { AiEngine } from '../types';
 
 type PdfStatus = 'idle' | 'loading' | 'done' | 'error';
 
@@ -17,7 +28,12 @@ type StagedUpload = {
   pdfError?: string;
 };
 
-const MAX_IMAGES_FOR_API = 6;
+/** Must match server AnalyzeSchema inlineImages max (12). */
+const MAX_INLINE_IMAGES = 12;
+
+function isPdfFile(file: File): boolean {
+  return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+}
 
 /**
  * Example Gradescope UI screenshots (user-provided). Static files live in
@@ -50,6 +66,7 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
 
   const [showAdvocate, setShowAdvocate] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loadingDetail, setLoadingDetail] = useState<string | null>(null);
   const [securityError, setSecurityError] = useState<string | null>(null);
 
   const [stagedUploads, setStagedUploads] = useState<StagedUpload[]>([]);
@@ -59,12 +76,55 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
   const [gradescopeHelpOpen, setGradescopeHelpOpen] = useState(false);
   const [otherSystemsHelpOpen, setOtherSystemsHelpOpen] = useState(false);
 
+  /**
+   * AI engine choice. `null` means we haven't loaded the user's stored choice
+   * yet (or they've never made one). Apple's third-party AI rule requires an
+   * explicit in-app consent before sending uploads to Gemini/Claude — we gate
+   * the Analyze button on this being set, and show a consent modal on the
+   * first run.
+   */
+  const [aiEngine, setAiEngine] = useState<AiEngine | null>(null);
+  const [showAiConsent, setShowAiConsent] = useState(false);
+
   useEffect(() => {
     return () => {
       previewUrlsRef.current.forEach((u) => URL.revokeObjectURL(u));
       previewUrlsRef.current.clear();
     };
   }, []);
+
+  useEffect(() => {
+    const u = auth.currentUser;
+    if (!u) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const prof = await userService.getProfile(u.uid);
+        if (cancelled) return;
+        if (prof?.aiEngine && prof.aiConsentAt) {
+          setAiEngine(prof.aiEngine);
+        }
+      } catch (err) {
+        console.error('Failed to load AI preference:', err);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const acceptAiConsent = async (choice: AiEngine) => {
+    const u = auth.currentUser;
+    setAiEngine(choice);
+    setShowAiConsent(false);
+    if (u) {
+      try {
+        await userService.setAiPreference(u.uid, choice);
+      } catch (err) {
+        console.error('Failed to persist AI preference:', err);
+      }
+    }
+  };
 
   const simulateUploadProgress = (fileId: string) => {
     let progress = 0;
@@ -84,10 +144,20 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
     if (!files?.length) return;
 
     for (const file of Array.from(files)) {
-      const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+      if (stagedUploads.length >= MAX_STAGED_UPLOAD_FILES) {
+        setSecurityError(`You can stage up to ${MAX_STAGED_UPLOAD_FILES} files at a time.`);
+        break;
+      }
+
+      if (file.size > MAX_UPLOAD_FILE_BYTES) {
+        setSecurityError(`"${file.name}" is too large. Maximum size is ${formatMaxUploadSize()} per file.`);
+        continue;
+      }
+
+      const isPdf = isPdfFile(file);
       const isImage = file.type.startsWith('image/');
 
-      if (!isPdf && !isImage) {
+      if (!isAllowedUploadFile(file)) {
         if (file.name.match(/\.(doc|docx)$/i)) {
           setSecurityError(
             'Word (.doc / .docx) files are not read here yet. Save as PDF or type the main points in optional notes.',
@@ -177,70 +247,66 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
   };
 
   const handleSubmit = async () => {
-    const pdfLoading = stagedUploads.some(
-      (s) => s.file.type === 'application/pdf' && s.pdfStatus === 'loading',
-    );
+    // Apple's third-party AI rule: explicit consent must precede sending
+    // uploads to Gemini/Claude. If the user hasn't chosen an engine yet,
+    // open the consent modal instead of running analysis.
+    if (!aiEngine) {
+      setShowAiConsent(true);
+      return;
+    }
+
+    const pdfLoading = stagedUploads.some((s) => isPdfFile(s.file) && s.pdfStatus === 'loading');
     if (pdfLoading) {
       setSecurityError('Still reading your PDF… wait a few seconds, then tap Analyze again.');
       return;
     }
 
-    const pdfFailed = stagedUploads.some((s) => s.pdfStatus === 'error');
-    const hasRecoverablePdfText = stagedUploads.some((s) => (s.pdfText?.length ?? 0) > 0);
-    const hasImageEvidence = stagedUploads.some((s) => s.file.type.startsWith('image/'));
-    if (pdfFailed && !hasRecoverablePdfText && !hasImageEvidence && !extraNotes.trim()) {
-      setSecurityError(
-        'PDF text could not be extracted. Add a photo/screenshot of the graded work or type a quick note below, then try again.',
-      );
-      return;
-    }
-
     const imageFiles = stagedUploads.filter((s) => s.file.type.startsWith('image/'));
+    const pdfStaged = stagedUploads.filter((s) => isPdfFile(s.file));
+    const hasPdfFiles = pdfStaged.length > 0;
+    const hasImageEvidence = imageFiles.length > 0;
     const pdfTexts = stagedUploads.map((s) => s.pdfText).filter((t): t is string => !!t && t.length > 0);
-
     const hasPdfText = pdfTexts.length > 0;
-    const notes = extraNotes.trim();
+    const notes = sanitizeUserText(extraNotes.trim(), 32_000);
     const hasTypedContext = notes.length > 0;
+    const hasVisionEvidence = hasImageEvidence || hasPdfFiles;
 
-    if (!hasTypedContext && !hasImageEvidence && !hasPdfText) {
+    if (!hasTypedContext && !hasVisionEvidence) {
       setSecurityError(
-        'Add a PDF or photo of your graded worksheet (Gradescope, Canvas, or marked paper), or type a short note about the class/assignment — then tap Analyze.',
+        'Add a PDF or photo of your graded work (Gradescope, Canvas, Moodle, Turnitin, or marked paper), or type a short note — then tap Analyze.',
       );
       return;
     }
 
     const assignmentBlock = [
-      ...pdfTexts.map((t, i) => `--- Text extracted from uploaded PDF ${i + 1} ---\n${t}`),
-      notes
-        ? `--- Notes from student (optional) ---\n${notes}`
-        : '',
+      ...pdfStaged.map((s, i) => {
+        const text = s.pdfText?.trim();
+        if (text && text.length > 0) {
+          return `--- Text extracted from PDF ${i + 1} (${s.file.name}) ---\n${text}`;
+        }
+        return `--- PDF ${i + 1} (${s.file.name}): no text layer — read all marks and instructor comments from the page images ---`;
+      }),
+      notes ? `--- Notes from student (optional) ---\n${notes}` : '',
     ]
       .filter(Boolean)
       .join('\n\n');
 
-    const inferFromUpload =
-      hasImageEvidence || hasPdfText
-        ? '(Infer from the uploaded worksheet: assignment prompt, rubric, scores, and instructor comments — student did not paste these separately.)'
-        : '';
+    const inferFromUpload = hasVisionEvidence
+      ? '(Infer from uploads. Detect platform: Gradescope, Canvas, Moodle, Blackboard, D2L Brightspace, Google Classroom, Turnitin, or handwritten paper. Extract EVERY instructor comment including Gradescope bubbles, Canvas pins, Turnitin QuickMarks, and margin notes.)'
+      : '';
 
     const rubricBlock =
-      hasTypedContext && !hasImageEvidence && !hasPdfText
+      hasTypedContext && !hasVisionEvidence
         ? '(Student notes only — extract any rubric or criteria mentioned in the notes.)'
         : inferFromUpload || '(No separate rubric text.)';
 
     const feedbackBlock =
-      hasTypedContext && !hasImageEvidence && !hasPdfText
+      hasTypedContext && !hasVisionEvidence
         ? '(Student notes only — extract instructor feedback from the notes if any.)'
         : inferFromUpload || '(No separate feedback text.)';
 
-    if (!assignmentBlock && !hasImageEvidence) {
-      setSecurityError(
-        'Upload a clear file of your graded work, or add a bit more in the optional notes box.',
-      );
-      return;
-    }
-
     setLoading(true);
+    setLoadingDetail(null);
     setSecurityError(null);
 
     try {
@@ -263,17 +329,51 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
       }
 
       const { performComprehensiveAnalysis } = await import('../lib/gemini');
+      const { renderPdfPagesToInlineImages, pdfVisionPageBudget } = await import(
+        '../lib/pdfPageImages',
+      );
 
-      const inlineImages = [];
-      for (const s of imageFiles.slice(0, MAX_IMAGES_FOR_API)) {
+      setLoadingDetail('Preparing page images for AI (Gradescope, Canvas, handwriting…)…');
+      const inlineImages: { mimeType: string; data: string }[] = [];
+
+      for (const s of imageFiles) {
+        if (inlineImages.length >= MAX_INLINE_IMAGES) break;
         inlineImages.push(await fileToBase64Inline(s.file));
       }
 
+      const pdfCount = pdfStaged.length;
+      for (let pi = 0; pi < pdfStaged.length; pi++) {
+        const s = pdfStaged[pi];
+        const remaining = MAX_INLINE_IMAGES - inlineImages.length;
+        if (remaining <= 0) break;
+        setLoadingDetail(
+          `Reading PDF ${pi + 1} of ${pdfCount} (scores & teacher comments)…`,
+        );
+        const maxPages = pdfVisionPageBudget(s.pdfText?.length ?? 0, remaining, pdfCount);
+        const pages = await renderPdfPagesToInlineImages(s.file, maxPages);
+        inlineImages.push(...pages);
+      }
+
+      if (!inlineImages.length && !assignmentBlock.trim() && !notes) {
+        setSecurityError(
+          'Could not prepare your file for analysis. Try a clearer PDF export or a screenshot (PNG/JPG).',
+        );
+        setLoading(false);
+        setLoadingDetail(null);
+        return;
+      }
+
+      setLoadingDetail('Analyzing scores, rubric, and instructor comments…');
+
       const analysisResult = await performComprehensiveAnalysis(
-        assignmentBlock || '[No pasted assignment — use uploaded images and any PDF text above.]',
+        assignmentBlock ||
+          '[No pasted assignment text — use attached page images (PDF pages are rendered as images for vision).]',
         rubricBlock,
         feedbackBlock,
-        inlineImages.length ? { inlineImages } : undefined,
+        {
+          ...(inlineImages.length ? { inlineImages } : {}),
+          aiEngine,
+        },
       );
 
       const docRef = await caseService.createCase({
@@ -301,6 +401,7 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
       );
     } finally {
       setLoading(false);
+      setLoadingDetail(null);
     }
   };
 
@@ -309,27 +410,122 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
   }
 
   return (
+    <>
+      <AnimatePresence>
+        {showAiConsent && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-primary/40 backdrop-blur-sm flex items-center justify-center p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="ai-consent-title"
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+              className="bg-white rounded-3xl max-w-lg w-full p-8 md:p-10 shadow-2xl border border-primary/10 space-y-6"
+            >
+              <div className="flex items-start gap-3">
+                <div className="p-2 rounded-xl bg-primary/5">
+                  <ICONS.Shield className="text-primary w-6 h-6" strokeWidth={1.75} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h2 id="ai-consent-title" className="text-2xl text-primary font-semibold leading-tight">
+                    Two AI readers will check your worksheet
+                  </h2>
+                  <p className="text-[11px] uppercase tracking-[0.22em] text-primary/45 mt-1">One-time choice — change anytime in Profile</p>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-[13.5px] text-on-surface-variant leading-relaxed">
+                <p>
+                  Regrade uses <strong className="font-semibold text-primary">Gemini</strong> (by Google) and{' '}
+                  <strong className="font-semibold text-primary">Claude</strong> (by Anthropic) together. Gemini reads marks and
+                  handwriting on your file; Claude reasons about whether the marking was fair. Cross-checking both readers
+                  catches more mistakes than one model alone.
+                </p>
+                <p className="text-[12.5px] text-on-surface-variant/80">
+                  By continuing, you agree that the file you upload may be sent to Google and Anthropic for analysis. They process
+                  the content as our service providers and do not use it to train their general models.
+                </p>
+              </div>
+
+              <div className="space-y-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => acceptAiConsent('hybrid')}
+                  className="w-full flex items-center justify-between gap-3 bg-primary text-white px-5 py-4 rounded-2xl font-bold uppercase tracking-[0.2em] text-[11px] hover:shadow-xl hover:shadow-primary/20 transition-all"
+                >
+                  <span className="text-left">
+                    <span className="block">Continue with both</span>
+                    <span className="block text-[9px] font-normal tracking-[0.18em] opacity-70 normal-case mt-0.5">Recommended — catches more</span>
+                  </span>
+                  <ICONS.ArrowRight className="opacity-80" size={18} />
+                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => acceptAiConsent('gemini')}
+                    className="flex-1 px-4 py-3 rounded-2xl border border-primary/15 text-primary text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-primary/5 transition-all"
+                  >
+                    Gemini only
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => acceptAiConsent('claude')}
+                    className="flex-1 px-4 py-3 rounded-2xl border border-primary/15 text-primary text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-primary/5 transition-all"
+                  >
+                    Claude only
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAiConsent(false)}
+                  className="w-full text-[10px] font-bold uppercase tracking-[0.22em] text-primary/40 hover:text-primary/70 transition-colors mt-1 py-2"
+                >
+                  Cancel
+                </button>
+              </div>
+
+              <p className="text-[10.5px] text-primary/40 leading-relaxed pt-2 border-t border-primary/5">
+                Gemini is a trademark of Google LLC. Claude is a trademark of Anthropic PBC. Regrade is not affiliated with
+                either.
+              </p>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 relative max-w-7xl mx-auto">
       <div className="lg:col-span-8 space-y-8">
         <section className="space-y-3">
-          <h1 className="font-serif text-4xl md:text-5xl lg:text-6xl text-primary font-light tracking-tight text-center md:text-left">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl text-primary font-semibold tracking-tight text-center md:text-left">
             Upload your graded worksheet
           </h1>
-          <p className="text-base md:text-lg text-on-surface-variant/85 font-serif leading-relaxed max-w-2xl text-center md:text-left">
-            One <strong className="font-medium text-primary">PDF or photo</strong> is enough — the AI reads scores, rubric, and comments from it.
+          <p className="text-base md:text-lg text-on-surface-variant/85 leading-relaxed max-w-2xl text-center md:text-left">
+            One <strong className="font-medium text-primary">PDF or photo</strong> is enough — the AI reads scores, rubric, and{' '}
+            <strong className="font-medium text-primary">every teacher comment</strong> (Gradescope, Canvas, Moodle, Blackboard,
+            Brightspace, Classroom, Turnitin, or handwritten).
             Add a line or two below only if something important isn&apos;t visible on the file.
           </p>
         </section>
 
+        <UploadGuidePanel />
+
         <motion.div
           initial={{ opacity: 0, scale: 0.99 }}
           animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.1 }}
           className="glass-panel rounded-2xl md:rounded-[2rem] p-6 md:p-8 space-y-6 border border-primary/10 bg-white"
         >
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-primary/5 pb-5">
             <div>
-              <h2 className="font-serif text-xl md:text-2xl text-primary font-medium tracking-tight">File</h2>
-              <p className="text-[11px] text-primary/50 mt-0.5">Gradescope, Canvas, or paper — tap or drag here</p>
+              <h2 className="text-xl md:text-2xl text-primary font-semibold tracking-tight">Upload your file</h2>
+              <p className="text-[11px] text-primary/50 mt-0.5">Drag graded PDF or photos here when you&apos;re ready</p>
             </div>
             <button
               type="button"
@@ -364,12 +560,12 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
             </button>
             {gradescopeHelpOpen ? (
             <div className="space-y-4 border-t border-primary/10 px-4 pb-4 pt-3">
-              <p className="text-[12px] text-primary/60 font-serif leading-relaxed">
+              <p className="text-[12px] text-primary/60 leading-relaxed">
                 Examples below are <strong className="font-medium text-primary/80">real Gradescope screenshots</strong> (reference only — your
                 course may look slightly different). Files load from{' '}
                 <code className="rounded bg-primary/5 px-1 py-0.5 text-[11px] font-mono text-primary/70">/gradescope/examples/</code>.
               </p>
-              <ol className="list-decimal space-y-2 pl-4 text-[13px] leading-relaxed text-primary/80 font-serif marker:font-sans marker:text-primary/50">
+              <ol className="list-decimal space-y-2 pl-4 text-[13px] leading-relaxed text-primary/80 marker:font-sans marker:text-primary/50">
                 <li>Open your graded submission in Gradescope (the page with your score and questions).</li>
                 <li>
                   Scroll to the bottom and click{' '}
@@ -452,14 +648,14 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
             </button>
             {otherSystemsHelpOpen ? (
             <div className="space-y-4 border-t border-primary/10 px-4 pb-4 pt-3">
-              <p className="text-[12px] text-primary/60 font-serif leading-relaxed">
+              <p className="text-[12px] text-primary/60 leading-relaxed">
                 Regrade works with <strong className="font-medium text-primary/80">any graded PDF or clear photos</strong> — not only
                 Gradescope. Your goal is the file or view that shows <strong className="font-medium text-primary/80">scores, rubric, and
                 instructor comments</strong> together. If you only have a link, open it in a browser, then use{' '}
                 <strong className="font-medium text-primary/80">Save as PDF</strong> or <strong className="font-medium text-primary/80">Print → PDF</strong>{' '}
                 on the page that shows the marks.
               </p>
-              <div className="space-y-3 text-[12px] leading-relaxed text-primary/80 font-serif">
+              <div className="space-y-3 text-[12px] leading-relaxed text-primary/80">
                 <div className="rounded-lg border border-primary/10 bg-white/80 px-3 py-2.5">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-primary/45 mb-1">Canvas</p>
                   <p>
@@ -514,7 +710,7 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
                   </p>
                 </div>
               </div>
-              <p className="text-[11px] text-primary/50 font-serif leading-relaxed">
+              <p className="text-[11px] text-primary/50 leading-relaxed">
                 Not sure which path your school uses? Tap <strong className="text-primary/70">Questions? Chat</strong> — the assistant can
                 ask which portal you see and walk you through it.
               </p>
@@ -545,7 +741,7 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
             <div className="bg-white p-3 rounded-xl shadow-md shadow-primary/10">
               <ICONS.Upload className="text-primary w-7 h-7" />
             </div>
-            <p className="font-serif text-lg text-primary font-medium">Drop or choose PDF / photo</p>
+            <p className="text-lg text-primary font-semibold">Drop or choose PDF / photo</p>
             <p className="text-[11px] text-primary/45 max-w-sm">Screenshots work. No account for the file — we analyze what you upload.</p>
           </div>
 
@@ -565,9 +761,11 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
                       {u.pdfStatus === 'loading' && (
                         <p className="text-xs text-primary/55">Reading PDF…</p>
                       )}
-                      {u.pdfStatus === 'done' && u.pdfText && (
-                        <p className="text-[10px] text-secondary font-bold uppercase">
-                          {u.pdfText.length.toLocaleString()} chars
+                      {u.pdfStatus === 'done' && (
+                        <p className="text-[10px] text-secondary font-bold uppercase text-center px-2">
+                          {u.pdfText && u.pdfText.length > 0
+                            ? `${u.pdfText.length.toLocaleString()} chars text + pages as images`
+                            : 'Scan PDF — pages sent as images for AI'}
                         </p>
                       )}
                       {u.pdfStatus === 'error' && (
@@ -619,7 +817,7 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
             <ICONS.ShieldAlert size={24} className="flex-shrink-0" />
             <div>
               <p className="text-sm font-bold uppercase tracking-widest mb-1">Please review your input</p>
-              <p className="text-xs font-serif italic">{securityError}</p>
+              <p className="text-xs italic">{securityError}</p>
             </div>
           </motion.div>
         )}
@@ -635,7 +833,7 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
             disabled={loading}
             className="w-full sm:w-auto flex items-center justify-center gap-3 bg-primary text-white px-10 py-5 rounded-2xl font-bold uppercase tracking-[0.2em] text-[11px] hover:shadow-xl hover:shadow-primary/20 transition-all disabled:opacity-50"
           >
-            {loading ? 'Analyzing…' : 'Analyze worksheet'}
+            {loading ? loadingDetail || 'Analyzing…' : 'Analyze worksheet'}
             {!loading && <ICONS.ArrowRight className="opacity-70" size={18} />}
           </button>
         </div>
@@ -644,7 +842,7 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
       {/* Right Sidebar: Status */}
       <div className="lg:col-span-4 space-y-6">
         <div className="glass-panel rounded-2xl p-8 space-y-8 sticky top-24">
-          <h3 className="font-serif text-2xl text-primary">Your Checklist</h3>
+          <h3 className="text-2xl text-primary">Your Checklist</h3>
 
           {(() => {
             const hasPdfText = stagedUploads.some((s) => (s.pdfText?.length ?? 0) > 0);
@@ -734,7 +932,7 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
                 <div className="pt-8 border-t border-primary/5">
                   <div className="flex justify-between items-end mb-2">
                     <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Ready</span>
-                    <span className="text-lg font-serif font-bold text-primary">{pct}%</span>
+                    <span className="text-lg font-bold text-primary">{pct}%</span>
                   </div>
                   <div className="w-full h-1 bg-primary/5 rounded-full overflow-hidden">
                     <motion.div
@@ -749,7 +947,7 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
 
           <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex gap-3">
             <ICONS.Zap className="text-primary w-5 h-5 flex-shrink-0" />
-            <p className="text-[11px] text-primary/80 font-medium leading-relaxed">
+            <p className="text-[11px] text-primary/80 font-semibold leading-relaxed">
               Most students only upload one file. The model figures out the rest from the worksheet.
             </p>
           </div>
@@ -768,10 +966,11 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
           <div className="absolute inset-0 bg-gradient-to-t from-primary to-transparent opacity-80" />
           <div className="absolute bottom-6 left-6 right-6">
              <p className="text-[10px] font-bold uppercase tracking-widest text-white/70 mb-1">AI Assistant</p>
-             <h4 className="font-serif text-2xl text-white leading-tight">Not sure what to include? Ask for help.</h4>
+             <h4 className="text-2xl text-white leading-tight">Not sure what to include? Ask for help.</h4>
           </div>
         </motion.div>
       </div>
     </div>
+    </>
   );
 }

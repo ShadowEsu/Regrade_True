@@ -80,7 +80,7 @@ const Auth: React.FC = () => {
       >
         <div className="text-center mb-16">
           <Logo size="xl" className="mb-6" />
-          <h2 className="font-serif text-5xl text-primary/80 font-light tracking-tight mb-4">Sign in to Regrade</h2>
+          <h2 className="text-5xl text-primary/80 font-semibold tracking-tight mb-4">Sign in to Regrade</h2>
           <p className="text-on-surface-variant font-bold opacity-50 text-sm uppercase tracking-[0.6em]">Your personal grade appeal assistant</p>
         </div>
 
@@ -173,7 +173,7 @@ const Auth: React.FC = () => {
                   type="button"
                   onClick={handleGoogleLogin}
                   disabled={loading}
-                  className="w-full border border-primary/10 py-5 rounded-2xl font-serif text-sm italic tracking-widest hover:bg-primary/5 transition-all flex items-center justify-center gap-4 group disabled:opacity-50"
+                  className="w-full border border-primary/10 py-5 rounded-2xl text-sm italic tracking-widest hover:bg-primary/5 transition-all flex items-center justify-center gap-4 group disabled:opacity-50"
                 >
                   <ICONS.Bank size={20} className="text-primary/60 group-hover:scale-110 transition-transform" />
                   Continue with Google

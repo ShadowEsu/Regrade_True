@@ -20,6 +20,14 @@ service cloud.firestore {
       return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
 
+    function boundedString(value, max) {
+      return value is string && value.size() > 0 && value.size() <= max;
+    }
+
+    function optionalBoundedString(value, max) {
+      return !(value is string) || (value.size() <= max);
+    }
+
     function incoming() {
       return request.resource.data;
     }
@@ -28,31 +36,68 @@ service cloud.firestore {
       return resource.data;
     }
 
+    function authEmailMatches(dataEmail) {
+      return request.auth.token.email != null && dataEmail == request.auth.token.email;
+    }
+
     // --- Allowed field sets ---
 
-    // User profile: only these top-level fields are permitted.
-    // hasAll checks required fields exist; hasOnly prevents shadow-field injection.
-    // `studentId` is legacy (no longer collected) — accepted but not required.
     function isValidUserCreate(data) {
       return data.keys().hasAll(['name', 'email', 'createdAt', 'updatedAt']) &&
-             data.keys().hasOnly(['name', 'email', 'studentId', 'major', 'avatarUrl', 'createdAt', 'updatedAt']) &&
-             data.name is string && data.name.size() <= 256 &&
-             data.email is string && data.email.size() <= 320 &&
+             data.keys().hasOnly(['name', 'email', 'studentId', 'major', 'avatarUrl',
+                                   'aiEngine', 'aiConsentAt',
+                                   'createdAt', 'updatedAt']) &&
+             boundedString(data.name, 256) &&
+             boundedString(data.email, 320) &&
+             authEmailMatches(data.email) &&
+             optionalBoundedString(data.major, 128) &&
+             optionalBoundedString(data.avatarUrl, 2048) &&
              (!('studentId' in data) || (data.studentId is string && data.studentId.size() <= 64)) &&
+             (!('aiEngine' in data) || (data.aiEngine is string && data.aiEngine in ['hybrid', 'gemini', 'claude'])) &&
              data.createdAt == request.time &&
              data.updatedAt == request.time;
     }
 
-    // Case: only these fields are permitted at create time.
+    function isValidRawInputBlock(raw) {
+      return raw is map &&
+             raw.keys().hasOnly(['assignment', 'rubric', 'feedback']) &&
+             (!('assignment' in raw) || optionalBoundedString(raw.assignment, 500_000)) &&
+             (!('rubric' in raw) || optionalBoundedString(raw.rubric, 500_000)) &&
+             (!('feedback' in raw) || optionalBoundedString(raw.feedback, 500_000));
+    }
+
     function isValidCaseCreate(data) {
       return data.keys().hasAll(['title', 'userId', 'createdAt', 'updatedAt', 'ref', 'status']) &&
              data.keys().hasOnly(['title', 'description', 'ref', 'status', 'progress',
                                    'evidenceLogged', 'facultyReview', 'userId',
                                    'analysis', 'rawInput', 'createdAt', 'updatedAt']) &&
-             data.title is string && data.title.size() > 0 && data.title.size() <= 200 &&
+             boundedString(data.title, 200) &&
+             optionalBoundedString(data.description, 4_000) &&
+             boundedString(data.ref, 64) &&
+             data.status is string && data.status in ['Under Review', 'Resolved', 'Draft Ready'] &&
+             data.progress is number && data.progress >= 0 && data.progress <= 100 &&
+             data.evidenceLogged is bool &&
+             data.facultyReview is bool &&
              data.userId == request.auth.uid &&
+             (!('analysis' in data) || data.analysis is map) &&
+             (!('rawInput' in data) || isValidRawInputBlock(data.rawInput)) &&
              data.createdAt == request.time &&
              data.updatedAt == request.time;
+    }
+
+    function isValidCaseUpdate(data, prior) {
+      return data.userId == prior.userId &&
+             data.createdAt == prior.createdAt &&
+             data.updatedAt == request.time &&
+             optionalBoundedString(data.title, 200) &&
+             optionalBoundedString(data.description, 4_000) &&
+             optionalBoundedString(data.ref, 64) &&
+             (data.status is string && data.status in ['Under Review', 'Resolved', 'Draft Ready']) &&
+             data.progress is number && data.progress >= 0 && data.progress <= 100 &&
+             data.evidenceLogged is bool &&
+             data.facultyReview is bool &&
+             (!('analysis' in data) || data.analysis is map) &&
+             (!('rawInput' in data) || isValidRawInputBlock(data.rawInput));
     }
 
     // --- Rules ---
@@ -64,29 +109,30 @@ service cloud.firestore {
                       incoming().updatedAt == request.time &&
                       incoming().createdAt == existing().createdAt &&
                       incoming().email == existing().email &&
-                      incoming().diff(existing()).affectedKeys().hasOnly(['name', 'major', 'avatarUrl', 'updatedAt']);
+                      incoming().diff(existing()).affectedKeys().hasOnly(['name', 'major', 'avatarUrl', 'aiEngine', 'aiConsentAt', 'updatedAt']) &&
+                      optionalBoundedString(incoming().name, 256) &&
+                      optionalBoundedString(incoming().major, 128) &&
+                      optionalBoundedString(incoming().avatarUrl, 2048) &&
+                      (!('aiEngine' in incoming()) || (incoming().aiEngine is string && incoming().aiEngine in ['hybrid', 'gemini', 'claude']));
       // No list or delete — users cannot enumerate other profiles.
     }
 
     match /cases/{caseId} {
       allow get: if isSignedIn() && existing().userId == request.auth.uid;
-      // list: evaluated per-document; the client query must include a userId == uid filter.
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       allow create: if isSignedIn() && isValidCaseCreate(incoming()) && isValidId(caseId);
       allow update: if isSignedIn() &&
                       existing().userId == request.auth.uid &&
-                      incoming().userId == request.auth.uid &&
-                      incoming().updatedAt == request.time &&
-                      incoming().createdAt == existing().createdAt &&
+                      isValidCaseUpdate(incoming(), existing()) &&
                       incoming().diff(existing()).affectedKeys().hasOnly([
                         'title', 'description', 'status', 'progress',
                         'evidenceLogged', 'facultyReview', 'analysis', 'rawInput', 'updatedAt'
                       ]);
       allow delete: if isSignedIn() && existing().userId == request.auth.uid;
 
+      // Milestones not used in app yet — deny until field rules exist.
       match /milestones/{milestoneId} {
-        allow read, write: if isSignedIn() &&
-          get(/databases/$(database)/documents/cases/$(caseId)).data.userId == request.auth.uid;
+        allow read, write: if false;
       }
     }
   }

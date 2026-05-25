@@ -8,7 +8,13 @@ export interface RubricItemApplied {
 
 export interface ProfessorComment {
   comment_text: string;
-  location: 'on_submission' | 'side_panel' | 'separate_page' | 'unknown';
+  location:
+    | 'on_submission'
+    | 'side_panel'
+    | 'separate_page'
+    | 'rubric_panel'
+    | 'margin_handwritten'
+    | 'unknown';
   references_specific_part: boolean;
 }
 
@@ -70,8 +76,46 @@ export interface CaseAnalysis {
   recommended_appeal_angle: 'calculation_error' | 'unexplained_deduction' | 'rubric_misapplication' | 'inconsistent_standard' | 'clarification_only' | 'none';
 }
 
+/** User-facing AI engine preference. Stored on the user doc. */
+export type AiEngine = 'hybrid' | 'gemini' | 'claude';
+
+/**
+ * Per-stage clarifications shown to the user in VerdictReport.
+ * Populated by the server pipeline. Optional so old saved cases still render.
+ */
+export interface AiNotes {
+  /** Which engines actually ran. */
+  engines_used: ('gemini' | 'claude')[];
+  /** 1–2 sentences in plain language about what the reader extracted. */
+  extraction_summary: string;
+  /** Specific things the reader couldn't read clearly. */
+  extraction_uncertainties: string[];
+  /** 1–2 sentences in plain language about how the reasoning landed. */
+  reasoning_summary: string;
+  /** Deterministic note about agreement between readers. */
+  cross_check_summary: string;
+  /** Fields where readers disagreed (only set when hybrid actually ran two readers). */
+  disagreements: { field: string; gemini_said: string; claude_said: string }[];
+  /** True when the requested engine failed and we fell back to a single reader. */
+  fallback_used: boolean;
+}
+
+export type SourcePlatform =
+  | 'gradescope'
+  | 'canvas'
+  | 'moodle'
+  | 'blackboard'
+  | 'brightspace'
+  | 'google_classroom'
+  | 'turnitin'
+  | 'paper'
+  | 'schoology'
+  | 'teams'
+  | 'mixed'
+  | 'unknown';
+
 export interface AnalysisResult {
-  source_platform: 'gradescope' | 'canvas' | 'paper' | 'mixed' | 'unknown';
+  source_platform: SourcePlatform;
   image_types_detected: string[];
   scoring_method: 'negative' | 'positive' | 'unknown';
   assignment: {
@@ -94,4 +138,5 @@ export interface AnalysisResult {
     requires_retake: boolean;
     retake_reason: string | null;
   };
+  ai_notes?: AiNotes;
 }

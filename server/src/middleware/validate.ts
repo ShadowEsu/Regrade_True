@@ -25,12 +25,13 @@ export function validate<T extends z.ZodTypeAny>(schema: T, source: "body" | "qu
     const sanitized = sanitizeUnknown(raw);
     const parsed = schema.safeParse(sanitized);
     if (!parsed.success) {
+      const exposeDetails = process.env.NODE_ENV !== "production";
       return next(
         new ApiError({
           status: 400,
           code: "BAD_REQUEST",
           message: "Invalid request input.",
-          details: parsed.error.flatten(),
+          details: exposeDetails ? parsed.error.flatten() : undefined,
           expose: true
         })
       );

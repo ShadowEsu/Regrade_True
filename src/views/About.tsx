@@ -62,10 +62,10 @@ export default function About({ onBack }: AboutProps) {
           <ICONS.ChevronLeft className="w-4 h-4" strokeWidth={2} />
           Back
         </button>
-        <h1 className="font-serif text-4xl md:text-5xl text-primary font-light tracking-tight">
+        <h1 className="text-4xl md:text-5xl text-primary font-semibold tracking-tight">
           About {APP_NAME}
         </h1>
-        <p className="text-on-surface-variant/85 text-base font-serif leading-relaxed max-w-xl">
+        <p className="text-on-surface-variant/85 text-base leading-relaxed max-w-xl">
           {APP_DISCLAIMER}
         </p>
       </header>
@@ -114,6 +114,14 @@ export default function About({ onBack }: AboutProps) {
           &ldquo;Turnitin&rdquo;, and other learning-platform names referenced in the
           app are trademarks of their respective owners. {APP_NAME} is not affiliated
           with, endorsed by, or sponsored by any of these companies.
+        </p>
+        <p className="text-sm text-on-surface-variant leading-relaxed">
+          {APP_NAME} analyzes your uploaded coursework using{' '}
+          <strong className="font-semibold text-primary">Gemini</strong> (by Google LLC) and{' '}
+          <strong className="font-semibold text-primary">Claude</strong> (by Anthropic PBC). &ldquo;Gemini&rdquo; is a
+          trademark of Google LLC. &ldquo;Claude&rdquo; and &ldquo;Anthropic&rdquo; are trademarks of Anthropic PBC.
+          {' '}{APP_NAME} is not affiliated with, endorsed by, or sponsored by either company. You can change which engine
+          runs from Profile → AI Engine.
         </p>
       </section>
 

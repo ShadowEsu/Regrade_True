@@ -52,7 +52,15 @@ try {
   );
 } catch (err) {
   const msg = err instanceof Error ? err.stack ?? err.message : String(err);
-  el.innerHTML =
-    `<div style="padding:24px;font-family:system-ui,sans-serif"><h1 style="color:#b00020">Could not render Regrade</h1><pre style="white-space:pre-wrap">${msg}</pre></div>`;
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'padding:24px;font-family:system-ui,sans-serif;max-width:720px';
+  const title = document.createElement('h1');
+  title.style.cssText = 'color:#b00020;font-size:18px;margin:0 0 12px';
+  title.textContent = 'Could not render Regrade';
+  const pre = document.createElement('pre');
+  pre.style.cssText = 'white-space:pre-wrap;background:#f6f6f6;padding:12px;border-radius:8px;font-size:12px';
+  pre.textContent = msg;
+  wrap.append(title, pre);
+  el.replaceChildren(wrap);
   console.error(err);
 }

@@ -1,7 +1,7 @@
 # Regrade — Privacy Policy
 
-**Effective date:** May 13, 2026
-**Last updated:** May 13, 2026
+**Effective date:** May 14, 2026
+**Last updated:** May 14, 2026
 
 This Privacy Policy explains how Preston Jay Susanto ("we", "us", "Regrade")
 collects, uses, shares, and protects information when you use the Regrade
@@ -103,16 +103,32 @@ following legal bases:
 
 To produce the analysis and draft appeal letter, your uploaded files,
 extracted text, and any notes you add are sent over an encrypted connection
-to a Regrade-operated backend, which then calls Google's Gemini API.
-Google processes that content as a "Customer" of its API on our behalf,
-under the Google Gen AI SDK terms.
+to a Regrade-operated backend, which then calls one or both of the
+following third-party AI providers depending on the **AI Engine** you
+select inside the app (Profile → AI Engine):
 
-- We instruct Gemini not to use your content to train its general models.
-  This relies on Google honoring the published API terms in effect at the
-  time of processing.
+- **Google LLC — Gemini API.** Used in "Hybrid" and "Gemini only" modes.
+  Google processes the content as a "Customer" of its API on our behalf
+  under the Google Gen AI SDK terms.
+- **Anthropic PBC — Claude API.** Used in "Hybrid" and "Claude only" modes.
+  Anthropic processes the content as our service provider under the
+  Anthropic API Services Terms and the standard Anthropic data-processing
+  addendum.
+
+When you first start an analysis, the app asks you to choose an engine and
+records that choice as your explicit consent to send the upload to the
+selected providers. You can change the engine at any time in
+**Profile → AI Engine**.
+
+- We instruct both providers not to use your content to train their
+  general models. This relies on each provider honoring the published API
+  terms in effect at the time of processing. As of the date of this
+  Policy, Anthropic's default API retention is up to 30 days for trust
+  and safety; Google retains API content per the Gemini API additional
+  terms.
 - We do not use your uploaded content to train any model of our own.
-- Outputs returned by Gemini are stored in your Regrade account so you can
-  reopen the case later.
+- Outputs returned by the AI providers are stored in your Regrade account
+  so you can reopen the case later.
 - Automated AI output can be wrong. The analysis is not legal advice and
   is not a guarantee that any appeal will succeed.
 
@@ -120,9 +136,12 @@ under the Google Gen AI SDK terms.
 
 We share information only with:
 
-- **Firebase / Google Cloud (USA)** — Authentication, Firestore database,
-  Hosting, and Gemini API. Google is contractually bound by its data
-  protection terms.
+- **Google LLC (USA)** — Firebase Authentication, Firestore database,
+  Firebase Hosting, and the Gemini API used in our AI pipeline. Google is
+  contractually bound by its data protection terms.
+- **Anthropic PBC (USA)** — the Claude API used in our AI pipeline when
+  you have selected "Hybrid" or "Claude only" as your engine. Anthropic
+  is contractually bound by its API Services Terms.
 - **Our hosting provider for the Regrade API** — the Node.js backend
   runs on a commercial cloud provider (e.g. Render, Fly.io, Google Cloud
   Run). The provider sees encrypted traffic and limited operational

@@ -1,6 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from './lib/firebase';
+import { isPreviewMode } from './lib/previewMode';
+import PreviewBanner from './components/PreviewBanner';
 import Auth from './views/Auth';
 import { ICONS } from './constants';
 import { userService } from './services/userService';
@@ -14,6 +16,20 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (isPreviewMode()) {
+      const u = auth.currentUser;
+      setUser(u);
+      setLoading(false);
+      if (u) {
+        void userService.syncProfile(u.uid, {
+          name: u.displayName || '',
+          email: u.email || '',
+          avatarUrl: u.photoURL || '',
+        });
+      }
+      return;
+    }
+
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       setLoading(false);
@@ -22,15 +38,24 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
           await userService.syncProfile(u.uid, {
             name: u.displayName || '',
             email: u.email || '',
-            avatarUrl: u.photoURL || ''
+            avatarUrl: u.photoURL || '',
           });
         } catch (err) {
-          console.error("Institutional profile out of sync:", err);
+          console.error('Institutional profile out of sync:', err);
         }
       }
     });
     return unsub;
   }, []);
+
+  if (isPreviewMode()) {
+    return (
+      <>
+        <PreviewBanner />
+        {children}
+      </>
+    );
+  }
 
   if (loading) {
     return (

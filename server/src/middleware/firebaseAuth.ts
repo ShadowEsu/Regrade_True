@@ -1,6 +1,7 @@
 import type { NextFunction, Request, Response } from "express";
 import { ApiError } from "../http/errors.js";
 import { verifyIdToken } from "../firebaseAdmin.js";
+import { isPreviewOrFakeFirebaseToken } from "../security/inputGuards.js";
 
 export type FirebaseAuthContext = {
   uid: string;
@@ -19,6 +20,17 @@ export function requireFirebaseUser(req: Request, _res: Response, next: NextFunc
     const token = parseBearer(req);
     if (!token) {
       next(new ApiError({ status: 401, code: "UNAUTHORIZED", message: "Missing Firebase ID token." }));
+      return;
+    }
+
+    if (isPreviewOrFakeFirebaseToken(token)) {
+      next(
+        new ApiError({
+          status: 401,
+          code: "INVALID_TOKEN",
+          message: "Invalid or expired sign-in. Please refresh the page and sign in again."
+        })
+      );
       return;
     }
 

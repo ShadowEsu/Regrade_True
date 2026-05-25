@@ -24,7 +24,7 @@ export default function EvidenceSummary({ caseId, onFinalize }: { caseId: string
           <div className="flex-1 h-px bg-primary/10" />
           <div className="text-center">
             <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-primary/40 block mb-3">Analysis Summary</span>
-            <h2 className="font-serif text-5xl md:text-6xl text-primary font-light tracking-tight">Your Case</h2>
+            <h2 className="text-5xl md:text-6xl text-primary font-semibold tracking-tight">Your Case</h2>
           </div>
           <div className="flex-1 h-px bg-primary/10" />
         </div>
@@ -38,16 +38,16 @@ export default function EvidenceSummary({ caseId, onFinalize }: { caseId: string
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-primary/40 mb-2">From your materials</p>
-                <h3 className="font-serif text-3xl md:text-4xl text-primary font-light tracking-tight">
+                <h3 className="text-3xl md:text-4xl text-primary font-semibold tracking-tight">
                   {currentCase.analysis.assignment.title || currentCase.title || 'Your submission'}
                 </h3>
                 {currentCase.analysis.assignment.subject && (
-                  <p className="text-sm text-primary/50 font-serif italic mt-1">{currentCase.analysis.assignment.subject}</p>
+                  <p className="text-sm text-primary/50 italic mt-1">{currentCase.analysis.assignment.subject}</p>
                 )}
               </div>
               <div className="text-left md:text-right space-y-1">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-primary/40">Score (as read by AI)</p>
-                <p className="font-serif text-2xl text-primary font-medium">
+                <p className="text-2xl text-primary font-semibold">
                   {currentCase.analysis.assignment.total_score_display ||
                     (currentCase.analysis.assignment.total_score_earned != null &&
                     currentCase.analysis.assignment.total_score_possible != null
@@ -70,7 +70,7 @@ export default function EvidenceSummary({ caseId, onFinalize }: { caseId: string
             </div>
 
             {currentCase.analysis.case_analysis?.case_strength_reason && (
-              <p className="text-sm text-primary/70 font-serif italic leading-relaxed border-l-4 border-secondary/40 pl-4">
+              <p className="text-sm text-primary/70 italic leading-relaxed border-l-4 border-secondary/40 pl-4">
                 {currentCase.analysis.case_analysis.case_strength_reason}
               </p>
             )}
@@ -85,7 +85,7 @@ export default function EvidenceSummary({ caseId, onFinalize }: { caseId: string
                       <th className="px-4 py-3 hidden sm:table-cell">Notes</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-primary/5 font-serif text-primary/80">
+                  <tbody className="divide-y divide-primary/5 text-primary/80">
                     {currentCase.analysis.questions.slice(0, 12).map((q) => (
                       <tr key={q.question_id}>
                         <td className="px-4 py-3 font-medium">{q.question_id}</td>
@@ -149,8 +149,8 @@ export default function EvidenceSummary({ caseId, onFinalize }: { caseId: string
                 <span className="text-[10px] font-bold tracking-[0.2em] text-primary/40 uppercase font-mono italic">{item.val}</span>
               </div>
               <div className="space-y-3">
-                <h3 className="font-serif text-2xl text-primary font-medium tracking-tight uppercase">{item.title}</h3>
-                <p className="text-sm text-primary/60 font-serif italic leading-relaxed">
+                <h3 className="text-2xl text-primary font-semibold tracking-tight uppercase">{item.title}</h3>
+                <p className="text-sm text-primary/60 italic leading-relaxed">
                   {item.desc}
                 </p>
               </div>
@@ -186,7 +186,7 @@ export default function EvidenceSummary({ caseId, onFinalize }: { caseId: string
               </div>
             </div>
             
-            <p className="text-lg text-primary/50 font-serif italic leading-relaxed">
+            <p className="text-lg text-primary/50 italic leading-relaxed">
               {tone < 33 ? 'Calm and analytical — best for straightforward rubric errors.' : tone < 66 ? 'Balanced — professional and firm without being aggressive.' : 'Assertive — clearly pushes back on the grading decision.'}
             </p>
           </div>
@@ -207,7 +207,7 @@ export default function EvidenceSummary({ caseId, onFinalize }: { caseId: string
                   <p className={`text-[10px] font-bold uppercase tracking-[0.3em] mb-2 leading-none ${s.active ? 'text-primary' : 'text-primary/20'}`}>
                     PHASE {s.step}: {s.title}
                   </p>
-                  <p className="text-lg text-primary/40 font-serif italic leading-relaxed">{s.desc}</p>
+                  <p className="text-lg text-primary/40 italic leading-relaxed">{s.desc}</p>
                 </div>
               ))}
             </div>
@@ -233,7 +233,7 @@ export default function EvidenceSummary({ caseId, onFinalize }: { caseId: string
                 ].map((row, i) => (
                   <div key={i} className="flex gap-6">
                      <p className="font-bold text-primary/30 uppercase tracking-[0.3em] text-[10px] min-w-[70px] mt-[1px]">{row.label}</p>
-                     <p className={`text-lg font-serif ${row.label === 'CASE:' ? 'font-bold text-primary italic' : 'text-primary/80 font-medium'}`}>{row.val}</p>
+                     <p className={`text-lg ${row.label === 'CASE:' ? 'font-bold text-primary italic' : 'text-primary/80 font-semibold'}`}>{row.val}</p>
                   </div>
                 ))}
               </div>
@@ -242,7 +242,7 @@ export default function EvidenceSummary({ caseId, onFinalize }: { caseId: string
               </div>
             </header>
 
-            <div className="flex-grow font-serif text-xl text-primary/80 space-y-8 leading-relaxed text-justify relative z-10">
+            <div className="flex-grow text-xl text-primary/80 space-y-8 leading-relaxed text-justify relative z-10">
               <p className="text-2xl font-medium italic mb-10 text-primary tracking-tight">Dear Professor / Review Committee,</p>
 
               <p>
@@ -271,7 +271,7 @@ export default function EvidenceSummary({ caseId, onFinalize }: { caseId: string
 
               <div className="pt-16 space-y-2">
                 <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary/30 ml-1">Signed</p>
-                <p className="font-serif italic text-4xl font-light text-primary/95">Your Name</p>
+                <p className="font-serif text-4xl font-semibold text-primary/95">Your Name</p>
               </div>
             </div>
 

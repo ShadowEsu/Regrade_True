@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import { PREVIEW_CASE_ID } from './lib/previewFixtures';
+import { isPreviewMode } from './lib/previewMode';
 import Layout from './components/Layout';
 import Dashboard from './views/Dashboard';
 import UploadCenter from './views/UploadCenter';
@@ -56,7 +58,19 @@ export default function App() {
     }
 
     return (
-      <Dashboard onStartAppeal={handleStartAppeal} onOpenChat={() => setActiveTab('chat')} />
+      <Dashboard
+        onStartAppeal={handleStartAppeal}
+        onOpenChat={() => setActiveTab('chat')}
+        onOpenSampleVerdict={
+          isPreviewMode()
+            ? () => {
+                setCurrentCaseId(PREVIEW_CASE_ID);
+                setActiveTab('upload');
+                setFlowStep('verdict');
+              }
+            : undefined
+        }
+      />
     );
   };
 

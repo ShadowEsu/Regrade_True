@@ -16,6 +16,13 @@ import { createRegradeGeminiRouter } from "./regradeGemini.js";
 
 const env = loadEnv();
 
+if (env.NODE_ENV !== "production" && !env.GEMINI_API_KEY.trim()) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    "[regrade-api] GEMINI_API_KEY is empty — /v1/gemini/* returns 503 until you set server/.env"
+  );
+}
+
 const app = express();
 
 // Needed for correct IP-based rate limiting behind proxies (Fly, Render, Nginx, Cloudflare, etc.).

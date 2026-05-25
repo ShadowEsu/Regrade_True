@@ -3,8 +3,12 @@ import react from '@vitejs/plugin-react';
 import path from 'path';
 import { defineConfig } from 'vite';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss()],
+  define:
+    mode === 'preview'
+      ? { 'import.meta.env.VITE_PREVIEW_MODE': JSON.stringify('true') }
+      : {},
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),
@@ -23,4 +27,14 @@ export default defineConfig({
       },
     },
   },
-});
+  preview: {
+    // Same proxy as dev so `npm run build && npm run preview` can call the local API.
+    proxy: {
+      '/api': {
+        target: 'http://127.0.0.1:8787',
+        changeOrigin: true,
+        rewrite: (p) => p.replace(/^\/api/, '') || '/',
+      },
+    },
+  },
+}));

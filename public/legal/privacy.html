@@ -84,7 +84,7 @@
     <header>
       <p class="meta">Regrade · Privacy</p>
       <h1>Privacy Policy</h1>
-      <p class="meta">Effective May 13, 2026 · Last updated May 13, 2026</p>
+      <p class="meta">Effective May 14, 2026 · Last updated May 14, 2026</p>
     </header>
 
     <p>
@@ -153,18 +153,36 @@
     <p>
       To produce the analysis and the draft appeal letter, your uploads, the extracted text,
       and any notes you add are sent over an encrypted connection to a Regrade-operated
-      backend, which calls Google&rsquo;s Gemini API. We instruct Gemini not to use your
-      content to train its general models. We do not use your uploads to train any model of
-      our own. AI output can be wrong; it is not legal advice and not a guarantee of any
-      appeal outcome.
+      backend, which then calls one or both of the following third-party AI providers
+      depending on the <strong>AI Engine</strong> you select in the app
+      (Profile &rarr; AI Engine):
+    </p>
+    <ul>
+      <li>
+        <strong>Google LLC &mdash; Gemini API.</strong> Used in &ldquo;Hybrid&rdquo; and
+        &ldquo;Gemini only&rdquo; modes.
+      </li>
+      <li>
+        <strong>Anthropic PBC &mdash; Claude API.</strong> Used in &ldquo;Hybrid&rdquo; and
+        &ldquo;Claude only&rdquo; modes.
+      </li>
+    </ul>
+    <p>
+      When you first start an analysis, the app asks you to choose an engine and records
+      that choice as your explicit consent to send the upload to the selected providers.
+      You can change the engine at any time in <strong>Profile &rarr; AI Engine</strong>.
+      We instruct both providers not to use your content to train their general models.
+      We do not use your uploads to train any model of our own. AI output can be wrong;
+      it is not legal advice and not a guarantee of any appeal outcome.
     </p>
 
     <h2>5. Sharing</h2>
     <p>
-      We share information only with: (a) Firebase / Google Cloud for authentication,
-      database, hosting, and AI inference; (b) our Node.js API hosting provider; (c) our
-      professional advisors; (d) authorities when required by law; (e) a successor entity in
-      the event of a merger or acquisition.
+      We share information only with: (a) Google LLC for Firebase Authentication, Firestore,
+      Hosting, and the Gemini API; (b) Anthropic PBC for the Claude API when you have
+      selected &ldquo;Hybrid&rdquo; or &ldquo;Claude only&rdquo; as your engine; (c) our
+      Node.js API hosting provider; (d) our professional advisors; (e) authorities when
+      required by law; (f) a successor entity in the event of a merger or acquisition.
     </p>
 
     <h2>6. International transfers</h2>

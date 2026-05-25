@@ -26,7 +26,7 @@ export default function History() {
       <header className="flex items-end justify-between border-b border-primary/5 pb-8">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-primary/30 block mb-2">My Appeals</span>
-          <h2 className="font-serif text-5xl md:text-6xl text-primary font-light">Appeal History</h2>
+          <h2 className="text-5xl md:text-6xl text-primary font-semibold">Appeal History</h2>
         </div>
       </header>
 
@@ -38,7 +38,7 @@ export default function History() {
           </div>
         ) : cases.length === 0 ? (
           <div className="text-center py-20 glass-panel rounded-3xl border-dashed border-2 border-primary/5">
-            <p className="text-on-surface-variant font-serif italic opacity-40 text-lg">No appeals yet. Start your first one from the Home tab.</p>
+            <p className="text-on-surface-variant italic opacity-40 text-lg">No appeals yet. Start your first one from the Home tab.</p>
           </div>
         ) : (
           cases.map((appeal, idx) => (
@@ -60,15 +60,24 @@ export default function History() {
                      appeal.status === 'Resolved' ? 'bg-secondary/10 text-secondary' : 'bg-primary/5 text-primary/60'
                    }`}>{appeal.status}</span>
                  </div>
-                 <h3 className="font-serif text-2xl text-primary font-medium tracking-tight translate-y-[-2px]">{appeal.title}</h3>
-                 <p className="text-xs text-on-surface-variant font-serif italic opacity-40">
-                   {appeal.createdAt?.toDate ? appeal.createdAt.toDate().toLocaleDateString() : ''}
+                 <h3 className="text-2xl text-primary font-semibold tracking-tight translate-y-[-2px]">{appeal.title}</h3>
+                 <p className="text-xs text-on-surface-variant italic opacity-40">
+                   {(() => {
+                     const raw = appeal.createdAt;
+                     const d =
+                       typeof raw?.toDate === 'function'
+                         ? raw.toDate()
+                         : raw instanceof Date
+                           ? raw
+                           : null;
+                     return d ? d.toLocaleDateString() : '';
+                   })()}
                  </p>
               </div>
 
               <div className="text-right space-y-2 w-full md:w-auto">
                  <p className="text-[10px] font-bold uppercase tracking-widest text-primary/30">Status</p>
-                 <p className="font-serif text-xl text-primary italic font-light whitespace-nowrap">
+                 <p className="text-xl text-primary italic font-medium whitespace-nowrap">
                    {appeal.status === 'Resolved' ? 'Resolved' : 'In Progress'}
                  </p>
                  <div className="flex justify-end gap-2 text-primary/40 group-hover:text-primary transition-all">
@@ -85,8 +94,8 @@ export default function History() {
          <div className="flex justify-center mb-6 text-primary/20">
            <ICONS.Shield size={48} strokeWidth={0.5} />
          </div>
-         <h4 className="font-serif text-2xl text-primary font-light mb-4">Start a New Appeal</h4>
-         <p className="text-sm text-on-surface-variant max-w-sm mx-auto font-serif italic mb-8 opacity-60">
+         <h4 className="text-2xl text-primary font-medium mb-4">Start a New Appeal</h4>
+         <p className="text-sm text-on-surface-variant max-w-sm mx-auto italic mb-8 opacity-60">
             Have a new grade to dispute? Head to the Appeal tab and Regrade will walk you through it step by step.
          </p>
       </div>

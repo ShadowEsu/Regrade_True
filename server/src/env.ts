@@ -1,11 +1,30 @@
 import { z } from "zod";
 
-const EnvSchema = z.object({
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  PORT: z.coerce.number().int().min(1).max(65535).default(8787),
-  CORS_ORIGIN: z.string().default("*"),
-  /** Google AI Studio / Gemini API key — server only; never expose to the browser. */
-  GEMINI_API_KEY: z.string().min(1),
+const EnvSchema = z
+  .object({
+    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+    PORT: z.coerce.number().int().min(1).max(65535).default(8787),
+    CORS_ORIGIN: z.string().default("*"),
+    /**
+     * Google AI Studio / Gemini API key — server only; never expose to the browser.
+     * In development, may be left empty so the process still listens on PORT;
+     * `/v1/gemini/*` then returns 503 until configured. Required in production.
+     */
+    GEMINI_API_KEY: z.string().default(""),
+  /**
+   * Anthropic API key for the hybrid Claude reasoning stage. Optional — when
+   * absent, every request falls back to the single-model Gemini path with a
+   * note in ai_notes.cross_check_summary. Never expose to the browser.
+   */
+  ANTHROPIC_API_KEY: z.string().optional(),
+  /**
+   * Kill switch for the hybrid pipeline. When false, the server forces every
+   * request through the single-model Gemini path regardless of user preference.
+   */
+  HYBRID_ENABLED: z
+    .union([z.literal("true"), z.literal("false"), z.boolean()])
+    .default("true")
+    .transform((v) => v === true || v === "true"),
   /**
    * Optional: comma-separated API keys for simple auth.
    * Prefer a real auth system later; this is for “public endpoints” protection now.
@@ -18,7 +37,30 @@ const EnvSchema = z.object({
   RATE_LIMIT_IP_MAX: z.coerce.number().int().min(1).default(120),
   RATE_LIMIT_USER_WINDOW_MS: z.coerce.number().int().min(1_000).default(60_000),
   RATE_LIMIT_USER_MAX: z.coerce.number().int().min(1).default(240)
-});
+})
+  .superRefine((data, ctx) => {
+    if (data.NODE_ENV === "production" && !data.GEMINI_API_KEY.trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "GEMINI_API_KEY is required in production",
+        path: ["GEMINI_API_KEY"]
+      });
+    }
+    if (data.NODE_ENV === "production" && data.CORS_ORIGIN.trim() === "*") {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Set CORS_ORIGIN to your hosting URL(s) in production — wildcard is not allowed",
+        path: ["CORS_ORIGIN"]
+      });
+    }
+    if (data.NODE_ENV === "production" && !(data.API_KEYS ?? "").trim()) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "API_KEYS is required in production for POST /v1/feedback (or remove that route)",
+        path: ["API_KEYS"]
+      });
+    }
+  });
 
 export type Env = z.infer<typeof EnvSchema>;
 

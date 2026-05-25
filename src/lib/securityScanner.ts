@@ -7,26 +7,32 @@ export interface SecurityScanResult {
   recommendation: string;
 }
 
-/** Large PDF extracts: regex-only pre-check; skip extra LLM round-trip (avoids limits / failures). */
+/** Large PDF extracts: regex-only pre-check (no extra LLM round-trip). */
 const APPEAL_REGEX_ONLY_AT_CHARS = 24_000;
 
-// Regex-based first-pass check — fast, no API call needed for obvious patterns.
 function regexCheck(content: string): boolean {
   const dangerPatterns = [
     /<script[\s>]/i,
     /javascript:/i,
-    /on\w+\s*=/i, // onclick=, onerror= etc.
+    /on\w+\s*=/i,
+    /data:\s*text\/html/i,
+    /<\s*iframe/i,
+    /<\s*object/i,
+    /<\s*embed/i,
     /;\s*drop\s+table/i,
     /'\s*or\s+'\d+'\s*=\s*'\d+/i,
     /union\s+select/i,
     /exec\s*\(/i,
+    /ignore\s+(all\s+)?(previous|above)\s+instructions/i,
+    /you\s+are\s+now\s+(a|an)\s+/i,
+    /system\s*prompt/i,
   ];
   return !dangerPatterns.some((p) => p.test(content));
 }
 
 export async function scanContentForThreats(
   content: string,
-  context: 'profile' | 'appeal',
+  context: 'profile' | 'appeal' | 'chat',
 ): Promise<SecurityScanResult> {
   const sliceForRegex =
     content.length > 80_000 ? `${content.slice(0, 72_000)}\n…\n${content.slice(-8_000)}` : content;
@@ -45,7 +51,7 @@ export async function scanContentForThreats(
     return {
       isSafe: true,
       threatLevel: 'low',
-      detectedPatterns: [],
+      detectedPatterns: ['regex-only-large-upload'],
       recommendation: 'Safe to proceed.',
     };
   }
@@ -59,22 +65,18 @@ export async function scanContentForThreats(
       const text = await res.text();
       throw new Error(text || `HTTP ${res.status}`);
     }
-    return res.json() as Promise<SecurityScanResult>;
+    const data = (await res.json()) as SecurityScanResult;
+    return {
+      isSafe: data.isSafe === true,
+      threatLevel: data.threatLevel ?? 'medium',
+      detectedPatterns: data.detectedPatterns ?? [],
+      recommendation: data.recommendation ?? 'Could not verify input.',
+    };
   } catch (error) {
     console.error('Security scan error:', error);
     const errText = error instanceof Error ? error.message : String(error);
     const keyIssue = /API key|401|403|PERMISSION_DENIED|invalid/i.test(errText);
     const quotaIssue = /429|RESOURCE_EXHAUSTED|quota|rate/i.test(errText);
-
-    if (context === 'appeal' && regexCheck(sliceForRegex)) {
-      console.warn('Security scan: API failed; appeal allowed after regex-only fallback.', errText);
-      return {
-        isSafe: true,
-        threatLevel: 'low',
-        detectedPatterns: ['llm-scan-skipped'],
-        recommendation: 'Safe to proceed.',
-      };
-    }
 
     return {
       isSafe: false,

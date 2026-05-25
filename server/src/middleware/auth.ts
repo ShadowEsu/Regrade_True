@@ -27,10 +27,15 @@ export function authFromApiKeys(apiKeysCsv: string | undefined) {
   );
 
   return function auth(req: Request, _res: Response, next: NextFunction) {
-    // If no keys configured, treat as public (still rate-limited by IP).
     if (allowed.size === 0) {
-      (req as Request & { auth?: AuthContext }).auth = { principalId: null };
-      return next();
+      return next(
+        new ApiError({
+          status: 503,
+          code: "SERVICE_UNAVAILABLE",
+          message: "Feedback is not configured on this server.",
+          expose: true
+        })
+      );
     }
 
     const key = parseBearer(req);

@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ICONS } from '../constants';
 import { chatWithAdvocate } from '../lib/gemini';
+import { sanitizeUserText } from '../lib/sanitize';
+import { scanContentForThreats } from '../lib/securityScanner';
 
 export default function Advocate({ onBack }: { onBack: () => void }) {
   const [messages, setMessages] = useState([
@@ -22,12 +24,27 @@ export default function Advocate({ onBack }: { onBack: () => void }) {
     e.preventDefault();
     if (!input.trim() || loading) return;
 
-    const userMessage = input.trim();
+    const userMessage = sanitizeUserText(input.trim(), 32_000);
+    if (!userMessage) return;
+
     setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
     setInput('');
     setLoading(true);
 
     try {
+      const scan = await scanContentForThreats(userMessage, 'chat');
+      if (!scan.isSafe) {
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'ai',
+            text: scan.recommendation || 'That message could not be sent. Please rephrase and try again.',
+          },
+        ]);
+        setLoading(false);
+        return;
+      }
+
       // Map our app roles to Gemini roles
       const history = messages.slice(1).map(m => ({
         role: m.role === 'ai' ? 'model' as const : 'user' as const,
@@ -63,10 +80,10 @@ export default function Advocate({ onBack }: { onBack: () => void }) {
             <ICONS.ChevronLeft size={20} />
           </button>
           <div className="min-w-0">
-            <h2 className="font-serif text-xl sm:text-2xl text-primary font-light tracking-tight">Appeal assistant</h2>
+            <h2 className="text-xl sm:text-2xl text-primary font-semibold tracking-tight">Appeal assistant</h2>
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
               <div className="w-1.5 h-1.5 bg-[#6cf8bb] rounded-full animate-pulse shrink-0" />
-              <span className="text-[10px] sm:text-[11px] uppercase font-light tracking-[0.28em] text-primary/50">
+              <span className="text-[10px] sm:text-[11px] uppercase font-medium tracking-[0.28em] text-primary/50">
                 Chat · same as Home card
               </span>
             </div>
@@ -90,7 +107,7 @@ export default function Advocate({ onBack }: { onBack: () => void }) {
             key={i} 
             className={`flex ${m.role === 'ai' ? 'justify-start' : 'justify-end'}`}
           >
-            <div className={`max-w-[92%] sm:max-w-[85%] p-5 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] text-[15px] sm:text-lg font-serif italic font-light leading-relaxed ${
+            <div className={`max-w-[92%] sm:max-w-[85%] p-5 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] text-[15px] sm:text-lg italic font-medium leading-relaxed ${
               m.role === 'ai' 
                 ? 'bg-white/80 border border-primary/5 text-primary/80 shadow-[0_10px_30px_-10px_rgba(0,35,111,0.05)]' 
                 : 'bg-primary text-white shadow-xl shadow-primary/20'
@@ -123,7 +140,7 @@ export default function Advocate({ onBack }: { onBack: () => void }) {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask about rubrics, feedback, or appeal steps…"
-            className="w-full bg-[#fdfcf7] border border-primary/10 rounded-[2rem] px-6 sm:px-10 py-4 sm:py-6 outline-none focus:ring-2 focus:ring-primary/15 transition-all pr-[3.75rem] text-[15px] sm:text-base font-serif italic font-light text-primary/85 placeholder:text-primary/30 min-h-[48px]"
+            className="w-full bg-[#fdfcf7] border border-primary/10 rounded-[2rem] px-6 sm:px-10 py-4 sm:py-6 outline-none focus:ring-2 focus:ring-primary/15 transition-all pr-[3.75rem] text-[15px] sm:text-base italic font-medium text-primary/85 placeholder:text-primary/30 min-h-[48px]"
           />
           <button
             type="submit"
@@ -136,7 +153,7 @@ export default function Advocate({ onBack }: { onBack: () => void }) {
         </div>
         <div className="flex justify-center items-center gap-4 mt-6">
            <div className="h-px w-8 bg-primary/10" />
-           <p className="text-[10px] text-primary/35 font-light uppercase tracking-[0.32em] text-center px-2">
+           <p className="text-[10px] text-primary/35 font-semibold uppercase tracking-[0.32em] text-center px-2">
               Educational support only · follow your school&apos;s policy
            </p>
            <div className="h-px w-8 bg-primary/10" />

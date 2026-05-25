@@ -19,10 +19,20 @@ export async function extractTextFromPdfFile(file: File): Promise<string> {
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const content = await page.getTextContent();
-    const line = content.items
-      .map((item) => ('str' in item ? (item as { str: string }).str : ''))
-      .join(' ');
-    pageTexts.push(line);
+    const parts: string[] = [];
+    let lastY: number | null = null;
+    for (const item of content.items) {
+      if (!('str' in item)) continue;
+      const t = (item as { str: string }).str;
+      const tr = (item as { transform?: number[] }).transform;
+      const y = tr?.[5];
+      if (y != null && lastY != null && Math.abs(y - lastY) > 4) {
+        parts.push('\n');
+      }
+      parts.push(t);
+      if (y != null) lastY = y;
+    }
+    pageTexts.push(parts.join(' ').replace(/ +\n +/g, '\n').trim());
   }
 
   return pageTexts.join('\n\n').trim();

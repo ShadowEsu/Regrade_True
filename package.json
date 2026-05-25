@@ -14,11 +14,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host localhost",
+    "dev:preview": "vite --port=3000 --host localhost --mode preview",
+    "start": "vite --port=3000 --host localhost",
     "dev:api": "npm --prefix server run dev",
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit",
+    "lint": "tsc -p tsconfig.app.json --noEmit",
     "licenses": "npx --yes license-checker --production --json > THIRD_PARTY_LICENSES.json",
     "deploy:hosting": "npm run build && firebase deploy --only hosting:regrade",
     "deploy:rules": "firebase deploy --only firestore:rules"
