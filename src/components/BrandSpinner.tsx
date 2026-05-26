@@ -5,9 +5,9 @@ export default function BrandSpinner({ size = 40 }: { size?: number }) {
     <img
       src={BRAND_LOGO_SRC}
       alt={`${BRAND_NAME} loading`}
-      width={size}
       height={size}
-      className="rounded-2xl animate-pulse object-contain"
+      className="w-auto animate-pulse object-contain"
+      style={{ height: size, width: 'auto' }}
       draggable={false}
     />
   );

@@ -10,12 +10,13 @@ interface LogoProps {
   compact?: boolean;
 }
 
-const SIZE_PX: Record<NonNullable<LogoProps['size']>, number> = {
-  xs: 28,
-  sm: 36,
-  md: 44,
-  lg: 72,
-  xl: 112,
+/** Wordmark height in px (width scales automatically). */
+const HEIGHT_PX: Record<NonNullable<LogoProps['size']>, number> = {
+  xs: 22,
+  sm: 28,
+  md: 34,
+  lg: 52,
+  xl: 72,
 };
 
 const Logo: React.FC<LogoProps> = ({
@@ -24,7 +25,7 @@ const Logo: React.FC<LogoProps> = ({
   showTagline = false,
   compact = false,
 }) => {
-  const px = SIZE_PX[size];
+  const height = HEIGHT_PX[size];
   const isLeft = className.includes('text-left') || className.includes('!text-left');
 
   return (
@@ -34,7 +35,7 @@ const Logo: React.FC<LogoProps> = ({
       } ${className}`}
     >
       <motion.div
-        initial={{ scale: 0.92, opacity: 0 }}
+        initial={{ scale: 0.96, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ duration: 0.45, ease: 'easeOut' }}
         className="inline-flex"
@@ -42,9 +43,9 @@ const Logo: React.FC<LogoProps> = ({
         <img
           src={BRAND_LOGO_SRC}
           alt={BRAND_NAME}
-          width={px}
-          height={px}
-          className="rounded-2xl shadow-[0_12px_40px_-18px_rgba(0,35,111,0.45)] object-contain"
+          height={height}
+          className="w-auto h-auto object-contain object-left"
+          style={{ height, width: 'auto', maxWidth: 'min(100%, 280px)' }}
           draggable={false}
         />
       </motion.div>
