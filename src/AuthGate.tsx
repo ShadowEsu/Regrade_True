@@ -4,7 +4,7 @@ import { auth } from './lib/firebase';
 import { isPreviewMode } from './lib/previewMode';
 import PreviewBanner from './components/PreviewBanner';
 import Auth from './views/Auth';
-import { ICONS } from './constants';
+import BrandSpinner from './components/BrandSpinner';
 import { userService } from './services/userService';
 
 interface AuthGateProps {
@@ -61,7 +61,7 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center p-6 paper-texture">
         <div className="text-center space-y-4">
-          <ICONS.AILogo className="animate-spin text-primary mx-auto" size={40} />
+          <BrandSpinner size={48} />
           <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary/40">Verifying Identity Integrity...</p>
         </div>
       </div>

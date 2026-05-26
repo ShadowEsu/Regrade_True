@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { ICONS } from '../constants';
 import { caseService, Case } from '../services/caseService';
+import AiPipelinePanel from '../components/AiPipelinePanel';
 
 export default function VerdictReport({ caseId }: { caseId: string | null }) {
   const [currentCase, setCurrentCase] = useState<Case | null>(null);
@@ -238,85 +239,7 @@ export default function VerdictReport({ caseId }: { caseId: string | null }) {
       </div>
 
       {analysis?.ai_notes && (
-        <section className="glass-panel rounded-[3rem] p-10 sm:p-16 border border-primary/10 bg-white/95 space-y-8">
-          <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-primary/40">How the AI read this</p>
-            <h3 className="text-3xl sm:text-4xl text-primary font-semibold tracking-tight">
-              {analysis.ai_notes.engines_used.length > 1
-                ? 'Two readers reviewed your worksheet'
-                : 'One reader reviewed your worksheet'}
-            </h3>
-            <p className="text-[13px] sm:text-sm font-medium text-on-surface-variant leading-relaxed max-w-3xl">
-              Each step below shows what the AI did. Use this when talking to your instructor — you can point to exactly
-              what the tool saw and where it was unsure.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-primary/45">Step 1 · Reading the worksheet</p>
-              <p className="text-[14px] sm:text-[15px] italic text-primary/85 leading-relaxed">
-                {analysis.ai_notes.extraction_summary}
-              </p>
-              {analysis.ai_notes.extraction_uncertainties.length > 0 && (
-                <ul className="pt-2 space-y-1 text-[12.5px] text-on-surface-variant/85 list-disc list-inside marker:text-primary/40">
-                  {analysis.ai_notes.extraction_uncertainties.slice(0, 4).map((u, i) => (
-                    <li key={i} className="leading-snug">
-                      {u}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-primary/45">Step 2 · Judging the marking</p>
-              <p className="text-[14px] sm:text-[15px] italic text-primary/85 leading-relaxed">
-                {analysis.ai_notes.reasoning_summary}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-primary/45">Step 3 · Cross-check</p>
-              <p className="text-[14px] sm:text-[15px] italic text-primary/85 leading-relaxed">
-                {analysis.ai_notes.cross_check_summary}
-              </p>
-              {analysis.ai_notes.disagreements.length > 0 && (
-                <ul className="pt-2 space-y-1 text-[12.5px] text-on-surface-variant/85">
-                  {analysis.ai_notes.disagreements.slice(0, 4).map((d, i) => (
-                    <li key={i} className="leading-snug">
-                      <span className="font-mono text-[11px] text-primary/70">{d.field}</span> —{' '}
-                      Gemini: <span className="font-medium text-primary/85">{d.gemini_said}</span> · Claude:{' '}
-                      <span className="font-medium text-primary/85">{d.claude_said}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3 pt-4 border-t border-primary/5 text-[10.5px] text-primary/45">
-            <span className="font-bold uppercase tracking-[0.28em]">Analyzed with</span>
-            {analysis.ai_notes.engines_used.includes('gemini') && (
-              <span className="px-3 py-1 rounded-full bg-primary/5 border border-primary/10 font-semibold text-primary/65 normal-case">
-                Gemini (Google)
-              </span>
-            )}
-            {analysis.ai_notes.engines_used.includes('claude') && (
-              <span className="px-3 py-1 rounded-full bg-primary/5 border border-primary/10 font-semibold text-primary/65 normal-case">
-                Claude (Anthropic)
-              </span>
-            )}
-            {analysis.ai_notes.fallback_used && (
-              <span className="px-3 py-1 rounded-full bg-amber-50 border border-amber-200/70 font-semibold text-amber-800 normal-case">
-                Fallback used
-              </span>
-            )}
-            <span className="opacity-70 normal-case italic">
-              Gemini is a trademark of Google LLC. Claude is a trademark of Anthropic PBC. Regrade is not affiliated with either.
-            </span>
-          </div>
-        </section>
+        <AiPipelinePanel aiNotes={analysis.ai_notes} sourcePlatform={analysis.source_platform} />
       )}
 
       {analysis?.case_analysis.fairness_review && (

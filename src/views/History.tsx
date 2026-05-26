@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { ICONS } from '../constants';
+import BrandSpinner from '../components/BrandSpinner';
 import { caseService, Case } from '../services/caseService';
 
 export default function History() {
@@ -33,7 +34,7 @@ export default function History() {
       <div className="grid grid-cols-1 gap-8">
         {loading ? (
           <div className="text-center py-20 opacity-20">
-            <ICONS.RefreshCcw className="animate-spin mx-auto mb-4" />
+            <BrandSpinner size={40} />
             <p className="text-[10px] font-bold uppercase tracking-widest">Loading your appeals...</p>
           </div>
         ) : cases.length === 0 ? (

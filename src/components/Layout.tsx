@@ -30,7 +30,7 @@ export default function Layout({ children, activeTab, onTabChange }: LayoutProps
             className="flex items-center gap-4 cursor-pointer group"
             onClick={() => onTabChange('dashboard')}
           >
-            <Logo size="md" className="!text-left" />
+            <Logo size="md" compact className="!text-left" />
           </div>
 
           <div className="flex items-center gap-12">

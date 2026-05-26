@@ -7,6 +7,7 @@ import { onAuthStateChanged, User } from 'firebase/auth';
 import { userService, UserProfile } from '../services/userService';
 import { scanContentForThreats } from '../lib/securityScanner';
 import type { AiEngine } from '../types';
+import BrandSpinner from '../components/BrandSpinner';
 
 interface ProfileProps {
   onShowAbout?: () => void;
@@ -124,7 +125,13 @@ const Profile: React.FC<ProfileProps> = ({ onShowAbout }) => {
     }
   };
 
-  if (loading) return <div className="flex justify-center py-24"><ICONS.AILogo className="animate-spin text-primary" /></div>;
+  if (loading) {
+    return (
+      <div className="flex justify-center py-24">
+        <BrandSpinner size={48} />
+      </div>
+    );
+  }
 
   if (!user) {
     return (

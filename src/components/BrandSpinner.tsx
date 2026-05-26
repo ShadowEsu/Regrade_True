@@ -1,0 +1,14 @@
+import { BRAND_LOGO_SRC, BRAND_NAME } from '../branding';
+
+export default function BrandSpinner({ size = 40 }: { size?: number }) {
+  return (
+    <img
+      src={BRAND_LOGO_SRC}
+      alt={`${BRAND_NAME} loading`}
+      width={size}
+      height={size}
+      className="rounded-2xl animate-pulse object-contain"
+      draggable={false}
+    />
+  );
+}

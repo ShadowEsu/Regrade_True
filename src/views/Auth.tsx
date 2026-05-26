@@ -11,6 +11,7 @@ import {
 import { ICONS } from '../constants';
 
 import Logo from '../components/Logo';
+import BrandSpinner from '../components/BrandSpinner';
 
 const Auth: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -79,8 +80,8 @@ const Auth: React.FC = () => {
         className="w-full max-w-md"
       >
         <div className="text-center mb-16">
-          <Logo size="xl" className="mb-6" />
-          <h2 className="text-5xl text-primary/80 font-semibold tracking-tight mb-4">Sign in to Regrade</h2>
+          <Logo size="xl" showTagline className="mb-8" />
+          <h2 className="text-3xl sm:text-4xl text-primary/80 font-semibold tracking-tight mb-4">Sign in</h2>
           <p className="text-on-surface-variant font-bold opacity-50 text-sm uppercase tracking-[0.6em]">Your personal grade appeal assistant</p>
         </div>
 
@@ -153,7 +154,7 @@ const Auth: React.FC = () => {
               className="w-full bg-primary text-white py-4 rounded-xl font-bold tracking-widest uppercase text-xs shadow-xl shadow-primary/20 hover:scale-[1.01] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
             >
               {loading ? (
-                <ICONS.AILogo className="animate-spin" size={18} />
+                <BrandSpinner size={18} />
               ) : (
                 forgotPassword ? "Send Reset Email" : (isLogin ? "Sign In" : "Create Account")
               )}
