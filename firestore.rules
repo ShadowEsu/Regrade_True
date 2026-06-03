@@ -61,9 +61,9 @@ service cloud.firestore {
     function isValidRawInputBlock(raw) {
       return raw is map &&
              raw.keys().hasOnly(['assignment', 'rubric', 'feedback']) &&
-             (!('assignment' in raw) || optionalBoundedString(raw.assignment, 500_000)) &&
-             (!('rubric' in raw) || optionalBoundedString(raw.rubric, 500_000)) &&
-             (!('feedback' in raw) || optionalBoundedString(raw.feedback, 500_000));
+             (!('assignment' in raw) || optionalBoundedString(raw.assignment, 500000)) &&
+             (!('rubric' in raw) || optionalBoundedString(raw.rubric, 500000)) &&
+             (!('feedback' in raw) || optionalBoundedString(raw.feedback, 500000));
     }
 
     function isValidCaseCreate(data) {
@@ -72,7 +72,7 @@ service cloud.firestore {
                                    'evidenceLogged', 'facultyReview', 'userId',
                                    'analysis', 'rawInput', 'createdAt', 'updatedAt']) &&
              boundedString(data.title, 200) &&
-             optionalBoundedString(data.description, 4_000) &&
+             optionalBoundedString(data.description, 4000) &&
              boundedString(data.ref, 64) &&
              data.status is string && data.status in ['Under Review', 'Resolved', 'Draft Ready'] &&
              data.progress is number && data.progress >= 0 && data.progress <= 100 &&
@@ -88,7 +88,7 @@ service cloud.firestore {
     function isValidWaitlistCreate(data) {
       return data.keys().hasOnly(['email', 'createdAt', 'source']) &&
              boundedString(data.email, 320) &&
-             data.email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$') &&
+             data.email.matches('.+@.+\\..+') &&
              data.createdAt == request.time &&
              (!('source' in data) || boundedString(data.source, 64));
     }
@@ -98,7 +98,7 @@ service cloud.firestore {
              data.createdAt == prior.createdAt &&
              data.updatedAt == request.time &&
              optionalBoundedString(data.title, 200) &&
-             optionalBoundedString(data.description, 4_000) &&
+             optionalBoundedString(data.description, 4000) &&
              optionalBoundedString(data.ref, 64) &&
              (data.status is string && data.status in ['Under Review', 'Resolved', 'Draft Ready']) &&
              data.progress is number && data.progress >= 0 && data.progress <= 100 &&
