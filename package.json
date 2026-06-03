@@ -22,8 +22,9 @@
     "clean": "rm -rf dist",
     "lint": "tsc -p tsconfig.app.json --noEmit",
     "licenses": "npx --yes license-checker --production --json > THIRD_PARTY_LICENSES.json",
-    "deploy:hosting": "npm run build && firebase deploy --only hosting:regrade",
-    "deploy:rules": "firebase deploy --only firestore:rules"
+    "deploy:hosting": "npm run build && firebase deploy --only hosting:regrade-75d1a",
+    "deploy:rules": "firebase deploy --only firestore:rules",
+    "deploy:regradeapp.tech": "bash scripts/deploy-regradeapp-tech.sh"
   },
   "dependencies": {
     "@firebase/eslint-plugin-security-rules": "^0.0.2",
