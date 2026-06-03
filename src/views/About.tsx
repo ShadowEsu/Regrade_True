@@ -63,7 +63,7 @@ export default function About({ onBack }: AboutProps) {
           <ICONS.ChevronLeft className="w-4 h-4" strokeWidth={2} />
           Back
         </button>
-        <Logo size="lg" className="!text-left py-0" />
+        <Logo size="xl" className="!text-left py-0" />
         <h1 className="text-4xl md:text-5xl text-primary font-semibold tracking-tight">
           About {APP_NAME}
         </h1>

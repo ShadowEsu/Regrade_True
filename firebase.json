@@ -3,13 +3,31 @@
     "rules": "firestore.rules"
   },
   "hosting": {
-    "site": "regrade",
+    "site": "regrade-75d1a",
     "public": "dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
       {
+        "source": "/app",
+        "destination": "/app.html"
+      },
+      {
+        "source": "/app/**",
+        "destination": "/app.html"
+      },
+      {
         "source": "**",
         "destination": "/index.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "/regrade.css",
+        "headers": [{ "key": "Cache-Control", "value": "public,max-age=3600" }]
+      },
+      {
+        "source": "/legal/**",
+        "headers": [{ "key": "Cache-Control", "value": "public,max-age=86400" }]
       }
     ]
   }

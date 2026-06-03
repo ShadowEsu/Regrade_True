@@ -8,6 +8,7 @@ import { userService, UserProfile } from '../services/userService';
 import { scanContentForThreats } from '../lib/securityScanner';
 import type { AiEngine } from '../types';
 import BrandSpinner from '../components/BrandSpinner';
+import ContinueWithGoogleButton from '../components/ContinueWithGoogleButton';
 
 interface ProfileProps {
   onShowAbout?: () => void;
@@ -140,12 +141,7 @@ const Profile: React.FC<ProfileProps> = ({ onShowAbout }) => {
           <ICONS.Shield size={48} className="mx-auto text-primary opacity-20" />
           <h2 className="text-3xl text-primary">Access Restricted</h2>
           <p className="text-on-surface-variant font-medium">Please sign in to access your profile and appeal history.</p>
-          <button 
-            onClick={loginWithGoogle}
-            className="w-full bg-primary text-white py-4 rounded-xl font-bold hover:shadow-lg transition-all flex items-center justify-center gap-3"
-          >
-             Sign in with Google
-          </button>
+          <ContinueWithGoogleButton onClick={() => void loginWithGoogle()} />
         </div>
       </div>
     );

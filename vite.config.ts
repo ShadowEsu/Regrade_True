@@ -14,11 +14,16 @@ export default defineConfig(({ mode }) => ({
       '@': path.resolve(__dirname, '.'),
     },
   },
+  build: {
+    rollupOptions: {
+      input: {
+        main: path.resolve(__dirname, 'index.html'),
+        app: path.resolve(__dirname, 'app.html'),
+      },
+    },
+  },
   server: {
-    // HMR is disabled in AI Studio via the DISABLE_HMR env var; file watching
-    // is also disabled there to prevent flickering during agent edits.
     hmr: process.env.DISABLE_HMR !== 'true',
-    // Proxy API calls to the Express backend (`npm run dev` in /server on port 8787).
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8787',
@@ -28,7 +33,6 @@ export default defineConfig(({ mode }) => ({
     },
   },
   preview: {
-    // Same proxy as dev so `npm run build && npm run preview` can call the local API.
     proxy: {
       '/api': {
         target: 'http://127.0.0.1:8787',

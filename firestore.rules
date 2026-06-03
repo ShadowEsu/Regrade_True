@@ -85,6 +85,14 @@ service cloud.firestore {
              data.updatedAt == request.time;
     }
 
+    function isValidWaitlistCreate(data) {
+      return data.keys().hasOnly(['email', 'createdAt', 'source']) &&
+             boundedString(data.email, 320) &&
+             data.email.matches('^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$') &&
+             data.createdAt == request.time &&
+             (!('source' in data) || boundedString(data.source, 64));
+    }
+
     function isValidCaseUpdate(data, prior) {
       return data.userId == prior.userId &&
              data.createdAt == prior.createdAt &&
@@ -101,6 +109,11 @@ service cloud.firestore {
     }
 
     // --- Rules ---
+
+    match /waitlist/{docId} {
+      allow create: if isValidWaitlistCreate(incoming());
+      allow read, update, delete: if false;
+    }
 
     match /users/{userId} {
       allow get: if isOwner(userId);

@@ -1,24 +1,35 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { ICONS } from '../constants';
 import { chatWithAdvocate } from '../lib/gemini';
 import { sanitizeUserText } from '../lib/sanitize';
 import { scanContentForThreats } from '../lib/securityScanner';
+import Logo from '../components/Logo';
+
+const WELCOME =
+  "Hey — I'm here to help you figure out your grade situation and how to push back the right way. I know how Canvas, Gradescope, Moodle, Turnitin, and the rest actually work, and I can walk you through appeals step by step. I'm not a lawyer and I can't promise you'll win, but I'm on your side. What's going on — and if you know it, what does your school use for grades (Canvas, Moodle, etc.)?";
+
+function AssistantAvatar() {
+  return (
+    <div
+      className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#00236f] flex items-center justify-center shrink-0"
+      aria-hidden
+    >
+      <ICONS.MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-white" strokeWidth={2} />
+    </div>
+  );
+}
 
 export default function Advocate({ onBack }: { onBack: () => void }) {
-  const [messages, setMessages] = useState([
-    {
-      role: 'ai',
-      text: "Hey — I’m here to help you figure out your grade situation and how to push back the right way. I know how Canvas, Gradescope, Moodle, Turnitin, and the rest actually work, and I can walk you through appeals step by step. I’m not a lawyer and I can’t promise you’ll win, but I’m on your side. What’s going on — and if you know it, what does your school use for grades (Canvas, Moodle, etc.)?",
-    },
-  ]);
+  const [messages, setMessages] = useState([{ role: 'ai' as const, text: WELCOME }]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, loading]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,136 +38,151 @@ export default function Advocate({ onBack }: { onBack: () => void }) {
     const userMessage = sanitizeUserText(input.trim(), 32_000);
     if (!userMessage) return;
 
-    setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
+    setMessages((prev) => [...prev, { role: 'user', text: userMessage }]);
     setInput('');
     setLoading(true);
 
     try {
       const scan = await scanContentForThreats(userMessage, 'chat');
       if (!scan.isSafe) {
-        setMessages(prev => [
+        setMessages((prev) => [
           ...prev,
           {
             role: 'ai',
-            text: scan.recommendation || 'That message could not be sent. Please rephrase and try again.',
+            text:
+              scan.recommendation ||
+              'That message could not be sent. Please rephrase and try again.',
           },
         ]);
         setLoading(false);
         return;
       }
 
-      // Map our app roles to Gemini roles
-      const history = messages.slice(1).map(m => ({
-        role: m.role === 'ai' ? 'model' as const : 'user' as const,
-        text: m.text
+      const history = messages.slice(1).map((m) => ({
+        role: m.role === 'ai' ? ('model' as const) : ('user' as const),
+        text: m.text,
       }));
 
       const response = await chatWithAdvocate(userMessage, history);
-      
-      setMessages(prev => [...prev, { role: 'ai', text: response || "I'm sorry, I couldn't process that request." }]);
-    } catch (error: any) {
-      setMessages(prev => [...prev, { 
-        role: 'ai', 
-        text: "Sorry, I ran into an error. Please try again."
-      }]);
+      setMessages((prev) => [
+        ...prev,
+        { role: 'ai', text: response || "I'm sorry, I couldn't process that request." },
+      ]);
+    } catch {
+      setMessages((prev) => [
+        ...prev,
+        { role: 'ai', text: 'Sorry, I ran into an error. Please try again.' },
+      ]);
     } finally {
       setLoading(false);
+      inputRef.current?.focus();
     }
   };
 
   return (
-    <div className="flex flex-col w-full max-w-3xl mx-auto min-h-[min(88dvh,calc(100vh-7rem))] h-[min(88dvh,calc(100vh-7rem))] sm:rounded-[3rem] rounded-2xl overflow-hidden border-2 border-primary/15 bg-white/85 backdrop-blur-3xl shadow-2xl relative">
-      <div className="absolute inset-0 paper-texture opacity-5 pointer-events-none" />
-      
-      {/* Header */}
-      <header className="p-4 sm:p-8 border-b border-primary/10 flex flex-wrap items-center justify-between gap-4 bg-gradient-to-b from-primary/[0.07] to-transparent relative z-10">
-        <div className="flex items-center gap-3 sm:gap-6 min-w-0">
-          <button
-            type="button"
-            onClick={onBack}
-            className="p-3 min-w-[44px] min-h-[44px] flex items-center justify-center bg-white hover:bg-primary/5 rounded-2xl transition-all text-primary shadow-sm border border-primary/10 shrink-0"
-            aria-label="Back"
-          >
-            <ICONS.ChevronLeft size={20} />
-          </button>
-          <div className="min-w-0">
-            <h2 className="text-xl sm:text-2xl text-primary font-semibold tracking-tight">Appeal assistant</h2>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1">
-              <div className="w-1.5 h-1.5 bg-[#6cf8bb] rounded-full animate-pulse shrink-0" />
-              <span className="text-[10px] sm:text-[11px] uppercase font-medium tracking-[0.28em] text-primary/50">
-                Chat · same as Home card
-              </span>
-            </div>
-          </div>
+    <div className="flex flex-col h-[100dvh] w-full bg-[#f7f7f8]">
+      {/* Full-screen top bar */}
+      <header className="shrink-0 flex items-center gap-2 sm:gap-4 px-3 sm:px-5 py-3 border-b border-black/[0.06] bg-white pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <button
+          type="button"
+          onClick={onBack}
+          className="inline-flex items-center justify-center gap-1.5 min-h-[44px] min-w-[44px] px-3 rounded-xl text-sm font-semibold text-[#00236f] hover:bg-black/[0.04] transition-colors shrink-0"
+          aria-label="Back to Home"
+        >
+          <ICONS.ChevronLeft size={22} strokeWidth={2} />
+          <span className="hidden sm:inline">Home</span>
+        </button>
+
+        <div className="flex-1 flex justify-center min-w-0 pointer-events-none">
+          <Logo size="sm" compact className="!items-center opacity-95" />
         </div>
-        <div className="flex gap-3">
-           {[ICONS.Shield, ICONS.Download].map((Icon, i) => (
-             <button key={i} className="p-3 bg-white/50 text-primary/30 hover:text-primary transition-all rounded-xl border border-primary/5">
-                <Icon size={18} />
-             </button>
-           ))}
+
+        <div className="w-[44px] sm:w-[72px] shrink-0 flex justify-end">
+          <span className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-[#19a37b]">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#19a37b] animate-pulse" />
+            <span className="hidden sm:inline">Live</span>
+          </span>
         </div>
       </header>
 
-      {/* Chat Area */}
-      <div className="flex-1 overflow-y-auto p-4 sm:p-10 space-y-6 sm:space-y-10 relative z-10 scrollbar-hide">
-        {messages.map((m, i) => (
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            key={i} 
-            className={`flex ${m.role === 'ai' ? 'justify-start' : 'justify-end'}`}
-          >
-            <div className={`max-w-[92%] sm:max-w-[85%] p-5 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] text-[15px] sm:text-lg italic font-medium leading-relaxed ${
-              m.role === 'ai' 
-                ? 'bg-white/80 border border-primary/5 text-primary/80 shadow-[0_10px_30px_-10px_rgba(0,35,111,0.05)]' 
-                : 'bg-primary text-white shadow-xl shadow-primary/20'
-            }`}>
-              {m.text}
-            </div>
-          </motion.div>
-        ))}
-        {loading && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex justify-start"
-          >
-            <div className="bg-white/80 border border-primary/5 p-6 rounded-2xl flex gap-2">
-              <div className="w-2 h-2 bg-primary/20 rounded-full animate-bounce" />
-              <div className="w-2 h-2 bg-primary/20 rounded-full animate-bounce delay-100" />
-              <div className="w-2 h-2 bg-primary/20 rounded-full animate-bounce delay-200" />
-            </div>
-          </motion.div>
-        )}
-        <div ref={chatEndRef} />
+      {/* Messages — full width, centered column */}
+      <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
+        <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-7 sm:space-y-8">
+          {messages.map((m, i) =>
+            m.role === 'ai' ? (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex gap-3 sm:gap-4 items-start"
+              >
+                <AssistantAvatar />
+                <div className="flex-1 min-w-0 pt-1">
+                  <p className="text-[16px] sm:text-[17px] leading-[1.7] text-[#0d0d0d] whitespace-pre-wrap">
+                    {m.text}
+                  </p>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="flex justify-end pl-12 sm:pl-16"
+              >
+                <div className="max-w-[88%] rounded-[1.25rem] rounded-br-md bg-[#00236f] text-white px-4 sm:px-5 py-3 sm:py-3.5">
+                  <p className="text-[16px] sm:text-[17px] leading-[1.65] whitespace-pre-wrap">{m.text}</p>
+                </div>
+              </motion.div>
+            ),
+          )}
+
+          {loading && (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex gap-3 items-start">
+              <AssistantAvatar />
+              <div className="flex gap-1.5 pt-3">
+                <span className="w-2 h-2 rounded-full bg-[#0d0d0d]/20 animate-bounce" />
+                <span className="w-2 h-2 rounded-full bg-[#0d0d0d]/20 animate-bounce [animation-delay:150ms]" />
+                <span className="w-2 h-2 rounded-full bg-[#0d0d0d]/20 animate-bounce [animation-delay:300ms]" />
+              </div>
+            </motion.div>
+          )}
+          <div ref={chatEndRef} className="h-4" />
+        </div>
       </div>
 
-      {/* Input Area */}
-      <form onSubmit={handleSend} className="p-4 sm:p-8 border-t border-primary/10 bg-white/90 relative z-10 pb-[max(1rem,env(safe-area-inset-bottom))]">
-        <div className="relative flex items-center max-w-2xl mx-auto">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about rubrics, feedback, or appeal steps…"
-            className="w-full bg-[#fdfcf7] border border-primary/10 rounded-[2rem] px-6 sm:px-10 py-4 sm:py-6 outline-none focus:ring-2 focus:ring-primary/15 transition-all pr-[3.75rem] text-[15px] sm:text-base italic font-medium text-primary/85 placeholder:text-primary/30 min-h-[48px]"
-          />
-          <button
-            type="submit"
-            disabled={loading}
-            className="absolute right-2 sm:right-3 p-3 sm:p-4 min-w-[44px] min-h-[44px] flex items-center justify-center bg-primary text-white rounded-2xl shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all outline-none disabled:opacity-50 disabled:scale-100"
-            aria-label="Send"
-          >
-            {loading ? <ICONS.RefreshCcw className="animate-spin" size={20} /> : <ICONS.Send size={20} />}
-          </button>
-        </div>
-        <div className="flex justify-center items-center gap-4 mt-6">
-           <div className="h-px w-8 bg-primary/10" />
-           <p className="text-[10px] text-primary/35 font-semibold uppercase tracking-[0.32em] text-center px-2">
-              Educational support only · follow your school&apos;s policy
-           </p>
-           <div className="h-px w-8 bg-primary/10" />
+      {/* Composer — edge to edge */}
+      <form
+        onSubmit={handleSend}
+        className="shrink-0 bg-[#f7f7f8] border-t border-black/[0.06] px-4 sm:px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+      >
+        <div className="w-full max-w-3xl mx-auto">
+          <div className="relative flex items-center rounded-[1.75rem] bg-white border border-black/[0.08] shadow-[0_2px_16px_rgba(0,0,0,0.06)] focus-within:ring-2 focus-within:ring-[#00236f]/15">
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Message appeal assistant…"
+              className="flex-1 bg-transparent rounded-[1.75rem] pl-5 pr-14 py-4 sm:py-[1.125rem] text-base text-[#0d0d0d] placeholder:text-[#8e8ea0] outline-none min-h-[52px]"
+              autoComplete="off"
+            />
+            <button
+              type="submit"
+              disabled={loading || !input.trim()}
+              className="absolute right-2 p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded-xl bg-[#00236f] text-white disabled:opacity-30 hover:bg-[#001a57] active:scale-[0.98] transition-all"
+              aria-label="Send"
+            >
+              {loading ? (
+                <ICONS.RefreshCcw className="animate-spin" size={20} />
+              ) : (
+                <ICONS.Send size={20} />
+              )}
+            </button>
+          </div>
+          <p className="text-center text-[11px] text-[#8e8ea0] mt-3">
+            Educational support only · not legal advice
+          </p>
         </div>
       </form>
     </div>
