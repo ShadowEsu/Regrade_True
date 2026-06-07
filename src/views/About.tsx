@@ -12,6 +12,7 @@ import {
   APP_WEBSITE_URL,
   APP_DISCLAIMER,
   APP_LEGAL_OWNER,
+  APP_MIN_AGE,
 } from '../version';
 
 interface AboutProps {
@@ -99,6 +100,17 @@ export default function About({ onBack }: AboutProps) {
         </div>
       </section>
 
+      <section className="glass-panel rounded-3xl p-6 md:p-8 bg-white space-y-3">
+        <h2 className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/55">
+          Your data
+        </h2>
+        <p className="text-sm text-on-surface-variant leading-relaxed">
+          {APP_NAME} is for users {APP_MIN_AGE} and older. You can delete your account and all
+          associated data from <strong className="font-medium text-primary">Profile → Account → Delete account</strong>,
+          or email {APP_SUPPORT_EMAIL}. Deletion removes your profile, appeals, and drafts permanently.
+        </p>
+      </section>
+
       <section className="glass-panel rounded-3xl p-6 md:p-8 bg-white space-y-4">
         <h2 className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/55">
           Acknowledgements
@@ -118,12 +130,10 @@ export default function About({ onBack }: AboutProps) {
           with, endorsed by, or sponsored by any of these companies.
         </p>
         <p className="text-sm text-on-surface-variant leading-relaxed">
-          {APP_NAME} analyzes your uploaded coursework using{' '}
-          <strong className="font-semibold text-primary">Gemini</strong> (by Google LLC) and{' '}
-          <strong className="font-semibold text-primary">Claude</strong> (by Anthropic PBC). &ldquo;Gemini&rdquo; is a
-          trademark of Google LLC. &ldquo;Claude&rdquo; and &ldquo;Anthropic&rdquo; are trademarks of Anthropic PBC.
-          {' '}{APP_NAME} is not affiliated with, endorsed by, or sponsored by either company. You can change which engine
-          runs from Profile → AI Engine.
+          {APP_NAME} integrates with Gemini and supports Claude models via Google and Anthropic services. &ldquo;Gemini&rdquo;
+          is a trademark of Google LLC. &ldquo;Claude&rdquo; and &ldquo;Anthropic&rdquo; are trademarks of Anthropic PBC.
+          {' '}{APP_NAME} is not affiliated with, endorsed by, or sponsored by either company. Change which reader runs
+          from Profile → AI.
         </p>
       </section>
 

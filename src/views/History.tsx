@@ -2,19 +2,25 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { ICONS } from '../constants';
 import BrandSpinner from '../components/BrandSpinner';
+import MarketingEyebrow from '../components/MarketingEyebrow';
+import AnimatedPrimaryButton from '../components/AnimatedPrimaryButton';
 import { caseService, Case } from '../services/caseService';
+import {
+  getPossiblePointsBack,
+  getClassName,
+  formatCaseDate,
+} from '../lib/appealHelpers';
 
-export default function History() {
+export default function History({ onStartAppeal }: { onStartAppeal: () => void }) {
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadHistory() {
       try {
-        const data = await caseService.getUserCases();
-        setCases(data);
+        setCases(await caseService.getUserCases());
       } catch (err) {
-        console.error("Failed to load appeal history:", err);
+        console.error('Failed to load appeal history:', err);
       } finally {
         setLoading(false);
       }
@@ -22,85 +28,96 @@ export default function History() {
     loadHistory();
   }, []);
 
+  const totalRecoverable = cases.reduce((sum, c) => sum + getPossiblePointsBack(c), 0);
+
   return (
-    <div className="space-y-16 max-w-5xl mx-auto">
-      <header className="flex items-end justify-between border-b border-primary/5 pb-8">
-        <div>
-          <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-primary/30 block mb-2">My Appeals</span>
-          <h2 className="text-5xl md:text-6xl text-primary font-semibold">Appeal History</h2>
-        </div>
+    <div className="space-y-8 pb-4">
+      <header className="text-center space-y-3">
+        <MarketingEyebrow>your record</MarketingEyebrow>
+        <h1 className="rg-serif text-[clamp(28px,6vw,36px)] text-ink font-semibold">Appeal history</h1>
+        <p className="rg-lead text-base max-w-sm mx-auto">Points recovered, drafts saved, and outcomes.</p>
       </header>
 
-      <div className="grid grid-cols-1 gap-8">
-        {loading ? (
-          <div className="text-center py-20 opacity-20">
-            <BrandSpinner size={40} />
-            <p className="text-[10px] font-bold uppercase tracking-widest">Loading your appeals...</p>
+      {!loading && cases.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="grid grid-cols-2 gap-3"
+        >
+          <div className="rg-stat-tile text-center py-4">
+            <p className="rg-serif text-3xl text-ink font-semibold">{cases.length}</p>
+            <p className="text-[12px] font-medium text-ink mt-0.5">appeals</p>
           </div>
-        ) : cases.length === 0 ? (
-          <div className="text-center py-20 glass-panel rounded-3xl border-dashed border-2 border-primary/5">
-            <p className="text-on-surface-variant italic opacity-40 text-lg">No appeals yet. Start your first one from the Home tab.</p>
+          <div className="rg-stat-tile text-center py-4">
+            <p className="rg-serif text-3xl text-primary font-semibold">
+              {totalRecoverable > 0 ? `+${totalRecoverable}` : '—'}
+            </p>
+            <p className="text-[12px] font-medium text-ink mt-0.5">pts flagged</p>
           </div>
-        ) : (
-          cases.map((appeal, idx) => (
-            <motion.div 
-              key={appeal.id}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: idx * 0.1 }}
-              className="group flex flex-col md:flex-row items-start md:items-center gap-8 glass-panel p-8 rounded-[2rem] hover:bg-white transition-all cursor-pointer border border-primary/5"
-            >
-              <div className="bg-primary/5 p-6 rounded-2xl text-primary/40 group-hover:text-primary transition-colors">
-                 <ICONS.FileText size={28} strokeWidth={1} />
-              </div>
-              
-              <div className="flex-1 space-y-2">
-                 <div className="flex items-center gap-3">
-                   <span className="text-[10px] font-mono opacity-40 uppercase tracking-tighter">{appeal.ref}</span>
-                   <span className={`text-[9px] font-bold uppercase tracking-widest px-3 py-1 rounded-full ${
-                     appeal.status === 'Resolved' ? 'bg-secondary/10 text-secondary' : 'bg-primary/5 text-primary/60'
-                   }`}>{appeal.status}</span>
-                 </div>
-                 <h3 className="text-2xl text-primary font-semibold tracking-tight translate-y-[-2px]">{appeal.title}</h3>
-                 <p className="text-xs text-on-surface-variant italic opacity-40">
-                   {(() => {
-                     const raw = appeal.createdAt;
-                     const d =
-                       typeof raw?.toDate === 'function'
-                         ? raw.toDate()
-                         : raw instanceof Date
-                           ? raw
-                           : null;
-                     return d ? d.toLocaleDateString() : '';
-                   })()}
-                 </p>
-              </div>
+        </motion.div>
+      )}
 
-              <div className="text-right space-y-2 w-full md:w-auto">
-                 <p className="text-[10px] font-bold uppercase tracking-widest text-primary/30">Status</p>
-                 <p className="text-xl text-primary italic font-medium whitespace-nowrap">
-                   {appeal.status === 'Resolved' ? 'Resolved' : 'In Progress'}
-                 </p>
-                 <div className="flex justify-end gap-2 text-primary/40 group-hover:text-primary transition-all">
-                    <span className="text-[9px] font-bold uppercase tracking-[0.2em] opacity-0 group-hover:opacity-100 transition-opacity">View details</span>
-                    <ICONS.ArrowRight size={14} />
-                 </div>
-              </div>
-            </motion.div>
-          ))
-        )}
-      </div>
+      {loading ? (
+        <div className="flex flex-col items-center py-16 gap-3">
+          <BrandSpinner size={32} />
+          <p className="rg-section-title">Loading your record…</p>
+        </div>
+      ) : cases.length === 0 ? (
+        <div className="rg-card p-8 text-center space-y-4">
+          <div className="w-14 h-14 mx-auto rounded-2xl bg-primary/8 flex items-center justify-center">
+            <ICONS.History className="w-7 h-7 text-primary" strokeWidth={1.5} />
+          </div>
+          <p className="rg-serif text-2xl text-ink font-semibold">Nothing here yet.</p>
+          <p className="rg-lead text-base max-w-xs mx-auto">
+            Finished appeals show up with points recovered and draft status.
+          </p>
+          <AnimatedPrimaryButton onClick={onStartAppeal} showPlus className="max-w-xs mx-auto">
+            Start your first appeal
+          </AnimatedPrimaryButton>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {cases.map((appeal, idx) => {
+            const pts = getPossiblePointsBack(appeal);
+            const date = formatCaseDate(appeal.createdAt);
 
-      <div className="glass-panel p-12 rounded-[3rem] text-center bg-primary/5 border border-primary/5 border-dashed">
-         <div className="flex justify-center mb-6 text-primary/20">
-           <ICONS.Shield size={48} strokeWidth={0.5} />
-         </div>
-         <h4 className="text-2xl text-primary font-medium mb-4">Start a New Appeal</h4>
-         <p className="text-sm text-on-surface-variant max-w-sm mx-auto italic mb-8 opacity-60">
-            Have a new grade to dispute? Head to the Appeal tab and Regrade will walk you through it step by step.
-         </p>
-      </div>
+            return (
+              <motion.div
+                key={appeal.id}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05, duration: 0.35 }}
+                whileHover={{ y: -2 }}
+                className="rg-card p-4 border-l-[3px] border-l-primary/40"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="rg-serif text-lg text-ink font-semibold truncate">{appeal.title}</h3>
+                    <p className="text-sm text-muted mt-0.5">{getClassName(appeal)}</p>
+                  </div>
+                  {date && (
+                    <span className="text-[11px] font-mono text-muted shrink-0 pt-1">{date}</span>
+                  )}
+                </div>
 
+                <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-divider">
+                  <span className="rg-pill px-3 py-1 text-[11px] capitalize text-ink-muted">
+                    {appeal.status}
+                  </span>
+                  <span className="rg-pill px-3 py-1 text-[11px] text-ink-muted">
+                    {appeal.progress}% done
+                  </span>
+                  {pts > 0 && (
+                    <span className="rg-pill px-3 py-1 text-[11px] text-primary font-semibold bg-primary/8 border-primary/20">
+                      +{pts} pts
+                    </span>
+                  )}
+                </div>
+              </motion.div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

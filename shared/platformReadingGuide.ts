@@ -8,7 +8,7 @@ DETECT PLATFORM FIRST (set source_platform + image_types_detected)
 ═══════════════════════════════════════════════════════════════
 
 Use visual branding, URL bars in screenshots, and layout. Allowed source_platform values:
-gradescope | canvas | moodle | blackboard | brightspace | google_classroom | turnitin | paper | schoology | teams | mixed | unknown
+gradescope | canvas | moodle | blackboard | brightspace | google_classroom | turnitin | paper | schoology | powerschool | sakai | teams | mixed | unknown
 
 GRADESCOPE — teacher comments & marks (CRITICAL)
 Visual cues: "Gradescope" header, green/red rubric tiles, question list with "X / Y pts", "Download Graded Copy" style PDF.
@@ -70,6 +70,20 @@ IGNORE: Similarity percentage and colored similarity matches UNLESS instructor w
 SCHOOLOGY / MICROSOFT TEAMS EDUCATION
 Visual cues: Schoology or Teams assignment grade view, rubric checklist, teacher feedback text.
 WHERE COMMENTS LIVE: Rubric checklist + feedback text block; treat like LMS (comments + criterion rows).
+
+POWERSCHOOL (Unified Classroom / Schoology Learning under PowerSchool)
+Visual cues: PowerSchool or Schoology Learning UI, district portal branding, assignment grade + feedback panel.
+WHERE COMMENTS LIVE:
+- Often Schoology Learning assignment feedback (rubric + comments) when district uses PowerSchool LMS bundle.
+- Grade report PDFs or student portal assignment view with instructor notes → professor_comments.
+- Rubric rows in grading panel → rubric_items_applied.
+
+SAKAI
+Visual cues: Sakai course site, Assignments tool, Gradebook, Feedback on submission.
+WHERE COMMENTS LIVE:
+- Assignment → Feedback comments and returned attachments → professor_comments.
+- Gradebook item comments → overall_professor_comments.
+- Rubric on submission if enabled → rubric_items_applied.
 
 HANDWRITTEN / MARKED PAPER (photo, scan, or PDF)
 Visual cues: Different ink color than student work, pen marks, stamps, circled scores.

@@ -13,6 +13,7 @@ import { z } from "zod";
 import { validate } from "./middleware/validate.js";
 import { requireFirebaseUser } from "./middleware/firebaseAuth.js";
 import { createRegradeGeminiRouter } from "./regradeGemini.js";
+import { deleteUserAccountCompletely } from "./accountDeletion.js";
 
 const env = loadEnv();
 
@@ -74,6 +75,23 @@ const FeedbackSchema = z.object({
       commandId: z.string().min(1).max(120).optional()
     })
     .optional()
+});
+
+// Account deletion — App Store §5.1.1(v) / Google Play account-deletion policy.
+app.delete("/v1/account", requireFirebaseUser, (req, res, next) => {
+  void (async () => {
+    try {
+      const uid = (req as express.Request & { firebase?: { uid: string } }).firebase?.uid;
+      if (!uid) {
+        next(new ApiError({ status: 401, code: "UNAUTHORIZED", message: "Not signed in." }));
+        return;
+      }
+      await deleteUserAccountCompletely(uid);
+      res.status(200).json({ deleted: true });
+    } catch (err) {
+      next(err);
+    }
+  })();
 });
 
 app.post("/v1/feedback", authFromApiKeys(env.API_KEYS), validate(FeedbackSchema, "body"), (req, res) => {

@@ -1,7 +1,9 @@
-import { isPreviewMode } from '../lib/previewMode';
+import { isPreviewMode, isPreviewSignInView, openPreviewSignInView, closePreviewSignInView } from '../lib/previewMode';
 
 export default function PreviewBanner() {
   if (!isPreviewMode()) return null;
+
+  const onSignInPage = isPreviewSignInView();
 
   return (
     <div
@@ -10,8 +12,26 @@ export default function PreviewBanner() {
     >
       <span className="font-semibold uppercase tracking-[0.2em] text-amber-800/90">Preview mode</span>
       {' — '}
-      Browsing the app without sign-in. Analysis and cloud save are simulated. Add Firebase + API keys for
-      the real flow.
+      {onSignInPage
+        ? 'Sign-in UI only — buttons are disabled until Firebase is connected.'
+        : 'New user view: no history yet. Analysis and saves are simulated locally.'}{' '}
+      {onSignInPage ? (
+        <button
+          type="button"
+          onClick={closePreviewSignInView}
+          className="underline font-semibold text-amber-900 hover:text-amber-950"
+        >
+          Back to app
+        </button>
+      ) : (
+        <button
+          type="button"
+          onClick={openPreviewSignInView}
+          className="underline font-semibold text-amber-900 hover:text-amber-950"
+        >
+          View sign-in page
+        </button>
+      )}
     </div>
   );
 }

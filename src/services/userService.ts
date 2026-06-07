@@ -8,6 +8,7 @@ import {
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { isPreviewMode } from '../lib/previewMode';
 import { PREVIEW_USER_UID } from '../lib/previewFixtures';
+import type { PlatformGuideId } from '../lib/platformUploadGuides';
 import type { AiEngine } from '../types';
 
 export interface UserProfile {
@@ -16,6 +17,16 @@ export interface UserProfile {
   /** Legacy field; no longer collected in the app. */
   studentId?: string;
   major: string;
+  school?: string;
+  university?: string;
+  /** e.g. Sophomore, Year 11 */
+  gradeLevel?: string;
+  /** e.g. 3.8 or A- */
+  gpa?: string;
+  /** What the student wants from appeals — tone, outcomes, etc. */
+  appealGoal?: string;
+  /** Default LMS — pre-selects platform guide on new appeals */
+  preferredPlatform?: PlatformGuideId;
   avatarUrl?: string;
   /** User-chosen AI engine for the analyze pipeline. Absent = never set. */
   aiEngine?: AiEngine;
@@ -23,23 +34,24 @@ export interface UserProfile {
   aiConsentAt?: Timestamp;
 }
 
+/** Fresh preview user — empty until they fill Profile or start an appeal. */
 const previewProfile: UserProfile = {
-  name: 'Preview Student',
+  name: '',
   email: 'preview@regrade.app',
-  major: 'Undeclared',
+  major: '',
+  school: '',
+  university: '',
+  gradeLevel: '',
+  gpa: '',
+  appealGoal: '',
   avatarUrl: '',
-  aiEngine: 'hybrid',
 };
 
 export const userService = {
   async syncProfile(uid: string, profile: Partial<UserProfile>) {
     if (isPreviewMode()) {
       if (uid === PREVIEW_USER_UID) {
-        Object.assign(previewProfile, {
-          name: profile.name ?? previewProfile.name,
-          email: profile.email ?? previewProfile.email,
-          avatarUrl: profile.avatarUrl ?? previewProfile.avatarUrl,
-        });
+        Object.assign(previewProfile, profile);
       }
       return previewProfile;
     }
@@ -53,6 +65,12 @@ export const userService = {
           name: profile.name || 'Anonymous Student',
           email: profile.email || '',
           major: profile.major ?? 'Undeclared',
+          school: profile.school ?? '',
+          university: profile.university ?? '',
+          gradeLevel: profile.gradeLevel ?? '',
+          gpa: profile.gpa ?? '',
+          appealGoal: profile.appealGoal ?? '',
+          preferredPlatform: profile.preferredPlatform,
           avatarUrl: profile.avatarUrl || '',
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
@@ -64,10 +82,21 @@ export const userService = {
           updatedAt: serverTimestamp(),
         };
 
-        if (profile.name !== undefined) updates.name = profile.name;
-        if (profile.email !== undefined) updates.email = profile.email;
-        if (profile.major !== undefined) updates.major = profile.major;
-        if (profile.avatarUrl !== undefined) updates.avatarUrl = profile.avatarUrl;
+        const fields = [
+          'name',
+          'email',
+          'major',
+          'school',
+          'university',
+          'gradeLevel',
+          'gpa',
+          'appealGoal',
+          'preferredPlatform',
+          'avatarUrl',
+        ] as const;
+        for (const key of fields) {
+          if (profile[key] !== undefined) updates[key] = profile[key];
+        }
 
         await setDoc(docRef, updates, { merge: true });
         const existing = snapshot.data() as Record<string, unknown>;
@@ -100,6 +129,25 @@ export const userService = {
    * App Store "explicit consent before sending to third-party AI" gate
    * was satisfied.
    */
+  /** Preview-only: wipe profile to simulate account deletion. */
+  resetPreviewProfile(uid: string) {
+    if (!isPreviewMode() || uid !== PREVIEW_USER_UID) return;
+    Object.assign(previewProfile, {
+      name: '',
+      email: 'preview@regrade.app',
+      major: '',
+      school: '',
+      university: '',
+      gradeLevel: '',
+      gpa: '',
+      appealGoal: '',
+      avatarUrl: '',
+    });
+    delete previewProfile.preferredPlatform;
+    delete previewProfile.aiEngine;
+    delete previewProfile.aiConsentAt;
+  },
+
   async setAiPreference(uid: string, aiEngine: AiEngine) {
     if (isPreviewMode()) {
       if (uid === PREVIEW_USER_UID) {

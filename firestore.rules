@@ -42,18 +42,37 @@ service cloud.firestore {
 
     // --- Allowed field sets ---
 
+    function isValidPlatformId(value) {
+      return value is string && value in [
+        'gradescope', 'canvas', 'google_classroom', 'brightspace', 'moodle',
+        'blackboard', 'turnitin', 'schoology', 'powerschool', 'sakai', 'paper'
+      ];
+    }
+
+    function isValidUserProfileFields(data) {
+      return optionalBoundedString(data.major, 128) &&
+             optionalBoundedString(data.school, 256) &&
+             optionalBoundedString(data.university, 256) &&
+             optionalBoundedString(data.gradeLevel, 64) &&
+             optionalBoundedString(data.gpa, 32) &&
+             optionalBoundedString(data.appealGoal, 2000) &&
+             optionalBoundedString(data.avatarUrl, 2048) &&
+             (!('studentId' in data) || (data.studentId is string && data.studentId.size() <= 64)) &&
+             (!('preferredPlatform' in data) || isValidPlatformId(data.preferredPlatform)) &&
+             (!('aiEngine' in data) || (data.aiEngine is string && data.aiEngine in ['hybrid', 'gemini', 'claude']));
+    }
+
     function isValidUserCreate(data) {
       return data.keys().hasAll(['name', 'email', 'createdAt', 'updatedAt']) &&
-             data.keys().hasOnly(['name', 'email', 'studentId', 'major', 'avatarUrl',
+             data.keys().hasOnly(['name', 'email', 'studentId', 'major', 'school',
+                                   'university', 'gradeLevel', 'gpa', 'appealGoal',
+                                   'preferredPlatform', 'avatarUrl',
                                    'aiEngine', 'aiConsentAt',
                                    'createdAt', 'updatedAt']) &&
              boundedString(data.name, 256) &&
              boundedString(data.email, 320) &&
              authEmailMatches(data.email) &&
-             optionalBoundedString(data.major, 128) &&
-             optionalBoundedString(data.avatarUrl, 2048) &&
-             (!('studentId' in data) || (data.studentId is string && data.studentId.size() <= 64)) &&
-             (!('aiEngine' in data) || (data.aiEngine is string && data.aiEngine in ['hybrid', 'gemini', 'claude'])) &&
+             isValidUserProfileFields(data) &&
              data.createdAt == request.time &&
              data.updatedAt == request.time;
     }
@@ -122,12 +141,14 @@ service cloud.firestore {
                       incoming().updatedAt == request.time &&
                       incoming().createdAt == existing().createdAt &&
                       incoming().email == existing().email &&
-                      incoming().diff(existing()).affectedKeys().hasOnly(['name', 'major', 'avatarUrl', 'aiEngine', 'aiConsentAt', 'updatedAt']) &&
+                      incoming().diff(existing()).affectedKeys().hasOnly([
+                        'name', 'major', 'school', 'university', 'gradeLevel', 'gpa',
+                        'appealGoal', 'preferredPlatform', 'avatarUrl', 'aiEngine',
+                        'aiConsentAt', 'updatedAt'
+                      ]) &&
                       optionalBoundedString(incoming().name, 256) &&
-                      optionalBoundedString(incoming().major, 128) &&
-                      optionalBoundedString(incoming().avatarUrl, 2048) &&
-                      (!('aiEngine' in incoming()) || (incoming().aiEngine is string && incoming().aiEngine in ['hybrid', 'gemini', 'claude']));
-      // No list or delete — users cannot enumerate other profiles.
+                      isValidUserProfileFields(incoming());
+      allow delete: if isOwner(userId);
     }
 
     match /cases/{caseId} {

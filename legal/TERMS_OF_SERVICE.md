@@ -240,7 +240,7 @@ may assign them.
 
 ## 19. Contact
 
-Email: _<TODO: insert public support / legal contact email>_
+Email: pretonjs2024@gmail.com
 Mailing address: available on request.
 
 — End of Terms —

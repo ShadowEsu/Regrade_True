@@ -29,13 +29,24 @@ export const APP_COPYRIGHT = `© 2026 ${APP_LEGAL_OWNER}. All rights reserved.`;
  * before submitting to either store. Apple and Google require a real,
  * monitored mailbox.
  */
-export const APP_SUPPORT_EMAIL = 'support@regrade.app';
+export const APP_SUPPORT_EMAIL = 'pretonjs2024@gmail.com';
 
 /** Published URLs reviewers will be asked for. Deploy `public/legal/*.html`. */
 export const APP_PRIVACY_URL = 'https://regrade.app/legal/privacy.html';
 export const APP_TERMS_URL = 'https://regrade.app/legal/terms.html';
 export const APP_WEBSITE_URL = 'https://regrade.app';
 
+/** Minimum age shown on sign-in (App Store / Play Families & COPPA). */
+export const APP_MIN_AGE = 13;
+
 /** Disclaimer shown inside the app where AI output is presented. */
 export const APP_DISCLAIMER =
   'Regrade is an educational tool, not a law firm, and does not provide legal advice. AI output can be wrong. Always check official school policy and review the original graded work before submitting an appeal.';
+
+/** Consent / picker — accurate integration language (not partnership claims). */
+export const AI_SERVICES_CONSENT =
+  'Integrates with Gemini and supports Claude models. Your file may be sent to Google and Anthropic services for analysis — not used to train their models.';
+
+/** Short trademark footer for AI surfaces. */
+export const AI_TRADEMARK_FOOTER =
+  'Gemini is a trademark of Google LLC. Claude is a trademark of Anthropic PBC. Regrade is not affiliated with, endorsed by, or sponsored by either company.';

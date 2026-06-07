@@ -110,6 +110,8 @@ export type SourcePlatform =
   | 'turnitin'
   | 'paper'
   | 'schoology'
+  | 'powerschool'
+  | 'sakai'
   | 'teams'
   | 'mixed'
   | 'unknown';

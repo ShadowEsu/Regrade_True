@@ -38,7 +38,11 @@ import {
   File, 
   Check, 
   Library,
-  X
+  X,
+  Bell,
+  Lightbulb,
+  ArrowUp,
+  Bot
 } from 'lucide-react';
 
 export const ICONS = {
@@ -82,6 +86,10 @@ export const ICONS = {
   Check,
   Library,
   X,
+  Bell,
+  Lightbulb,
+  ArrowUp,
+  Bot,
   // Aliases for historical compatibility
   Bank: Landmark,
   Trending: TrendingUp,
@@ -101,7 +109,7 @@ export const DEFAULT_AVATAR_SRC =
 
 export const THEME = {
   colors: {
-    primary: '#00236f',
+    primary: '#0066cc',
     secondary: '#006c49',
     tertiary: '#735c00',
     background: '#f7f9fb',

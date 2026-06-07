@@ -1,16 +1,15 @@
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  getDocs, 
+import {
+  collection,
+  addDoc,
+  updateDoc,
+  deleteDoc,
+  doc,
+  getDocs,
   getDoc,
-  query, 
-  where, 
-  orderBy, 
-  Timestamp,
-  serverTimestamp
+  query,
+  where,
+  orderBy,
+  serverTimestamp,
 } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
 import { isPreviewMode } from '../lib/previewMode';
@@ -40,11 +39,19 @@ export interface Case {
 
 const previewCaseStore = new Map<string, Case>();
 
-function ensurePreviewSeed() {
-  if (!previewCaseStore.has(PREVIEW_CASE_ID)) {
-    const seed = buildPreviewSeedCase();
-    previewCaseStore.set(PREVIEW_CASE_ID, seed);
-  }
+/** Demo verdict only — not listed in History/Appeals for new preview users. */
+function ensurePreviewSampleCase(): Case {
+  const existing = previewCaseStore.get(PREVIEW_CASE_ID);
+  if (existing) return existing;
+  const seed = buildPreviewSeedCase();
+  previewCaseStore.set(PREVIEW_CASE_ID, seed);
+  return seed;
+}
+
+function listPreviewUserCases(): Case[] {
+  return [...previewCaseStore.values()]
+    .filter((c) => c.id !== PREVIEW_CASE_ID)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
 export const caseService = {
@@ -52,7 +59,6 @@ export const caseService = {
     if (!auth.currentUser) throw new Error('User must be authenticated to create a case.');
 
     if (isPreviewMode()) {
-      ensurePreviewSeed();
       const id = `preview-${Date.now()}`;
       const now = new Date();
       const saved: Case = {
@@ -86,10 +92,7 @@ export const caseService = {
     if (!auth.currentUser) throw new Error('User must be authenticated to fetch cases.');
 
     if (isPreviewMode()) {
-      ensurePreviewSeed();
-      return [...previewCaseStore.values()].sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      );
+      return listPreviewUserCases();
     }
 
     const q = query(
@@ -109,7 +112,9 @@ export const caseService = {
 
   async getCaseById(id: string) {
     if (isPreviewMode()) {
-      ensurePreviewSeed();
+      if (id === PREVIEW_CASE_ID) {
+        return ensurePreviewSampleCase();
+      }
       return previewCaseStore.get(id) ?? null;
     }
 
@@ -120,6 +125,42 @@ export const caseService = {
       return { id: snapshot.id, ...snapshot.data() } as Case;
     } catch (error) {
       handleFirestoreError(error, OperationType.GET, `cases/${id}`);
+      throw error;
+    }
+  },
+
+  async deleteCase(id: string) {
+    if (isPreviewMode()) {
+      previewCaseStore.delete(id);
+      return;
+    }
+
+    const docRef = doc(db, 'cases', id);
+    try {
+      await deleteDoc(docRef);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, `cases/${id}`);
+      throw error;
+    }
+  },
+
+  async deleteAllUserCases(uid: string) {
+    if (isPreviewMode()) {
+      for (const key of [...previewCaseStore.keys()]) {
+        const c = previewCaseStore.get(key);
+        if (c?.userId === uid && key !== PREVIEW_CASE_ID) {
+          previewCaseStore.delete(key);
+        }
+      }
+      return;
+    }
+
+    const q = query(collection(db, 'cases'), where('userId', '==', uid));
+    try {
+      const snap = await getDocs(q);
+      await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'cases');
       throw error;
     }
   },

@@ -1,4 +1,4 @@
-# Regrade — Privacy Policy
+theput t# Regrade — Privacy Policy
 
 **Effective date:** May 14, 2026
 **Last updated:** May 14, 2026
@@ -9,8 +9,7 @@ mobile application and the Regrade web application (collectively, the
 "Service"). By using the Service you agree to this Policy. If you do not
 agree, do not use the Service.
 
-> **Contact:** _<TODO: insert public support / privacy contact email here.
-> This address appears in the App Store, Google Play, and inside the app.>_
+> **Contact:** pretonjs2024@gmail.com (App Store, Google Play, and in-app support).
 > Mailing address available on written request.
 
 ---
@@ -224,7 +223,7 @@ acceptance of the updated Policy.
 
 ## 14. How to contact us
 
-Email: _<TODO: insert public support / privacy contact email>_
+Email: pretonjs2024@gmail.com
 Postal mail: available on request.
 Controller of record: Preston Jay Susanto, USA.
 

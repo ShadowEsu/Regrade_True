@@ -2,6 +2,7 @@ import React, { useMemo, useRef } from 'react';
 import { motion, useInView } from 'motion/react';
 import type { AiNotes, SourcePlatform } from '../types';
 import { ICONS } from '../constants';
+import { AI_TRADEMARK_FOOTER } from '../version';
 
 type PlatformCard = {
   id: SourcePlatform;
@@ -34,7 +35,7 @@ const STAGES = [
   {
     id: 'STG_02',
     title: 'Reasoner',
-    model: 'Claude',
+    model: 'Opus 4.7',
     label: 'Judging the marking',
     icon: 'Calculator',
     accent: 'from-emerald-600/15 via-green-500/10 to-transparent',
@@ -99,10 +100,10 @@ export default function AiPipelinePanel({
 
           <div className="flex flex-wrap items-center gap-2 text-[11px]">
             <span className="px-3 py-1 rounded-full bg-primary/5 border border-primary/10 font-semibold text-primary/65">
-              {aiNotes.engines_used.includes('gemini') ? 'Gemini (Reader)' : 'Gemini (off)'}
+              {aiNotes.engines_used.includes('gemini') ? 'Integrates with Gemini' : 'Gemini (off)'}
             </span>
             <span className="px-3 py-1 rounded-full bg-primary/5 border border-primary/10 font-semibold text-primary/65">
-              {aiNotes.engines_used.includes('claude') ? 'Claude (Reasoner)' : 'Claude (off)'}
+              {aiNotes.engines_used.includes('claude') ? 'Supports Claude models' : 'Claude (off)'}
             </span>
             {aiNotes.fallback_used && (
               <span className="px-3 py-1 rounded-full bg-amber-50 border border-amber-200/70 font-semibold text-amber-800">
@@ -311,7 +312,7 @@ export default function AiPipelinePanel({
 
             <div className="text-[11px] text-primary/45 leading-relaxed pt-2">
               <span className="opacity-70 italic">
-                Gemini is a trademark of Google LLC. Claude is a trademark of Anthropic PBC. Regrade is not affiliated with either.
+                {AI_TRADEMARK_FOOTER}
               </span>
             </div>
           </div>

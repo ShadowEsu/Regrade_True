@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from './lib/firebase';
-import { isPreviewMode } from './lib/previewMode';
+import { isPreviewMode, isPreviewSignInView } from './lib/previewMode';
 import PreviewBanner from './components/PreviewBanner';
 import Auth from './views/Auth';
 import BrandSpinner from './components/BrandSpinner';
@@ -22,9 +22,7 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
       setLoading(false);
       if (u) {
         void userService.syncProfile(u.uid, {
-          name: u.displayName || '',
           email: u.email || '',
-          avatarUrl: u.photoURL || '',
         });
       }
       return;
@@ -49,6 +47,14 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   }, []);
 
   if (isPreviewMode()) {
+    if (isPreviewSignInView()) {
+      return (
+        <>
+          <PreviewBanner />
+          <Auth previewDemo />
+        </>
+      );
+    }
     return (
       <>
         <PreviewBanner />

@@ -3,8 +3,15 @@ import { motion } from 'motion/react';
 import { ICONS } from '../constants';
 import { caseService, Case } from '../services/caseService';
 import AiPipelinePanel from '../components/AiPipelinePanel';
+import AppealFlowShell from '../components/AppealFlowShell';
 
-export default function VerdictReport({ caseId }: { caseId: string | null }) {
+export default function VerdictReport({
+  caseId,
+  onBack,
+}: {
+  caseId: string | null;
+  onBack?: () => void;
+}) {
   const [currentCase, setCurrentCase] = useState<Case | null>(null);
 
   useEffect(() => {
@@ -52,81 +59,50 @@ export default function VerdictReport({ caseId }: { caseId: string | null }) {
       ? Math.round(analysis.case_analysis.rubric_alignment_score * 100)
       : null;
 
+  const strengthLabel =
+    analysis?.case_analysis.overall_case_strength === 'strong'
+      ? 'Strong case'
+      : analysis?.case_analysis.overall_case_strength === 'moderate'
+        ? 'Moderate case'
+        : analysis?.case_analysis.overall_case_strength === 'weak'
+          ? 'Limited case'
+          : 'Reviewing';
+
   return (
-    <div className="space-y-24 max-w-7xl mx-auto">
-      {/* Hero Verdict */}
-      <section className="space-y-16 py-12">
-        <div className="flex items-center gap-6">
-          <div className="h-px bg-primary/20 w-32" />
-          <div className="flex flex-wrap items-center gap-4">
-            <span className="text-[13px] sm:text-sm font-medium tracking-[0.45em] text-primary opacity-50 uppercase">
-              Case ID: {currentCase?.ref || '—'}
-            </span>
-            {platformLabel ? (
-              <span className="text-[10px] font-bold uppercase tracking-[0.28em] text-primary/55 px-3 py-1 rounded-full border border-primary/15 bg-primary/[0.04]">
-                Detected: {platformLabel}
-              </span>
-            ) : null}
-          </div>
+    <AppealFlowShell
+      step="review"
+      title="Review your analysis"
+      subtitle={analysis?.case_analysis.case_strength_reason || 'Check findings before sending your message.'}
+      onBack={onBack}
+    >
+    <div className="space-y-5">
+      <div className="rg-card p-4 flex items-center justify-between gap-3">
+        <div>
+          <p className="rg-meta-k">{strengthLabel}</p>
+          <p className="rg-meta-v mt-0.5">
+            {analysis?.assignment?.title || currentCase?.title || 'Your appeal'}
+          </p>
+          {platformLabel && (
+            <p className="text-[12px] text-[#9ca3af] mt-0.5">From {platformLabel}</p>
+          )}
         </div>
-        
-        <h1 className="text-6xl md:text-8xl lg:text-9xl text-primary font-semibold leading-none tracking-tight -ml-2">
-          Audit <span className="font-medium italic text-primary/60 block lg:inline">Verdict</span>
-        </h1>
+        {analysis && recoverablePts > 0 && (
+          <div className="text-right shrink-0">
+            <p className="rg-meta-k">Flagged</p>
+            <p className="text-[22px] font-semibold text-primary">+{recoverablePts}</p>
+          </div>
+        )}
+      </div>
 
-        <div className="flex flex-col xl:flex-row xl:items-end justify-between gap-12 border-t border-primary/10 pt-12">
-          <div className="space-y-6 max-w-4xl">
-            <h2 className="text-4xl md:text-6xl text-primary font-semibold uppercase tracking-tight leading-none">
-              {analysis?.case_analysis.overall_case_strength === 'strong' ? 'Strong Grounds for Appeal' :
-               analysis?.case_analysis.overall_case_strength === 'moderate' ? 'Some Grounds for Appeal' :
-               analysis?.case_analysis.overall_case_strength === 'weak' ? 'Limited Grounds for Appeal' : 'Analyzing Your Case'}
-            </h2>
-            <p className="text-2xl md:text-3xl text-primary/70 italic leading-relaxed font-medium">
-              {analysis?.case_analysis.case_strength_reason || "Review the findings below to understand your options."}
-            </p>
-          </div>
-          
-          <div className="flex flex-col items-center xl:items-end gap-2 bg-primary/[0.03] p-8 sm:p-10 rounded-[3rem] border border-primary/10 max-w-full">
-            <div className="text-[11px] font-semibold uppercase tracking-[0.32em] text-primary/50 mb-1 text-center xl:text-right">
-              Possible point issues flagged
-            </div>
-            {analysis && recoverablePts > 0 ? (
-              <div className="flex items-baseline gap-3">
-                <span className="font-serif text-6xl sm:text-7xl md:text-8xl font-semibold text-primary tracking-tight leading-none">
-                  +{recoverablePts}
-                </span>
-                <span className="text-xl font-medium text-primary/50 italic">pts</span>
-              </div>
-            ) : analysis ? (
-              <p className="text-lg sm:text-xl font-medium text-primary/65 text-center xl:text-right max-w-sm leading-snug">
-                No extra points were automatically estimated from the text you supplied. That does not mean an appeal is
-                impossible—only that the model did not find a clear arithmetic or rubric mismatch.
-              </p>
-            ) : (
-              <p className="text-base font-medium text-primary/50">Loading analysis…</p>
-            )}
-            <p className="text-[10px] font-semibold uppercase tracking-[0.28em] text-primary/40 mt-3 text-center xl:text-right leading-relaxed">
-              Not a grade guarantee — educational review only
-            </p>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap gap-6 pt-12">
-          <button
-            type="button"
-            className="bg-primary text-white px-10 sm:px-16 py-6 sm:py-8 rounded-[2.5rem] font-semibold uppercase tracking-[0.32em] text-[11px] sm:text-xs hover:shadow-[0_20px_50px_rgba(0,35,111,0.3)] hover:-translate-y-1 transition-all flex items-center gap-6 group w-full sm:w-auto justify-center"
-          >
-            Write appeal letter
-            <ICONS.ArrowRight className="w-5 h-5 group-hover:translate-x-3 transition-transform" />
-          </button>
-          <button
-            type="button"
-            className="bg-white border-2 border-primary/10 text-primary px-10 sm:px-16 py-6 sm:py-8 rounded-[2.5rem] font-semibold uppercase tracking-[0.32em] text-[11px] sm:text-xs hover:bg-primary/5 transition-all w-full sm:w-auto"
-          >
-            Download evidence
-          </button>
-        </div>
-      </section>
+      <div className="flex gap-2">
+        <button type="button" className="rg-btn-primary flex-1 py-3 text-[14px] group">
+          Write appeal letter
+          <ICONS.ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
+        </button>
+        <button type="button" className="rg-btn-secondary px-4 py-3 text-[13px]">
+          <ICONS.Download className="w-4 h-4" />
+        </button>
+      </div>
 
       {/* Discovery Dashboard */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
@@ -348,5 +324,6 @@ export default function VerdictReport({ caseId }: { caseId: string | null }) {
          </div>
       </section>
     </div>
+    </AppealFlowShell>
   );
 }

@@ -4,6 +4,7 @@ import {
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   loginWithGoogle,
+  loginWithApple,
   sendPasswordResetEmail,
   sendEmailVerification,
   auth,
@@ -12,41 +13,56 @@ import { ICONS } from '../constants';
 import Logo from '../components/Logo';
 import BrandSpinner from '../components/BrandSpinner';
 import ContinueWithGoogleButton from '../components/ContinueWithGoogleButton';
+import ContinueWithAppleButton from '../components/ContinueWithAppleButton';
+import { APP_MIN_AGE, APP_PRIVACY_URL, APP_TERMS_URL } from '../version';
 
-const Auth: React.FC = () => {
+const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
   const [forgotPassword, setForgotPassword] = useState(false);
 
-  const busy = loading || googleLoading;
+  const busy = loading || googleLoading || appleLoading;
 
-  const handleGoogleLogin = async () => {
+  const handleProviderLogin = async (provider: 'google' | 'apple') => {
+    if (previewDemo) {
+      setError('Preview mode — connect Firebase to use Apple or Google sign-in.');
+      return;
+    }
     setError(null);
-    setGoogleLoading(true);
+    if (provider === 'google') setGoogleLoading(true);
+    else setAppleLoading(true);
     try {
-      await loginWithGoogle();
-    } catch (err: any) {
-      if (err.code === 'auth/popup-closed-by-user' || err.message?.includes('popup-closed-by-user')) {
+      if (provider === 'google') await loginWithGoogle();
+      else await loginWithApple();
+    } catch (err: unknown) {
+      const e = err as { code?: string; message?: string };
+      if (e.code === 'auth/popup-closed-by-user' || e.message?.includes('popup-closed-by-user')) {
         return;
       }
-      if (err.code === 'auth/unauthorized-domain') {
+      if (e.code === 'auth/unauthorized-domain') {
         setError(
           'This URL isn’t allowed for sign-in yet. In Firebase → Authentication → Authorized domains, add your hostname (127.0.0.1 is separate from localhost). Or use http://localhost:3000.',
         );
         return;
       }
-      setError(err.message || 'Something went wrong. Please try again.');
+      setError(e.message || 'Something went wrong. Please try again.');
     } finally {
-      setGoogleLoading(false);
+      if (provider === 'google') setGoogleLoading(false);
+      else setAppleLoading(false);
     }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (previewDemo) {
+      setError('Preview mode — connect Firebase to sign in with email.');
+      return;
+    }
     setError(null);
     setLoading(true);
 
@@ -125,9 +141,14 @@ const Auth: React.FC = () => {
           </AnimatePresence>
 
           {!forgotPassword && (
-            <div className="mb-6">
+            <div className="mb-6 space-y-3">
+              <ContinueWithAppleButton
+                onClick={() => void handleProviderLogin('apple')}
+                disabled={busy}
+                loading={appleLoading}
+              />
               <ContinueWithGoogleButton
-                onClick={handleGoogleLogin}
+                onClick={() => void handleProviderLogin('google')}
                 disabled={busy}
                 loading={googleLoading}
               />
@@ -234,9 +255,20 @@ const Auth: React.FC = () => {
           </div>
         </div>
 
-        <p className="mt-6 text-center text-xs text-primary/40 flex items-center justify-center gap-2">
+        <p className="mt-6 text-center text-[11px] text-primary/45 leading-relaxed max-w-sm mx-auto">
+          For users {APP_MIN_AGE}+. By continuing you agree to our{' '}
+          <a href={APP_TERMS_URL} target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">
+            Terms
+          </a>{' '}
+          and{' '}
+          <a href={APP_PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">
+            Privacy Policy
+          </a>
+          .
+        </p>
+        <p className="mt-3 text-center text-xs text-primary/40 flex items-center justify-center gap-2">
           <ICONS.Shield size={14} strokeWidth={2} />
-          Encrypted sign-in · your coursework stays private
+          Encrypted sign-in · delete your account anytime in Profile
         </p>
       </motion.div>
     </div>

@@ -3,6 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ICONS } from '../constants';
 import Advocate from './Advocate';
 import UploadGuidePanel from '../components/UploadGuidePanel';
+import AiEnginePicker from '../components/AiEnginePicker';
+import AppealFlowShell from '../components/AppealFlowShell';
 import { caseService } from '../services/caseService';
 import { scanContentForThreats } from '../lib/securityScanner';
 import { sanitizeUserText } from '../lib/sanitize';
@@ -12,8 +14,11 @@ import {
   MAX_STAGED_UPLOAD_FILES,
   MAX_UPLOAD_FILE_BYTES,
 } from '../lib/uploadLimits';
-import { userService } from '../services/userService';
+import { userService, type UserProfile } from '../services/userService';
 import { auth } from '../lib/firebase';
+import { buildStudentProfileContext, isValidPlatformGuideId } from '../lib/profileContext';
+import type { PlatformGuideId } from '../lib/platformUploadGuides';
+import { AI_SERVICES_CONSENT, AI_TRADEMARK_FOOTER } from '../version';
 import type { AiEngine } from '../types';
 
 type PdfStatus = 'idle' | 'loading' | 'done' | 'error';
@@ -60,7 +65,13 @@ async function fileToBase64Inline(file: File): Promise<{ mimeType: string; data:
   };
 }
 
-export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string) => void }) {
+export default function UploadCenter({
+  onSubmit,
+  onBack,
+}: {
+  onSubmit: (caseId?: string) => void;
+  onBack?: () => void;
+}) {
   /** Single optional box — rubric, marks, and feedback are inferred from the upload by default. */
   const [extraNotes, setExtraNotes] = useState('');
 
@@ -84,7 +95,12 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
    * first run.
    */
   const [aiEngine, setAiEngine] = useState<AiEngine | null>(null);
+  const [selectedEngine, setSelectedEngine] = useState<AiEngine>('hybrid');
   const [showAiConsent, setShowAiConsent] = useState(false);
+  const pendingAnalyzeRef = useRef(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [appealPlatform, setAppealPlatform] = useState<PlatformGuideId>('gradescope');
+  const profilePlatformLoadedRef = useRef(false);
 
   useEffect(() => {
     return () => {
@@ -101,8 +117,16 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
       try {
         const prof = await userService.getProfile(u.uid);
         if (cancelled) return;
-        if (prof?.aiEngine && prof.aiConsentAt) {
-          setAiEngine(prof.aiEngine);
+        if (prof) {
+          setUserProfile(prof);
+          if (!profilePlatformLoadedRef.current && isValidPlatformGuideId(prof.preferredPlatform)) {
+            setAppealPlatform(prof.preferredPlatform);
+            profilePlatformLoadedRef.current = true;
+          }
+          if (prof.aiEngine && prof.aiConsentAt) {
+            setAiEngine(prof.aiEngine);
+            setSelectedEngine(prof.aiEngine);
+          }
         }
       } catch (err) {
         console.error('Failed to load AI preference:', err);
@@ -116,10 +140,29 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
   const acceptAiConsent = async (choice: AiEngine) => {
     const u = auth.currentUser;
     setAiEngine(choice);
+    setSelectedEngine(choice);
     setShowAiConsent(false);
     if (u) {
       try {
         await userService.setAiPreference(u.uid, choice);
+      } catch (err) {
+        console.error('Failed to persist AI preference:', err);
+      }
+    }
+    if (pendingAnalyzeRef.current) {
+      pendingAnalyzeRef.current = false;
+      setTimeout(() => void handleSubmit(choice), 0);
+    }
+  };
+
+  const handleEngineSelect = async (engine: AiEngine) => {
+    setSelectedEngine(engine);
+    if (!aiEngine) return;
+    setAiEngine(engine);
+    const u = auth.currentUser;
+    if (u) {
+      try {
+        await userService.setAiPreference(u.uid, engine);
       } catch (err) {
         console.error('Failed to persist AI preference:', err);
       }
@@ -246,11 +289,14 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
     });
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (engineOverride?: AiEngine) => {
+    const engine = engineOverride ?? aiEngine ?? selectedEngine;
+
     // Apple's third-party AI rule: explicit consent must precede sending
-    // uploads to Gemini/Claude. If the user hasn't chosen an engine yet,
-    // open the consent modal instead of running analysis.
-    if (!aiEngine) {
+    // uploads to Gemini/Claude. If the user hasn't consented yet, open the
+    // consent modal (pre-filled with their picker choice) instead of analyzing.
+    if (!aiEngine && !engineOverride) {
+      pendingAnalyzeRef.current = true;
       setShowAiConsent(true);
       return;
     }
@@ -278,7 +324,10 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
       return;
     }
 
+    const profileContext = buildStudentProfileContext(userProfile, appealPlatform);
+
     const assignmentBlock = [
+      profileContext,
       ...pdfStaged.map((s, i) => {
         const text = s.pdfText?.trim();
         if (text && text.length > 0) {
@@ -291,9 +340,13 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
       .filter(Boolean)
       .join('\n\n');
 
-    const inferFromUpload = hasVisionEvidence
-      ? '(Infer from uploads. Detect platform: Gradescope, Canvas, Moodle, Blackboard, D2L Brightspace, Google Classroom, Turnitin, or handwritten paper. Extract EVERY instructor comment including Gradescope bubbles, Canvas pins, Turnitin QuickMarks, and margin notes.)'
+    const platformHint = appealPlatform
+      ? `(Student selected ${appealPlatform.replace(/_/g, ' ')} for this appeal. Prioritize that platform's layout when reading marks and comments.)`
       : '';
+
+    const inferFromUpload = hasVisionEvidence
+      ? `(Infer from uploads. Detect platform: Gradescope, Canvas, Moodle, Blackboard, D2L Brightspace, Google Classroom, Turnitin, Schoology, PowerSchool, Sakai, or handwritten paper. Extract EVERY instructor comment including Gradescope bubbles, Canvas SpeedGrader pins, Turnitin QuickMarks, Schoology rubric rows, and margin notes. ${platformHint})`
+      : platformHint;
 
     const rubricBlock =
       hasTypedContext && !hasVisionEvidence
@@ -372,7 +425,7 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
         feedbackBlock,
         {
           ...(inlineImages.length ? { inlineImages } : {}),
-          aiEngine,
+          aiEngine: engine,
         },
       );
 
@@ -434,54 +487,26 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
                   <ICONS.Shield className="text-primary w-6 h-6" strokeWidth={1.75} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h2 id="ai-consent-title" className="text-2xl text-primary font-semibold leading-tight">
-                    Two AI readers will check your worksheet
+                  <h2 id="ai-consent-title" className="text-xl text-primary font-semibold leading-tight">
+                    AI reader
                   </h2>
-                  <p className="text-[11px] uppercase tracking-[0.22em] text-primary/45 mt-1">One-time choice — change anytime in Profile</p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-primary/45 mt-1">One-time · change in Profile</p>
                 </div>
               </div>
 
-              <div className="space-y-3 text-[13.5px] text-on-surface-variant leading-relaxed">
-                <p>
-                  Regrade uses <strong className="font-semibold text-primary">Gemini</strong> (by Google) and{' '}
-                  <strong className="font-semibold text-primary">Claude</strong> (by Anthropic) together. Gemini reads marks and
-                  handwriting on your file; Claude reasons about whether the marking was fair. Cross-checking both readers
-                  catches more mistakes than one model alone.
-                </p>
-                <p className="text-[12.5px] text-on-surface-variant/80">
-                  By continuing, you agree that the file you upload may be sent to Google and Anthropic for analysis. They process
-                  the content as our service providers and do not use it to train their general models.
-                </p>
-              </div>
+              <p className="text-[12px] text-on-surface-variant leading-relaxed">{AI_SERVICES_CONSENT}</p>
+
+              <AiEnginePicker value={selectedEngine} onChange={setSelectedEngine} />
 
               <div className="space-y-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => acceptAiConsent('hybrid')}
-                  className="w-full flex items-center justify-between gap-3 bg-primary text-white px-5 py-4 rounded-2xl font-bold uppercase tracking-[0.2em] text-[11px] hover:shadow-xl hover:shadow-primary/20 transition-all"
+                  onClick={() => acceptAiConsent(selectedEngine)}
+                  className="w-full flex items-center justify-center gap-2 bg-primary text-white px-5 py-3.5 rounded-2xl text-[13px] font-semibold hover:shadow-lg hover:shadow-primary/20 transition-all"
                 >
-                  <span className="text-left">
-                    <span className="block">Continue with both</span>
-                    <span className="block text-[9px] font-normal tracking-[0.18em] opacity-70 normal-case mt-0.5">Recommended — catches more</span>
-                  </span>
-                  <ICONS.ArrowRight className="opacity-80" size={18} />
+                  Continue
+                  <ICONS.ArrowRight className="opacity-80" size={16} />
                 </button>
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={() => acceptAiConsent('gemini')}
-                    className="flex-1 px-4 py-3 rounded-2xl border border-primary/15 text-primary text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-primary/5 transition-all"
-                  >
-                    Gemini only
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => acceptAiConsent('claude')}
-                    className="flex-1 px-4 py-3 rounded-2xl border border-primary/15 text-primary text-[11px] font-bold uppercase tracking-[0.2em] hover:bg-primary/5 transition-all"
-                  >
-                    Claude only
-                  </button>
-                </div>
                 <button
                   type="button"
                   onClick={() => setShowAiConsent(false)}
@@ -491,46 +516,47 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
                 </button>
               </div>
 
-              <p className="text-[10.5px] text-primary/40 leading-relaxed pt-2 border-t border-primary/5">
-                Gemini is a trademark of Google LLC. Claude is a trademark of Anthropic PBC. Regrade is not affiliated with
-                either.
+              <p className="text-[9px] text-primary/35 pt-2 border-t border-primary/5 leading-relaxed">
+                {AI_TRADEMARK_FOOTER}
               </p>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
 
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 lg:gap-12 relative max-w-7xl mx-auto">
-      <div className="lg:col-span-8 space-y-8">
-        <section className="space-y-3">
-          <h1 className="text-4xl md:text-5xl lg:text-6xl text-primary font-semibold tracking-tight text-center md:text-left">
-            Upload your graded worksheet
-          </h1>
-          <p className="text-base md:text-lg text-on-surface-variant/85 leading-relaxed max-w-2xl text-center md:text-left">
-            One <strong className="font-medium text-primary">PDF or photo</strong> is enough — the AI reads scores, rubric, and{' '}
-            <strong className="font-medium text-primary">every teacher comment</strong> (Gradescope, Canvas, Moodle, Blackboard,
-            Brightspace, Classroom, Turnitin, or handwritten).
-            Add a line or two below only if something important isn&apos;t visible on the file.
-          </p>
-        </section>
+    <AppealFlowShell
+      step="upload"
+      centered
+      title="Upload graded work"
+      subtitle="One PDF or photo is enough — Regrade reads scores, rubric, and teacher comments."
+      onBack={onBack}
+    >
+    <div className="space-y-6">
+      <div className="space-y-6">
 
-        <UploadGuidePanel />
+        <UploadGuidePanel
+          selectedPlatformId={appealPlatform}
+          onPlatformChange={setAppealPlatform}
+          profileDefaultPlatformId={
+            isValidPlatformGuideId(userProfile?.preferredPlatform)
+              ? userProfile.preferredPlatform
+              : undefined
+          }
+        />
 
         <motion.div
           initial={{ opacity: 0, scale: 0.99 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.1 }}
-          className="glass-panel rounded-2xl md:rounded-[2rem] p-6 md:p-8 space-y-6 border border-primary/10 bg-white"
+          className="rg-card p-5 space-y-5"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 border-b border-primary/5 pb-5">
-            <div>
-              <h2 className="text-xl md:text-2xl text-primary font-semibold tracking-tight">Upload your file</h2>
-              <p className="text-[11px] text-primary/50 mt-0.5">Drag graded PDF or photos here when you&apos;re ready</p>
-            </div>
+          <div className="text-center space-y-3 border-b border-hairline pb-5">
+            <h2 className="rg-serif text-2xl text-ink font-semibold">Upload your file</h2>
+            <p className="text-[13px] text-muted">Drag graded PDF or photos here when you&apos;re ready</p>
             <button
               type="button"
               onClick={() => setShowAdvocate(true)}
-              className="self-start sm:self-auto text-[11px] font-bold uppercase tracking-widest text-primary/45 hover:text-primary border border-primary/10 rounded-xl px-4 py-2.5 transition-colors"
+              className="rg-btn-ghost text-sm py-2 px-5 mx-auto"
             >
               Questions? Chat
             </button>
@@ -723,8 +749,10 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
             onDragLeave={onDragLeave}
             onDrop={onDrop}
             onClick={() => document.getElementById('file-upload-1')?.click()}
-            className={`border-2 border-dashed rounded-2xl p-10 md:p-12 flex flex-col items-center justify-center text-center gap-3 transition-all cursor-pointer ${
-              isDragging ? 'border-primary bg-primary/10' : 'border-primary/15 bg-primary/[0.04] hover:bg-primary/[0.07]'
+            className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center gap-2.5 transition-all cursor-pointer ${
+              isDragging
+                ? 'border-primary bg-primary/5 scale-[1.01]'
+                : 'border-hairline bg-parchment hover:border-primary/30 hover:bg-primary/5'
             }`}
           >
             <input
@@ -741,8 +769,8 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
             <div className="bg-white p-3 rounded-xl shadow-md shadow-primary/10">
               <ICONS.Upload className="text-primary w-7 h-7" />
             </div>
-            <p className="text-lg text-primary font-semibold">Drop or choose PDF / photo</p>
-            <p className="text-[11px] text-primary/45 max-w-sm">Screenshots work. No account for the file — we analyze what you upload.</p>
+            <p className="rg-serif text-xl text-ink font-semibold">Drop or choose PDF / photo</p>
+            <p className="text-[12px] text-muted max-w-sm">Screenshots work. No account linking — we analyze what you upload.</p>
           </div>
 
           {stagedUploads.length > 0 && (
@@ -822,155 +850,57 @@ export default function UploadCenter({ onSubmit }: { onSubmit: (caseId?: string)
           </motion.div>
         )}
 
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pt-6 border-t border-primary/5">
-          <div className="flex items-center gap-2 text-primary/35">
-            <ICONS.Shield className="shrink-0" size={20} />
-            <p className="text-[10px] font-bold uppercase tracking-widest">Private & encrypted</p>
-          </div>
+        <AiEnginePicker
+          value={selectedEngine}
+          onChange={handleEngineSelect}
+          disabled={loading}
+        />
+
+        <div className="space-y-3 pt-2">
           <button
             type="button"
-            onClick={handleSubmit}
+            onClick={() => void handleSubmit()}
             disabled={loading}
-            className="w-full sm:w-auto flex items-center justify-center gap-3 bg-primary text-white px-10 py-5 rounded-2xl font-bold uppercase tracking-[0.2em] text-[11px] hover:shadow-xl hover:shadow-primary/20 transition-all disabled:opacity-50"
+            className="rg-btn-primary w-full py-3.5 text-[15px] disabled:opacity-50 group"
           >
-            {loading ? loadingDetail || 'Analyzing…' : 'Analyze worksheet'}
-            {!loading && <ICONS.ArrowRight className="opacity-70" size={18} />}
-          </button>
-        </div>
-      </div>
-
-      {/* Right Sidebar: Status */}
-      <div className="lg:col-span-4 space-y-6">
-        <div className="glass-panel rounded-2xl p-8 space-y-8 sticky top-24">
-          <h3 className="text-2xl text-primary">Your Checklist</h3>
-
-          {(() => {
-            const hasPdfText = stagedUploads.some((s) => (s.pdfText?.length ?? 0) > 0);
-            const hasImages = stagedUploads.some((s) => s.file.type.startsWith('image/'));
-            const notesTrim = extraNotes.trim().length > 0;
-            const worksheetOk = hasPdfText || hasImages;
-
-            type RowState = 'done' | 'optional' | 'needed';
-            const fileRow: RowState = worksheetOk ? 'done' : notesTrim ? 'optional' : 'needed';
-            const notesRow: RowState = notesTrim ? 'done' : worksheetOk ? 'optional' : 'needed';
-
-            const steps: { label: string; state: RowState; hint: string }[] = [
-              {
-                label: 'Graded worksheet (PDF or photo)',
-                state: fileRow,
-                hint:
-                  fileRow === 'done'
-                    ? 'AI will read marks, rubric, and comments from this'
-                    : fileRow === 'optional'
-                      ? 'You typed context only — a photo/PDF still helps a lot'
-                      : 'Add your marked work, or type what you have in optional notes',
-              },
-              {
-                label: 'Extra notes',
-                state: notesRow,
-                hint:
-                  notesRow === 'done'
-                    ? 'Added — thanks, that helps'
-                    : notesRow === 'optional'
-                      ? 'Skipping is fine if the file shows everything'
-                      : 'Optional — use if something’s missing from the file',
-              },
-            ];
-
-            const rowScore = (state: RowState) => (state === 'done' || state === 'optional' ? 1 : 0);
-            const pct = Math.round(((rowScore(fileRow) + rowScore(notesRow)) / 2) * 100);
-
-            return (
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <span className="flex gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce [animation-delay:300ms]" />
+                </span>
+                {loadingDetail || 'Analyzing…'}
+              </span>
+            ) : (
               <>
-                <div className="space-y-8 relative">
-                  <div className="absolute left-[15px] top-4 bottom-4 w-[1px] bg-primary/10" />
-                  {steps.map((s, i) => (
-                    <div
-                      key={i}
-                      className={`flex gap-6 relative transition-opacity ${
-                        s.state === 'needed' && i > 0 && steps[i - 1].state === 'needed' ? 'opacity-30' : ''
-                      }`}
-                    >
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center z-10 shrink-0 transition-colors ${
-                          s.state === 'done'
-                            ? 'bg-secondary'
-                            : s.state === 'optional'
-                              ? 'bg-amber-100 border-2 border-amber-400/80'
-                              : 'bg-on-surface-variant/10 border border-on-surface-variant/20'
-                        }`}
-                      >
-                        {s.state === 'done' ? (
-                          <ICONS.Check className="text-white w-4 h-4" />
-                        ) : s.state === 'optional' ? (
-                          <ICONS.Zap className="text-amber-700 w-4 h-4" strokeWidth={2} />
-                        ) : (
-                          <div className="w-2 h-2 rounded-full bg-on-surface-variant" />
-                        )}
-                      </div>
-                      <div className="min-w-0">
-                        <p
-                          className={`text-[10px] font-bold uppercase tracking-widest mb-0.5 ${
-                            s.state === 'done'
-                              ? 'text-secondary'
-                              : s.state === 'optional'
-                                ? 'text-amber-800'
-                                : 'text-primary/40'
-                          }`}
-                        >
-                          {s.state === 'done' ? 'Done' : s.state === 'optional' ? 'Optional' : 'Needed'}
-                        </p>
-                        <p className="text-sm font-bold text-primary">{s.label}</p>
-                        {s.hint ? (
-                          <p className="text-[11px] text-on-surface-variant opacity-75 leading-snug mt-0.5">{s.hint}</p>
-                        ) : null}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="pt-8 border-t border-primary/5">
-                  <div className="flex justify-between items-end mb-2">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-on-surface-variant">Ready</span>
-                    <span className="text-lg font-bold text-primary">{pct}%</span>
-                  </div>
-                  <div className="w-full h-1 bg-primary/5 rounded-full overflow-hidden">
-                    <motion.div
-                      animate={{ width: `${pct}%` }}
-                      className="h-full bg-primary shadow-[0_0_10px_rgba(0,35,111,0.3)]"
-                    />
-                  </div>
-                </div>
+                Analyze worksheet
+                <ICONS.ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
               </>
-            );
-          })()}
-
-          <div className="bg-primary/5 border border-primary/10 rounded-xl p-4 flex gap-3">
-            <ICONS.Zap className="text-primary w-5 h-5 flex-shrink-0" />
-            <p className="text-[11px] text-primary/80 font-semibold leading-relaxed">
-              Most students only upload one file. The model figures out the rest from the worksheet.
-            </p>
-          </div>
+            )}
+          </button>
+          <p className="text-center text-[12px] text-[#9ca3af] flex items-center justify-center gap-1.5">
+            <ICONS.Shield className="w-3.5 h-3.5" strokeWidth={2} />
+            Private & encrypted
+          </p>
         </div>
 
-        <motion.div 
-          whileHover={{ scale: 1.02 }}
+        <button
+          type="button"
           onClick={() => setShowAdvocate(true)}
-          className="glass-panel rounded-2xl overflow-hidden aspect-[4/3] relative group cursor-pointer"
+          className="rg-card rg-card-hover w-full p-4 flex items-center gap-3 text-left"
         >
-          <img 
-            src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&q=80&w=800" 
-            alt="Help" 
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-primary to-transparent opacity-80" />
-          <div className="absolute bottom-6 left-6 right-6">
-             <p className="text-[10px] font-bold uppercase tracking-widest text-white/70 mb-1">AI Assistant</p>
-             <h4 className="text-2xl text-white leading-tight">Not sure what to include? Ask for help.</h4>
+          <div className="w-10 h-10 rounded-xl bg-[#f0f4ff] flex items-center justify-center shrink-0">
+            <ICONS.Bot className="w-5 h-5 text-primary" strokeWidth={1.75} />
           </div>
-        </motion.div>
+          <div>
+            <p className="text-[14px] font-semibold text-ink">Not sure what to upload?</p>
+            <p className="text-[12px] text-muted mt-0.5">Ask the AI coach for help</p>
+          </div>
+        </button>
       </div>
     </div>
+    </AppealFlowShell>
     </>
   );
 }

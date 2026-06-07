@@ -4,12 +4,14 @@ import type { Auth, User } from 'firebase/auth';
 import {
   getAuth,
   GoogleAuthProvider,
+  OAuthProvider,
   signInWithPopup,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
   sendEmailVerification,
   sendPasswordResetEmail,
+  deleteUser,
 } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import { getFirestore } from 'firebase/firestore';
@@ -56,7 +58,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 
 const previewUser = {
   uid: PREVIEW_USER_UID,
-  displayName: 'Preview Student',
+  displayName: null,
   email: 'preview@regrade.app',
   emailVerified: true,
   photoURL: null,
@@ -126,11 +128,13 @@ function req(name: keyof ImportMetaEnv): string {
 let auth: Auth;
 let db: Firestore;
 let googleProvider: GoogleAuthProvider;
+let appleProvider: OAuthProvider;
 
 if (isPreviewMode()) {
   auth = buildPreviewAuth();
   db = {} as Firestore;
   googleProvider = {} as GoogleAuthProvider;
+  appleProvider = {} as OAuthProvider;
 } else {
   const firebaseWeb: FirebaseOptions = {
     apiKey: req('VITE_FIREBASE_API_KEY'),
@@ -149,16 +153,27 @@ if (isPreviewMode()) {
   auth = getAuth(app);
   db = getFirestore(app, firestoreDatabaseId);
   googleProvider = new GoogleAuthProvider();
+  appleProvider = new OAuthProvider('apple.com');
+  appleProvider.addScope('email');
+  appleProvider.addScope('name');
 }
 
-export { auth, db, googleProvider, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendEmailVerification, sendPasswordResetEmail };
+export {
+  auth,
+  db,
+  googleProvider,
+  appleProvider,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  signOut,
+  sendEmailVerification,
+  sendPasswordResetEmail,
+  deleteUser,
+};
 
-export const loginWithGoogle = async () => {
-  if (isPreviewMode()) {
-    throw new Error('Google sign-in is disabled in preview mode.');
-  }
+async function signInWithProviderPopup(provider: GoogleAuthProvider | OAuthProvider) {
   try {
-    return await signInWithPopup(auth, googleProvider);
+    return await signInWithPopup(auth, provider);
   } catch (error: unknown) {
     const code = typeof error === 'object' && error !== null && 'code' in error ? (error as { code?: string }).code : '';
     if (code !== 'auth/popup-closed-by-user') {
@@ -166,4 +181,19 @@ export const loginWithGoogle = async () => {
     }
     throw error;
   }
+}
+
+export const loginWithGoogle = async () => {
+  if (isPreviewMode()) {
+    throw new Error('Google sign-in is disabled in preview mode.');
+  }
+  return signInWithProviderPopup(googleProvider);
+};
+
+/** Required on iOS when Google sign-in is offered (App Store Guideline 4.8). */
+export const loginWithApple = async () => {
+  if (isPreviewMode()) {
+    throw new Error('Sign in with Apple is disabled in preview mode.');
+  }
+  return signInWithProviderPopup(appleProvider);
 };

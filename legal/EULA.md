@@ -78,6 +78,6 @@ to this EULA.
 
 ## 10. Contact
 
-Email: _<TODO: insert public support contact email>_
+Email: pretonjs2024@gmail.com
 
 — End of EULA —
