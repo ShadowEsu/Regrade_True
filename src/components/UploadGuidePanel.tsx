@@ -119,21 +119,21 @@ export default function UploadGuidePanel({
         ))}
       </ol>
 
-      <div className="space-y-4 max-w-lg mx-auto">
-        <div className="flex flex-col items-center justify-center gap-1">
-          <p className="text-[10px] font-mono uppercase tracking-[0.2em] text-primary">
-            Pick your platform ({PLATFORM_UPLOAD_GUIDES.length} supported)
+      <div className="space-y-5 max-w-xl mx-auto">
+        <div className="flex flex-col items-center justify-center gap-1.5">
+          <p className="rg-serif text-[clamp(28px,6.5vw,36px)] text-ink font-bold tracking-tight">
+            Instructions!!
           </p>
           {profileDefaultPlatformId && selected === profileDefaultPlatformId ? (
-            <p className="text-[10px] text-muted">Your default from Profile — change anytime below</p>
+            <p className="text-[12px] text-muted">Your default from Profile — change anytime below</p>
           ) : profileDefaultPlatformId ? (
-            <p className="text-[10px] text-muted">Override your Profile default for this appeal</p>
+            <p className="text-[12px] text-muted">Override your Profile default for this appeal</p>
           ) : null}
         </div>
 
-        <div className="relative max-w-xs mx-auto">
+        <div className="relative max-w-md mx-auto">
           <ICONS.Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted pointer-events-none"
+            className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted pointer-events-none"
             strokeWidth={2}
           />
           <input
@@ -154,45 +154,68 @@ export default function UploadGuidePanel({
             }}
             placeholder="Search platforms…"
             aria-label="Search platforms"
-            className="w-full pl-9 pr-8 py-2 text-[13px] rounded-[var(--radius-pill)] border border-hairline bg-canvas text-ink placeholder:text-muted outline-none focus:border-primary/40 transition-colors"
+            className="w-full pl-11 pr-10 py-3 text-[15px] sm:text-[16px] rounded-[var(--radius-pill)] border border-hairline bg-canvas text-ink placeholder:text-muted outline-none focus:border-primary/40 transition-colors"
           />
           {platformSearch && (
             <button
               type="button"
               onClick={() => setPlatformSearch('')}
-              className="absolute right-2.5 top-1/2 -translate-y-1/2 p-0.5 text-muted hover:text-ink transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-0.5 text-muted hover:text-ink transition-colors"
               aria-label="Clear search"
             >
-              <ICONS.X className="w-3.5 h-3.5" strokeWidth={2} />
+              <ICONS.X className="w-4 h-4" strokeWidth={2} />
             </button>
           )}
         </div>
 
         <div className="-mx-2 px-2 overflow-x-auto scrollbar-none">
-          <div className="flex flex-wrap justify-center gap-2 min-w-max max-w-full pb-1">
+          <div className="flex flex-wrap justify-center gap-2.5 sm:gap-3 min-w-max max-w-full pb-1">
             {filteredPlatforms.length === 0 ? (
               <p className="text-[12px] text-muted py-2 w-full text-center">No match — try Canvas, Gradescope, Moodle…</p>
             ) : null}
             {filteredPlatforms.map((p) => {
               const isActive = p.id === selected;
               return (
-                <motion.button
+                <motion.div
                   key={p.id}
-                  type="button"
-                  onClick={() => setSelected(p.id)}
-                  whileTap={{ scale: 0.96 }}
-                  className={`inline-flex items-center gap-2 rounded-[var(--radius-pill)] px-3.5 py-2 text-[11px] font-semibold transition-all border shrink-0 ${
+                  whileTap={{ scale: 0.98 }}
+                  className={`inline-flex items-stretch rounded-[var(--radius-pill)] border shrink-0 overflow-hidden transition-all ${
                     isActive
                       ? 'bg-primary text-white border-primary shadow-md shadow-primary/20'
                       : 'bg-canvas text-ink-muted border-hairline hover:border-primary/30'
                   }`}
-                  style={!isActive && p.color ? { color: p.color } : undefined}
                 >
-                  {p.logo && (
-                    <img src={p.logo} alt="" className="h-3.5 w-auto object-contain" draggable={false} />
+                  <button
+                    type="button"
+                    onClick={() => setSelected(p.id)}
+                    className={`inline-flex items-center gap-2.5 px-4 py-2.5 sm:px-5 sm:py-3 text-[13px] sm:text-[14px] font-semibold transition-colors ${
+                      isActive ? 'text-white' : ''
+                    }`}
+                    style={!isActive && p.color ? { color: p.color } : undefined}
+                  >
+                    {p.logo && (
+                      <img src={p.logo} alt="" className="h-5 sm:h-[22px] w-auto object-contain" draggable={false} />
+                    )}
+                    {p.name}
+                  </button>
+                  {p.appUrl && (
+                    <a
+                      href={p.appUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      onClick={(e) => e.stopPropagation()}
+                      className={`inline-flex items-center justify-center px-3 border-l transition-colors ${
+                        isActive
+                          ? 'border-white/25 text-white/90 hover:bg-white/15'
+                          : 'border-hairline text-primary/70 hover:bg-primary/[0.06] hover:text-primary'
+                      }`}
+                      aria-label={`Open ${p.name} in a new tab`}
+                      title={`Open ${p.name}`}
+                    >
+                      <ICONS.ExternalLink className="w-4 h-4" strokeWidth={2.25} />
+                    </a>
                   )}
-                  {p.name}
-                </motion.button>
+                </motion.div>
               );
             })}
           </div>
@@ -207,24 +230,63 @@ export default function UploadGuidePanel({
             transition={{ duration: 0.22 }}
             className="rounded-[var(--radius-card)] border border-hairline bg-parchment p-6 space-y-5 text-left"
           >
-            <div className="text-center space-y-2">
+            <div className="text-center space-y-3">
               {active.logo ? (
-                <img
-                  src={active.logo}
-                  alt={active.name}
-                  className="h-8 mx-auto object-contain"
-                  draggable={false}
-                />
+                active.appUrl ? (
+                  <a
+                    href={active.appUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block hover:opacity-80 transition-opacity"
+                  >
+                    <img
+                      src={active.logo}
+                      alt={active.name}
+                      className="h-8 mx-auto object-contain"
+                      draggable={false}
+                    />
+                  </a>
+                ) : (
+                  <img
+                    src={active.logo}
+                    alt={active.name}
+                    className="h-8 mx-auto object-contain"
+                    draggable={false}
+                  />
+                )
               ) : (
-                <p
-                  className="text-xl font-bold"
-                  style={{ color: active.color ?? '#1d1d1f' }}
-                >
-                  {active.name}
-                </p>
+                active.appUrl ? (
+                  <a
+                    href={active.appUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xl font-bold hover:underline underline-offset-2"
+                    style={{ color: active.color ?? '#1d1d1f' }}
+                  >
+                    {active.name}
+                  </a>
+                ) : (
+                  <p
+                    className="text-xl font-bold"
+                    style={{ color: active.color ?? '#1d1d1f' }}
+                  >
+                    {active.name}
+                  </p>
+                )
               )}
               <h3 className="rg-serif text-xl text-ink font-semibold">{active.fileLabel}</h3>
               <p className="text-[12px] text-muted font-mono">{active.short}</p>
+              {active.appUrl && (
+                <a
+                  href={active.appUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rg-platform-open-link"
+                >
+                  Open {active.name}
+                  <ICONS.ExternalLink className="w-4 h-4" strokeWidth={2.25} />
+                </a>
+              )}
             </div>
 
             <div className="rounded-xl bg-primary/[0.06] border border-primary/15 px-4 py-3">

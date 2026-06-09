@@ -44,6 +44,9 @@ export async function performComprehensiveAnalysis(
     return res.json() as Promise<AnalysisResult>;
   } catch (error) {
     console.error('Gemini Analysis Error:', error);
+    if (error instanceof Error && error.message.includes('AI analysis is coming soon')) {
+      throw error;
+    }
     const hint = error instanceof Error && error.message ? ` (${error.message})` : '';
     throw new Error(`Analysis failed.${hint} Try clearer photos, or paste text from the rubric and feedback.`);
   }
@@ -52,9 +55,16 @@ export async function performComprehensiveAnalysis(
 export async function chatWithAdvocate(
   message: string,
   history: { role: 'user' | 'model'; text: string }[],
+  options?: { caseContext?: string },
 ) {
   if (isPreviewMode()) {
     await new Promise((r) => setTimeout(r, 400));
+    if (options?.caseContext) {
+      return (
+        'Preview mode: Mr Whale would use your worksheet analysis here. ' +
+        'Ask me to polish your draft, explain a finding, or suggest what to say to your professor.'
+      );
+    }
     return (
       'Preview mode: this is a sample reply. In the full app, the appeal assistant uses your case context and course uploads. ' +
       `You asked: “${message.slice(0, 120)}${message.length > 120 ? '…' : ''}”`
@@ -64,7 +74,11 @@ export async function chatWithAdvocate(
   try {
     const res = await apiFetch('/v1/gemini/advocate', {
       method: 'POST',
-      body: JSON.stringify({ message, history }),
+      body: JSON.stringify({
+        message,
+        history,
+        ...(options?.caseContext ? { caseContext: options.caseContext } : {}),
+      }),
     });
     if (!res.ok) {
       throw new Error(await readApiError(res));
@@ -74,6 +88,11 @@ export async function chatWithAdvocate(
     return data.text;
   } catch (error) {
     console.error('Advocate API Error:', error);
+    if (error instanceof Error && error.message.includes('AI analysis is coming soon')) {
+      throw new Error(
+        'Mr Whale chat needs the analysis server. Sign-in and appeals work on Firebase — AI chat will connect when you deploy the API.',
+      );
+    }
     throw new Error(
       error instanceof Error
         ? error.message

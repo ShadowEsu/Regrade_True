@@ -33,7 +33,8 @@ const AdvocateSchema = z.object({
         text: z.string().max(64_000)
       })
     )
-    .max(80)
+    .max(80),
+  caseContext: z.string().max(100_000).optional()
 });
 
 const SecurityScanSchema = z.object({
@@ -503,10 +504,14 @@ export function createRegradeGeminiRouter(env: Env): Router {
   r.post("/advocate", heavyAiLimiter, validate(AdvocateSchema, "body"), async (req, res, next) => {
     try {
       const body = req.body as z.infer<typeof AdvocateSchema>;
+      const systemInstruction = body.caseContext
+        ? `${ADVOCATE_SYSTEM_PROMPT}\n\n---\nCURRENT CASE CONTEXT (from the student's uploaded worksheet analysis):\n${body.caseContext}`
+        : ADVOCATE_SYSTEM_PROMPT;
+
       const chat = getGemini().chats.create({
         model: GEMINI_MODEL,
         config: {
-          systemInstruction: ADVOCATE_SYSTEM_PROMPT
+          systemInstruction
         },
         history: body.history.map((item) => ({
           role: item.role,

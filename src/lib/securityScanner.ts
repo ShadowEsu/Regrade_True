@@ -74,6 +74,14 @@ export async function scanContentForThreats(
     };
   } catch (error) {
     console.error('Security scan error:', error);
+    if (error instanceof Error && error.message.includes('AI analysis is coming soon')) {
+      return {
+        isSafe: true,
+        threatLevel: 'low',
+        detectedPatterns: ['regex-only-no-api'],
+        recommendation: 'Safe to proceed.',
+      };
+    }
     const errText = error instanceof Error ? error.message : String(error);
     const keyIssue = /API key|401|403|PERMISSION_DENIED|invalid/i.test(errText);
     const quotaIssue = /429|RESOURCE_EXHAUSTED|quota|rate/i.test(errText);

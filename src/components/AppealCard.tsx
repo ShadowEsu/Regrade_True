@@ -40,7 +40,7 @@ export default function AppealCard({
         <div className="flex-1 min-w-0 space-y-2">
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
-              <h3 className="font-semibold text-ink truncate">{appeal.title}</h3>
+              <h3 className="rg-serif font-semibold text-ink truncate">{appeal.title}</h3>
               <p className="text-sm text-ink-muted">{getClassName(appeal)}</p>
             </div>
             <span className="shrink-0 text-xs font-medium text-primary">{statusLabel(appeal.status)}</span>

@@ -3,13 +3,9 @@
  */
 import { initializeApp, type FirebaseApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { resolveFirebaseWebConfig, resolveFirestoreDatabaseId } from '../lib/firebaseWebConfig';
 
-const config = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY as string | undefined,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN as string | undefined,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID as string | undefined,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID as string | undefined,
-};
+const config = resolveFirebaseWebConfig();
 
 function hasConfig(): boolean {
   return Boolean(config.apiKey && config.projectId && config.appId);
@@ -19,8 +15,8 @@ let app: FirebaseApp | null = null;
 
 function getDb() {
   if (!app) app = initializeApp(config);
-  const dbId = import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID;
-  return getFirestore(app, dbId && dbId !== '(default)' ? dbId : undefined);
+  const dbId = resolveFirestoreDatabaseId();
+  return getFirestore(app, dbId !== '(default)' ? dbId : undefined);
 }
 
 function showSuccess(form: HTMLFormElement) {

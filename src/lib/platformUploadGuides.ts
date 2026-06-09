@@ -18,6 +18,8 @@ export type PlatformUploadGuide = {
   name: string;
   logo?: string;
   color?: string;
+  /** Official login or home page — opens in a new tab */
+  appUrl?: string;
   short: string;
   fileLabel: string;
   /** Where teacher marks & comments usually appear */
@@ -28,11 +30,31 @@ export type PlatformUploadGuide = {
   tip?: string;
 };
 
+/** Extra platforms shown on marketing tiles (Instructure family, etc.) */
+export const PLATFORM_APP_LINKS: Record<string, string> = {
+  canvas: 'https://canvas.instructure.com/login',
+  instructure: 'https://www.instructure.com/',
+  impact: 'https://www.instructure.com/products/impact/',
+  mastery: 'https://www.instructure.com/products/mastery/',
+  d2l: 'https://login.brightspace.com/',
+  classroom: 'https://classroom.google.com/',
+  gradescope: 'https://www.gradescope.com/login',
+  google_classroom: 'https://classroom.google.com/',
+  brightspace: 'https://login.brightspace.com/',
+  moodle: 'https://moodle.com/login/',
+  blackboard: 'https://www.blackboard.com/',
+  turnitin: 'https://www.turnitin.com/login_page.asp',
+  schoology: 'https://app.schoology.com/login',
+  powerschool: 'https://login.powerschool.com/',
+  sakai: 'https://www.sakailms.org/',
+};
+
 export const PLATFORM_UPLOAD_GUIDES: PlatformUploadGuide[] = [
   {
     id: 'gradescope',
     name: 'Gradescope',
     color: '#0095D9',
+    appUrl: PLATFORM_APP_LINKS.gradescope,
     short: 'Graded Copy PDF',
     fileLabel: 'Download Graded Copy',
     whereToLook: 'Blue comment bubbles on your PDF + rubric panel on the right.',
@@ -50,6 +72,7 @@ export const PLATFORM_UPLOAD_GUIDES: PlatformUploadGuide[] = [
     id: 'canvas',
     name: 'Canvas',
     logo: '/platforms/canvas.png',
+    appUrl: PLATFORM_APP_LINKS.canvas,
     short: 'SpeedGrader export',
     fileLabel: 'Annotated PDF or SpeedGrader screenshot',
     whereToLook: 'SpeedGrader pins on your file + rubric grid on the right + assessment comment box.',
@@ -67,6 +90,7 @@ export const PLATFORM_UPLOAD_GUIDES: PlatformUploadGuide[] = [
     id: 'google_classroom',
     name: 'Classroom',
     logo: '/platforms/google-classroom.png',
+    appUrl: PLATFORM_APP_LINKS.google_classroom,
     short: 'Returned work',
     fileLabel: 'Commented Doc or PDF',
     whereToLook: 'Margin comment chips in the returned Doc/Slide + grade on the assignment card.',
@@ -84,6 +108,7 @@ export const PLATFORM_UPLOAD_GUIDES: PlatformUploadGuide[] = [
     id: 'brightspace',
     name: 'D2L Brightspace',
     logo: '/platforms/d2l.png',
+    appUrl: PLATFORM_APP_LINKS.brightspace,
     short: 'Evaluation / Feedback view',
     fileLabel: 'Feedback PDF or screenshot',
     whereToLook: 'Assignments → Feedback / Evaluation panel with rubric grid and instructor text.',
@@ -101,6 +126,7 @@ export const PLATFORM_UPLOAD_GUIDES: PlatformUploadGuide[] = [
     id: 'moodle',
     name: 'Moodle',
     color: '#F98012',
+    appUrl: PLATFORM_APP_LINKS.moodle,
     short: 'Feedback PDF',
     fileLabel: 'Annotated return file',
     whereToLook: 'Assignment → Feedback tab + advanced grading rubric table.',
@@ -118,6 +144,7 @@ export const PLATFORM_UPLOAD_GUIDES: PlatformUploadGuide[] = [
     id: 'blackboard',
     name: 'Blackboard',
     color: '#262626',
+    appUrl: PLATFORM_APP_LINKS.blackboard,
     short: 'Graded attempt',
     fileLabel: 'Feedback view / annotated PDF',
     whereToLook: 'My Grades → attempt view with inline grading bubbles + rubric scorecard.',
@@ -135,6 +162,7 @@ export const PLATFORM_UPLOAD_GUIDES: PlatformUploadGuide[] = [
     id: 'turnitin',
     name: 'Turnitin',
     color: '#0055A4',
+    appUrl: PLATFORM_APP_LINKS.turnitin,
     short: 'Feedback Studio',
     fileLabel: 'Marked download / PDF',
     whereToLook: 'QuickMark symbols with pop-up text + rubric scorecard on the right.',
@@ -152,6 +180,7 @@ export const PLATFORM_UPLOAD_GUIDES: PlatformUploadGuide[] = [
     id: 'schoology',
     name: 'Schoology',
     color: '#47BBD1',
+    appUrl: PLATFORM_APP_LINKS.schoology,
     short: 'Materials / Grades',
     fileLabel: 'Graded submission PDF',
     whereToLook: 'Assignment grade view with rubric checklist + teacher feedback text.',
@@ -169,6 +198,7 @@ export const PLATFORM_UPLOAD_GUIDES: PlatformUploadGuide[] = [
     id: 'powerschool',
     name: 'PowerSchool',
     color: '#0066B3',
+    appUrl: PLATFORM_APP_LINKS.powerschool,
     short: 'Unified Classroom / LMS',
     fileLabel: 'Graded assignment export',
     whereToLook: 'Schoology Learning or PowerSchool assignment feedback (many districts use Schoology under PowerSchool).',
@@ -186,6 +216,7 @@ export const PLATFORM_UPLOAD_GUIDES: PlatformUploadGuide[] = [
     id: 'sakai',
     name: 'Sakai',
     color: '#6B4C9A',
+    appUrl: PLATFORM_APP_LINKS.sakai,
     short: 'Gradebook / Assignment',
     fileLabel: 'Feedback PDF or screenshot',
     whereToLook: 'Assignment submission feedback + gradebook comments.',

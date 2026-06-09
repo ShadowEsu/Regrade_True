@@ -30,6 +30,7 @@ export interface Case {
   createdAt: any;
   updatedAt: any;
   analysis?: AnalysisResult;
+  draftEmail?: string;
   rawInput?: {
     assignment: string;
     rubric: string;

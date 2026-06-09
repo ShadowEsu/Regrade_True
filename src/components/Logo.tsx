@@ -10,8 +10,8 @@ interface LogoProps {
 }
 
 const HEIGHT_PX: Record<Exclude<NonNullable<LogoProps['size']>, 'nav'>, number> = {
-  xs: 36,
-  sm: 48,
+  xs: 40,
+  sm: 52,
   md: 64,
   lg: 80,
   xl: 112,

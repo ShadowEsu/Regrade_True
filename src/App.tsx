@@ -8,7 +8,7 @@ import Appeals from './views/Appeals';
 import UploadCenter from './views/UploadCenter';
 import EvidenceSummary from './views/EvidenceSummary';
 import VerdictReport from './views/VerdictReport';
-import Profile from './views/Profile';
+import Profile, { type ProfileSection } from './views/Profile';
 import History from './views/History';
 import Advocate from './views/Advocate';
 import About from './views/About';
@@ -19,6 +19,7 @@ export default function App() {
   const [currentCaseId, setCurrentCaseId] = useState<string | null>(null);
   const [appealFlowActive, setAppealFlowActive] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [profileSection, setProfileSection] = useState<ProfileSection>('you');
 
   const handleStartAppeal = () => {
     setCurrentCaseId(null);
@@ -34,7 +35,7 @@ export default function App() {
     try {
       const c = await caseService.getCaseById(caseId);
       if (c?.analysis) {
-        setFlowStep(c.progress >= 80 ? 'verdict' : 'summary');
+        setFlowStep(c.progress >= 80 || c.draftEmail ? 'verdict' : 'summary');
       } else {
         setFlowStep('none');
       }
@@ -94,11 +95,17 @@ export default function App() {
     }
 
     if (activeTab === 'profile') {
-      return <Profile onShowAbout={() => setShowAbout(true)} />;
+      return (
+        <Profile
+          section={profileSection}
+          onSectionChange={setProfileSection}
+          onShowAbout={() => setShowAbout(true)}
+        />
+      );
     }
 
     if (activeTab === 'chat') {
-      return <Advocate />;
+      return <Advocate caseId={appealFlowActive ? currentCaseId : undefined} />;
     }
 
     return (
@@ -123,13 +130,11 @@ export default function App() {
   return (
     <Layout
       activeTab={activeTab}
+      profileSection={profileSection}
+      onProfileSectionChange={setProfileSection}
       onTabChange={(tab) => {
         setActiveTab(tab);
         setShowAbout(false);
-        if (tab !== 'upload') {
-          setFlowStep('none');
-          setAppealFlowActive(false);
-        }
       }}
     >
       {renderContent()}

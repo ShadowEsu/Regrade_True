@@ -81,12 +81,12 @@ export default function AiPipelinePanel({
   return (
     <section
       ref={wrapperRef}
-      className="relative overflow-hidden rounded-[3rem] border border-primary/10 bg-white/90 shadow-[0_25px_90px_-60px_rgba(0,35,111,0.35)]"
+      className="relative overflow-hidden rounded-[1.75rem] sm:rounded-[2.5rem] md:rounded-[3rem] border border-primary/10 bg-white/90 shadow-[0_25px_90px_-60px_rgba(0,35,111,0.35)]"
     >
       <div className="absolute inset-0 paper-texture opacity-20 pointer-events-none" />
       <div className="absolute -top-40 -right-40 w-[44rem] h-[44rem] bg-gradient-to-br from-primary/15 via-primary/5 to-transparent rounded-full blur-3xl pointer-events-none" />
 
-      <div className="relative p-10 sm:p-16 space-y-10">
+      <div className="relative p-6 sm:p-10 md:p-16 space-y-8 sm:space-y-10">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-10">
           <div className="space-y-3">
             <p className="text-[11px] font-bold uppercase tracking-[0.42em] text-primary/40">How the AI reviewed your paper</p>
@@ -131,7 +131,7 @@ export default function AiPipelinePanel({
                   initial={{ opacity: 0, y: 14 }}
                   animate={inView ? { opacity: 1, y: 0 } : undefined}
                   transition={{ delay: 0.06 * idx, duration: 0.55, ease: 'easeOut' }}
-                  className={`w-[20rem] sm:w-[22rem] rounded-[1.75rem] border p-5 bg-white/85 backdrop-blur-xl shadow-sm ${
+                  className={`w-[min(85vw,20rem)] sm:w-[22rem] shrink-0 rounded-[1.75rem] border p-5 bg-white/85 backdrop-blur-xl shadow-sm ${
                     p.id === sourcePlatform
                       ? 'border-primary/25 ring-1 ring-primary/10'
                       : 'border-primary/10 hover:border-primary/20 transition-colors'

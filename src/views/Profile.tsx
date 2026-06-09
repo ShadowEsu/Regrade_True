@@ -42,7 +42,7 @@ type ProfileForm = {
   preferredPlatform: PlatformGuideId | null;
 };
 
-type ProfileTab = 'you' | 'platform' | 'ai' | 'account';
+export type ProfileSection = 'you' | 'platform' | 'ai' | 'account';
 
 const EMPTY_FORM: ProfileForm = {
   name: '',
@@ -56,12 +56,12 @@ const EMPTY_FORM: ProfileForm = {
   preferredPlatform: null,
 };
 
-const TABS: { id: ProfileTab; label: string }[] = [
-  { id: 'you', label: 'You' },
-  { id: 'platform', label: 'App' },
-  { id: 'ai', label: 'AI' },
-  { id: 'account', label: 'Account' },
-];
+const SECTION_LABELS: Record<ProfileSection, string> = {
+  you: 'Profile',
+  platform: 'App',
+  ai: 'AI',
+  account: 'Account',
+};
 
 function profileToForm(data: UserProfile, user: User): ProfileForm {
   return {
@@ -77,7 +77,11 @@ function profileToForm(data: UserProfile, user: User): ProfileForm {
   };
 }
 
-const Profile: React.FC<ProfileProps> = ({ onShowAbout }) => {
+const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChange?: (s: ProfileSection) => void }> = ({
+  onShowAbout,
+  section: sectionProp,
+  onSectionChange,
+}) => {
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
   const [aiEngine, setAiEngine] = useState<AiEngine | null>(null);
@@ -87,7 +91,12 @@ const Profile: React.FC<ProfileProps> = ({ onShowAbout }) => {
   const [showSavedToast, setShowSavedToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('Profile saved');
   const [securityError, setSecurityError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<ProfileTab>('you');
+  const [localSection, setLocalSection] = useState<ProfileSection>('you');
+  const activeTab = sectionProp ?? localSection;
+  const setActiveTab = (s: ProfileSection) => {
+    if (onSectionChange) onSectionChange(s);
+    else setLocalSection(s);
+  };
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
@@ -212,8 +221,8 @@ const Profile: React.FC<ProfileProps> = ({ onShowAbout }) => {
     }
   };
 
-  const fieldClass =
-    'w-full bg-canvas border border-hairline rounded-xl px-4 py-3 text-[15px] text-ink outline-none focus:border-primary/40 transition-colors';
+  const inputClass = 'rg-glass-field-input';
+  const textareaClass = `${inputClass} min-h-[72px] resize-y leading-relaxed`;
 
   if (loading) {
     return (
@@ -238,45 +247,58 @@ const Profile: React.FC<ProfileProps> = ({ onShowAbout }) => {
 
   const platformLabel = getPlatformGuideName(form.preferredPlatform ?? undefined);
 
+  const filledFields = [form.school, form.university, form.major, form.gradeLevel, form.gpa, form.appealGoal].filter(Boolean).length;
+
   return (
     <div className="space-y-6 pb-8">
-      <header className="text-center space-y-3">
-        <MarketingEyebrow>your profile</MarketingEyebrow>
-        <div className="flex flex-col items-center gap-3">
-          <img
-            src={user.photoURL || DEFAULT_AVATAR_SRC}
-            alt=""
-            className="w-16 h-16 rounded-2xl border border-hairline object-cover"
-          />
-          <div>
-            <h1 className="rg-serif text-2xl text-ink font-semibold">{form.name || 'Student'}</h1>
-            <p className="text-[12px] text-muted mt-0.5">{form.email}</p>
+      <section className="relative overflow-hidden rounded-[22px] rg-glass-hero px-5 py-7 sm:py-8 text-center">
+        <div className="absolute -top-12 -right-8 w-40 h-40 rounded-full bg-primary/10 blur-3xl pointer-events-none" aria-hidden />
+        <div className="absolute -bottom-10 -left-6 w-32 h-32 rounded-full bg-violet-400/10 blur-3xl pointer-events-none" aria-hidden />
+        <div className="relative space-y-4">
+          <MarketingEyebrow>your profile</MarketingEyebrow>
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="flex flex-col items-center gap-3"
+          >
+            <motion.div
+              whileHover={{ scale: 1.05, rotate: 2 }}
+              className="relative"
+            >
+              <div className="absolute -inset-1 rounded-[18px] bg-gradient-to-br from-primary/30 to-violet-400/20 blur-sm" aria-hidden />
+              <img
+                src={user.photoURL || DEFAULT_AVATAR_SRC}
+                alt=""
+                className="relative w-[84px] h-[84px] rounded-2xl border-2 border-white/80 object-cover rg-glass shadow-md"
+              />
+            </motion.div>
+            <div>
+              <h1 className="rg-serif text-[clamp(24px,5vw,30px)] text-ink font-semibold">{form.name || 'Student'}</h1>
+              <p className="text-[12px] text-muted mt-0.5">{form.email}</p>
+            </div>
+          </motion.div>
+
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            {platformLabel && (
+              <span className="rg-glass-chip px-3 py-1.5 text-[11px] font-semibold text-primary">
+                {platformLabel}
+              </span>
+            )}
+            <span className="rg-glass-chip px-3 py-1.5 text-[11px] font-medium text-ink-muted">
+              {filledFields}/6 fields filled
+            </span>
+            {aiEngine && (
+              <span className="rg-glass-chip px-3 py-1.5 text-[11px] font-medium text-violet-700 capitalize">
+                {aiEngine} reader
+              </span>
+            )}
           </div>
         </div>
-        {platformLabel ? (
-          <p className="text-[11px] text-primary font-medium">Default platform: {platformLabel}</p>
-        ) : null}
-      </header>
+      </section>
 
-      <nav
-        className="flex rounded-[var(--radius-pill)] border border-hairline bg-parchment p-0.5 gap-0.5"
-        aria-label="Profile sections"
-      >
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex-1 py-2 rounded-[var(--radius-pill)] text-[12px] font-semibold transition-all ${
-              activeTab === tab.id
-                ? 'bg-primary text-white shadow-sm'
-                : 'text-ink-muted hover:text-ink'
-            }`}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </nav>
+      <p className="text-center text-[13px] font-medium text-ink-muted">
+        {SECTION_LABELS[activeTab]}
+      </p>
 
       <form onSubmit={(e) => void handleSave(e)} className="space-y-5">
         <AnimatePresence mode="wait">
@@ -286,70 +308,70 @@ const Profile: React.FC<ProfileProps> = ({ onShowAbout }) => {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
-              className="rg-card p-5 space-y-4"
+              className="rg-glass-form-card p-5 sm:p-6 space-y-3.5"
             >
-              <p className="text-[15px] text-inkmuted leading-relaxed">
+              <p className="text-[14px] text-ink-muted leading-relaxed pb-1">
                 Regrade uses this when drafting appeals — all optional except name.
               </p>
 
-              <label className="block space-y-1.5">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted">Name</span>
+              <label className="rg-glass-field">
+                <span className="rg-glass-field-label">Name</span>
                 <input
                   type="text"
                   required
                   value={form.name}
                   onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className={fieldClass}
+                  className={inputClass}
                   placeholder="Full name"
                 />
               </label>
 
-              <label className="block space-y-1.5">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted">School</span>
+              <label className="rg-glass-field">
+                <span className="rg-glass-field-label">School</span>
                 <input
                   type="text"
                   value={form.school}
                   onChange={(e) => setForm({ ...form, school: e.target.value })}
-                  className={fieldClass}
+                  className={inputClass}
                   placeholder="High school name"
                 />
               </label>
 
-              <label className="block space-y-1.5">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted">University / college</span>
+              <label className="rg-glass-field">
+                <span className="rg-glass-field-label">University / college</span>
                 <input
                   type="text"
                   value={form.university}
                   onChange={(e) => setForm({ ...form, university: e.target.value })}
-                  className={fieldClass}
+                  className={inputClass}
                   placeholder="e.g. Wesley College"
                 />
               </label>
 
-              <label className="block space-y-1.5">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted">Major</span>
+              <label className="rg-glass-field">
+                <span className="rg-glass-field-label">Major</span>
                 <input
                   type="text"
                   value={form.major}
                   onChange={(e) => setForm({ ...form, major: e.target.value })}
-                  className={fieldClass}
+                  className={inputClass}
                   placeholder="e.g. Computer Science"
                 />
               </label>
 
               <div className="grid grid-cols-2 gap-3">
-                <label className="block space-y-1.5">
-                  <span className="text-[11px] font-mono uppercase tracking-wider text-muted">Year / grade</span>
+                <label className="rg-glass-field">
+                  <span className="rg-glass-field-label">Year / grade</span>
                   <input
                     type="text"
                     value={form.gradeLevel}
                     onChange={(e) => setForm({ ...form, gradeLevel: e.target.value })}
-                    className={fieldClass}
+                    className={inputClass}
                     placeholder="Sophomore"
                   />
                 </label>
-                <label className="block space-y-1.5">
-                  <span className="text-[10px] font-mono uppercase tracking-wider text-muted">GPA</span>
+                <label className="rg-glass-field">
+                  <span className="rg-glass-field-label">GPA</span>
                   <input
                     type="number"
                     min={0}
@@ -357,18 +379,18 @@ const Profile: React.FC<ProfileProps> = ({ onShowAbout }) => {
                     step={0.1}
                     value={form.gpa}
                     onChange={(e) => setForm({ ...form, gpa: e.target.value })}
-                    className={fieldClass}
+                    className={inputClass}
                     placeholder="3.8"
                   />
                 </label>
               </div>
 
-              <label className="block space-y-1.5">
-                <span className="text-[10px] font-mono uppercase tracking-wider text-muted">What you want</span>
+              <label className="rg-glass-field">
+                <span className="rg-glass-field-label">What you want</span>
                 <textarea
                   value={form.appealGoal}
                   onChange={(e) => setForm({ ...form, appealGoal: e.target.value })}
-                  className={`${fieldClass} min-h-[88px] resize-y`}
+                  className={textareaClass}
                   placeholder="Fair rubric checks, polite tone, explain calculation errors…"
                 />
               </label>
@@ -381,16 +403,14 @@ const Profile: React.FC<ProfileProps> = ({ onShowAbout }) => {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
-              className="rg-card p-5 space-y-4"
+              className="rg-glass-form-card p-5 sm:p-6 space-y-4"
             >
-              <p className="text-[13px] text-muted leading-relaxed">
-                Your default grading app. New appeals open with these export steps — you can still pick a
-                different platform on each appeal.
+              <p className="text-[13px] text-ink-muted leading-relaxed">
+                Your default grading app — new appeals start with the right export steps for that platform.
               </p>
               <PreferredPlatformPicker
                 value={form.preferredPlatform}
                 onChange={(id) => setForm({ ...form, preferredPlatform: id })}
-                compact
               />
             </motion.div>
           )}
@@ -401,7 +421,7 @@ const Profile: React.FC<ProfileProps> = ({ onShowAbout }) => {
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
-              className="rg-card p-5 space-y-4"
+              className="rg-glass-form-card p-5 sm:p-6 space-y-4"
             >
               <AiEnginePicker
                 value={aiEngine}
@@ -425,7 +445,7 @@ const Profile: React.FC<ProfileProps> = ({ onShowAbout }) => {
               exit={{ opacity: 0, y: -4 }}
               className="space-y-4"
             >
-              <div className="rg-card p-5 space-y-3">
+              <div className="rg-glass-card p-5 space-y-3">
                 <p className="text-[10px] font-mono uppercase tracking-wider text-primary">Legal</p>
                 <p className="text-[13px] text-muted leading-relaxed">
                   For users {APP_MIN_AGE}+ · v{APP_VERSION}
@@ -435,7 +455,7 @@ const Profile: React.FC<ProfileProps> = ({ onShowAbout }) => {
                     href={APP_PRIVACY_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between px-4 py-3 rounded-xl border border-hairline bg-canvas hover:border-primary/30 transition-colors"
+                    className="flex items-center justify-between px-4 py-3 rounded-xl rg-glass-chip hover:border-primary/30 transition-all"
                   >
                     <span className="text-[14px] font-medium text-ink">Privacy Policy</span>
                     <ICONS.ArrowRight className="w-4 h-4 text-muted" strokeWidth={1.75} />
@@ -444,14 +464,14 @@ const Profile: React.FC<ProfileProps> = ({ onShowAbout }) => {
                     href={APP_TERMS_URL}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-between px-4 py-3 rounded-xl border border-hairline bg-canvas hover:border-primary/30 transition-colors"
+                    className="flex items-center justify-between px-4 py-3 rounded-xl rg-glass-chip hover:border-primary/30 transition-all"
                   >
                     <span className="text-[14px] font-medium text-ink">Terms of Service</span>
                     <ICONS.ArrowRight className="w-4 h-4 text-muted" strokeWidth={1.75} />
                   </a>
                   <a
                     href={`mailto:${APP_SUPPORT_EMAIL}?subject=Regrade%20support`}
-                    className="flex items-center justify-between px-4 py-3 rounded-xl border border-hairline bg-canvas hover:border-primary/30 transition-colors"
+                    className="flex items-center justify-between px-4 py-3 rounded-xl rg-glass-chip hover:border-primary/30 transition-all"
                   >
                     <span className="text-[14px] font-medium text-ink">Contact support</span>
                     <span className="text-[12px] text-muted">{APP_SUPPORT_EMAIL}</span>
@@ -460,7 +480,7 @@ const Profile: React.FC<ProfileProps> = ({ onShowAbout }) => {
                     <button
                       type="button"
                       onClick={onShowAbout}
-                      className="w-full flex items-center justify-between px-4 py-3 rounded-xl border border-hairline bg-canvas hover:border-primary/30 transition-colors text-left"
+                      className="w-full flex items-center justify-between px-4 py-3 rounded-xl rg-glass-chip hover:border-primary/30 transition-all text-left"
                     >
                       <span className="text-[14px] font-medium text-ink">About & acknowledgements</span>
                       <ICONS.ArrowRight className="w-4 h-4 text-muted" strokeWidth={1.75} />
@@ -470,7 +490,7 @@ const Profile: React.FC<ProfileProps> = ({ onShowAbout }) => {
               </div>
 
               {/* Regrade-style account actions — not GitHub row layout */}
-              <div className="rounded-[var(--radius-card)] border border-hairline bg-gradient-to-b from-parchment to-canvas p-5 space-y-4">
+              <div className="rg-glass-card p-5 space-y-4">
                 <div className="text-center space-y-1">
                   <p className="text-[10px] font-mono uppercase tracking-wider text-muted">Account</p>
                   <p className="text-[13px] text-muted leading-relaxed max-w-xs mx-auto">
@@ -524,7 +544,7 @@ const Profile: React.FC<ProfileProps> = ({ onShowAbout }) => {
           <button
             type="submit"
             disabled={saving}
-            className="rg-btn-primary w-full py-3.5 text-[15px] disabled:opacity-50 flex items-center justify-center gap-2"
+            className="rg-btn-cta w-full py-3.5 text-[15px] disabled:opacity-50 flex items-center justify-center gap-2"
           >
             {saving ? <ICONS.RefreshCcw className="animate-spin w-4 h-4" /> : null}
             {saving ? 'Saving…' : 'Save profile'}

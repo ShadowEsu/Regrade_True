@@ -1,4 +1,3 @@
-import type { FirebaseOptions } from 'firebase/app';
 import { initializeApp } from 'firebase/app';
 import type { Auth, User } from 'firebase/auth';
 import {
@@ -17,6 +16,7 @@ import type { Firestore } from 'firebase/firestore';
 import { getFirestore } from 'firebase/firestore';
 import { isPreviewMode } from './previewMode';
 import { PREVIEW_USER_UID } from './previewFixtures';
+import { resolveFirebaseWebConfig, resolveFirestoreDatabaseId } from './firebaseWebConfig';
 
 export enum OperationType {
   CREATE = 'create',
@@ -115,16 +115,6 @@ function buildPreviewAuth(): Auth {
   } as unknown as Auth;
 }
 
-function req(name: keyof ImportMetaEnv): string {
-  const v = import.meta.env[name];
-  if (typeof v !== 'string' || !String(v).trim()) {
-    throw new Error(
-      `Missing ${String(name)}. Copy .env.example to .env and set Firebase web config (see FIREBASE_SETUP.md), or run npm run dev:preview to browse without login.`,
-    );
-  }
-  return String(v).trim();
-}
-
 let auth: Auth;
 let db: Firestore;
 let googleProvider: GoogleAuthProvider;
@@ -136,18 +126,8 @@ if (isPreviewMode()) {
   googleProvider = {} as GoogleAuthProvider;
   appleProvider = {} as OAuthProvider;
 } else {
-  const firebaseWeb: FirebaseOptions = {
-    apiKey: req('VITE_FIREBASE_API_KEY'),
-    authDomain: req('VITE_FIREBASE_AUTH_DOMAIN'),
-    projectId: req('VITE_FIREBASE_PROJECT_ID'),
-    storageBucket: req('VITE_FIREBASE_STORAGE_BUCKET'),
-    messagingSenderId: req('VITE_FIREBASE_MESSAGING_SENDER_ID'),
-    appId: req('VITE_FIREBASE_APP_ID'),
-    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID?.trim() || undefined,
-  };
-
-  const firestoreDatabaseId =
-    import.meta.env.VITE_FIREBASE_FIRESTORE_DATABASE_ID?.trim() || '(default)';
+  const firebaseWeb = resolveFirebaseWebConfig();
+  const firestoreDatabaseId = resolveFirestoreDatabaseId();
 
   const app = initializeApp(firebaseWeb);
   auth = getAuth(app);

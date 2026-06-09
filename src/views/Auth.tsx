@@ -113,7 +113,7 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
       >
         <div className="text-center mb-8 sm:mb-10">
           <Logo size="hero" showTagline className="mb-8" />
-          <h1 className="text-2xl sm:text-3xl font-semibold text-primary tracking-tight">{title}</h1>
+          <h1 className="rg-serif text-2xl sm:text-3xl font-semibold text-primary tracking-tight">{title}</h1>
           <p className="mt-2 text-[15px] text-on-surface-variant/80 leading-relaxed max-w-sm mx-auto">
             {subtitle}
           </p>

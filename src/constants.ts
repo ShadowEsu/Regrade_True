@@ -42,7 +42,11 @@ import {
   Bell,
   Lightbulb,
   ArrowUp,
-  Bot
+  Bot,
+  LogOut,
+  Copy,
+  Loader2,
+  ExternalLink
 } from 'lucide-react';
 
 export const ICONS = {
@@ -90,6 +94,10 @@ export const ICONS = {
   Lightbulb,
   ArrowUp,
   Bot,
+  LogOut,
+  Copy,
+  Loader2,
+  ExternalLink,
   // Aliases for historical compatibility
   Bank: Landmark,
   Trending: TrendingUp,

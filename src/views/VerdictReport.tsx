@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { ICONS } from '../constants';
 import { caseService, Case } from '../services/caseService';
 import AiPipelinePanel from '../components/AiPipelinePanel';
+import AppealDraftPanel from '../components/AppealDraftPanel';
 import AppealFlowShell from '../components/AppealFlowShell';
 
 export default function VerdictReport({
@@ -70,9 +71,10 @@ export default function VerdictReport({
 
   return (
     <AppealFlowShell
-      step="review"
-      title="Review your analysis"
-      subtitle={analysis?.case_analysis.case_strength_reason || 'Check findings before sending your message.'}
+      step="draft"
+      wide
+      title="Review & draft your appeal"
+      subtitle={analysis?.case_analysis.case_strength_reason || 'Check findings, then generate your email draft.'}
       onBack={onBack}
     >
     <div className="space-y-5">
@@ -94,28 +96,26 @@ export default function VerdictReport({
         )}
       </div>
 
-      <div className="flex gap-2">
-        <button type="button" className="rg-btn-primary flex-1 py-3 text-[14px] group">
-          Write appeal letter
-          <ICONS.ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-        </button>
-        <button type="button" className="rg-btn-secondary px-4 py-3 text-[13px]">
-          <ICONS.Download className="w-4 h-4" />
-        </button>
-      </div>
+      {analysis && (
+        <AppealDraftPanel
+          caseId={caseId}
+          analysis={analysis}
+          initialDraft={currentCase?.draftEmail}
+        />
+      )}
 
       {/* Discovery Dashboard */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 sm:gap-12 lg:gap-16">
         {/* Probability Meter (Bento) */}
         <motion.div 
           initial={{ opacity: 0, scale: 0.98 }}
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          className="lg:col-span-12 glass-panel rounded-[5rem] p-24 flex flex-col items-center text-center relative overflow-hidden bg-white border-2 border-primary/10 shadow-huge"
+          className="lg:col-span-12 glass-panel rounded-[1.75rem] sm:rounded-[2.5rem] md:rounded-[3rem] p-6 sm:p-10 md:p-16 lg:p-20 flex flex-col items-center text-center relative overflow-hidden bg-white border-2 border-primary/10 shadow-huge"
         >
           <div className="absolute inset-0 paper-texture opacity-10 pointer-events-none" />
           
-          <div className="space-y-4 mb-20">
+          <div className="space-y-4 mb-8 sm:mb-12 md:mb-16">
             <h3 className="text-[13px] font-semibold uppercase tracking-[0.55em] text-primary opacity-60">Analysis signal</h3>
             <div className="h-px w-32 bg-primary/20 mx-auto" />
           </div>
@@ -126,12 +126,12 @@ export default function VerdictReport({
                   initial={{ opacity: 0, y: 30 }}
                   whileInView={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.8 }}
-                  className="text-7xl sm:text-8xl md:text-[10rem] font-semibold text-primary tracking-tight leading-none"
+                  className="text-5xl sm:text-7xl md:text-8xl lg:text-[9rem] font-semibold text-primary tracking-tight leading-none"
                 >
                   {confPct ?? '—'}
                 </motion.span>
                 <div className="flex flex-col items-start">
-                  <span className="font-serif text-6xl md:text-8xl text-primary/20 font-semibold leading-none">%</span>
+                  <span className="font-serif text-4xl sm:text-6xl md:text-7xl text-primary/20 font-semibold leading-none">%</span>
                 </div>
              </div>
              <p className="text-lg sm:text-xl md:text-2xl italic text-primary/60 mt-4 font-medium max-w-2xl mx-auto px-2">
@@ -139,7 +139,7 @@ export default function VerdictReport({
              </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-16 w-full mt-24 pt-16 border-t border-primary/5">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 sm:gap-12 w-full mt-10 sm:mt-16 md:mt-20 pt-8 sm:pt-12 md:pt-16 border-t border-primary/5">
              <div className="space-y-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.32em] text-primary/45">Rubric alignment (model)</p>
                 <p className="font-serif text-4xl sm:text-5xl font-semibold text-primary tracking-tight">
@@ -162,13 +162,13 @@ export default function VerdictReport({
         {/* Intelligence Table */}
         <motion.div className="lg:col-span-7 space-y-8">
            <div className="flex items-center gap-4 mb-2">
-              <h3 className="text-3xl text-primary font-semibold">Critical Findings</h3>
+              <h3 className="text-2xl sm:text-3xl text-primary font-semibold">Critical Findings</h3>
               <div className="h-px flex-1 bg-primary/10" />
            </div>
            
            <div className="space-y-6">
              {analysis?.case_analysis.unexplained_deductions?.map((finding, i) => (
-               <div key={i} className="glass-panel p-8 rounded-[2rem] hover:bg-white transition-all group cursor-pointer border-primary/5">
+               <div key={i} className="glass-panel p-5 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] hover:bg-white transition-all group border-primary/5">
                  <div className="flex justify-between items-start mb-6">
                    <div className="flex items-center gap-4">
                      <div className="p-3 bg-red-500/5 rounded-xl text-red-500/40 group-hover:text-red-500 transition-colors">
@@ -190,7 +190,7 @@ export default function VerdictReport({
              ))}
 
              {analysis?.case_analysis.strongest_appeal_points?.slice(0, 2).map((point, i) => (
-                <div key={`appeal-${i}`} className="glass-panel p-8 rounded-[2rem] hover:bg-white transition-all group cursor-pointer border-primary/5">
+                <div key={`appeal-${i}`} className="glass-panel p-5 sm:p-8 rounded-[1.5rem] sm:rounded-[2rem] hover:bg-white transition-all group border-primary/5">
                   <div className="flex justify-between items-start mb-6">
                     <div className="flex items-center gap-4">
                       <div className="p-3 bg-primary/5 rounded-xl text-primary/40 group-hover:text-primary transition-colors">
@@ -219,7 +219,7 @@ export default function VerdictReport({
       )}
 
       {analysis?.case_analysis.fairness_review && (
-        <section className="glass-panel rounded-[3rem] p-10 sm:p-16 border border-primary/10 bg-white/90 space-y-10">
+        <section className="glass-panel rounded-[1.75rem] sm:rounded-[2.5rem] md:rounded-[3rem] p-6 sm:p-10 md:p-16 border border-primary/10 bg-white/90 space-y-8 sm:space-y-10">
           <div className="space-y-2">
             <h3 className="text-3xl sm:text-4xl text-primary font-semibold tracking-tight">Fairness read</h3>
             <p className="text-[13px] sm:text-sm font-medium text-on-surface-variant leading-relaxed max-w-3xl">
@@ -250,11 +250,11 @@ export default function VerdictReport({
       )}
 
       {/* Teacher Profile Section */}
-      <section className="bg-[#001438] rounded-[3rem] p-8 sm:p-16 text-white relative overflow-hidden shadow-2xl">
+      <section className="bg-[#001438] rounded-[1.75rem] sm:rounded-[2.5rem] md:rounded-[3rem] p-6 sm:p-10 md:p-16 text-white relative overflow-hidden shadow-2xl">
         <div className="absolute inset-0 paper-texture opacity-10 mix-blend-overlay pointer-events-none" />
-        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-20 items-center">
-          <div className="lg:col-span-5 space-y-10">
-            <h3 className="text-4xl font-semibold tracking-tight">Grading Pattern Analysis</h3>
+        <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-10 sm:gap-16 lg:gap-20 items-center">
+          <div className="lg:col-span-5 space-y-6 sm:space-y-10">
+            <h3 className="text-2xl sm:text-3xl md:text-4xl font-semibold tracking-tight">Grading Pattern Analysis</h3>
             <p className="text-white/50 text-lg italic max-w-sm leading-relaxed">
               Synthesized grading methodology based on feedback patterns and rubric adherence.
             </p>
@@ -274,7 +274,7 @@ export default function VerdictReport({
             )}
           </div>
           
-          <div className="lg:col-span-7 grid grid-cols-2 gap-12 sm:gap-20">
+          <div className="lg:col-span-7 grid grid-cols-2 gap-6 sm:gap-12 md:gap-16">
              {[
                { label: 'Philosophy', val: analysis?.teacher_profile.marking_philosophy || 'Standards', sub: 'Primary Driver' },
                { label: 'Feedback Quality', val: analysis?.teacher_profile.feedback_quality || 'Adequate', sub: 'Tone Analysis' },
@@ -299,24 +299,24 @@ export default function VerdictReport({
       </section>
 
       {/* Institutional Timeline */}
-      <section className="pb-32 px-6">
-         <div className="flex items-center gap-4 mb-20">
+      <section className="pb-16 sm:pb-24 md:pb-32 px-0 sm:px-2">
+         <div className="flex items-center gap-4 mb-10 sm:mb-16">
             <div className="w-2 h-2 rounded-full bg-primary" />
             <h4 className="text-[10px] font-bold uppercase tracking-[0.5em] text-primary/40">Case Resolution Roadmap</h4>
             <div className="h-px flex-1 bg-primary/5" />
          </div>
          
-         <div className="relative border-l border-primary/10 ml-8 pl-16 space-y-24 max-w-3xl">
+         <div className="relative border-l border-primary/10 ml-4 sm:ml-8 pl-6 sm:pl-12 md:pl-16 space-y-12 sm:space-y-20 md:space-y-24 max-w-3xl">
             {[
               { status: 'DONE', color: 'bg-primary', title: 'Analysis Complete', desc: 'Regrade has reviewed your grade, rubric, and feedback for inconsistencies.' },
               { status: 'NEXT', color: 'bg-primary animate-pulse', title: 'Write Your Appeal', desc: 'Use the findings above to draft a clear, professional appeal letter.' },
               { status: 'PENDING', color: 'bg-primary/5', title: 'Submit to Professor', desc: 'Send your appeal to your professor or the department\'s review committee.' },
             ].map((s, idx) => (
               <div key={idx} className="relative group">
-                <div className={`absolute -left-[76px] top-1.5 w-5 h-5 rounded-lg border-2 border-surface shadow-sm ${s.color}`} />
+                <div className={`absolute -left-[1.35rem] sm:-left-[2.75rem] md:-left-[4.75rem] top-1.5 w-4 h-4 sm:w-5 sm:h-5 rounded-lg border-2 border-surface shadow-sm ${s.color}`} />
                 <p className="text-[10px] font-bold tracking-[0.3em] uppercase mb-4 text-primary opacity-40">{s.status}</p>
                 <div className="space-y-3">
-                  <p className="text-4xl text-primary font-semibold">{s.title}</p>
+                  <p className="text-2xl sm:text-3xl md:text-4xl text-primary font-semibold">{s.title}</p>
                   <p className="text-lg text-on-surface-variant italic opacity-60 leading-relaxed">{s.desc}</p>
                 </div>
               </div>

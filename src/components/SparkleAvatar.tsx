@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { BRAND_ICON_SRC, BRAND_NAME } from '../branding';
+import { BRAND_ICON_SRC, COACH_NAME } from '../branding';
 
 export default function SparkleAvatar({ size = 36 }: { size?: number }) {
   return (
@@ -16,7 +16,7 @@ export default function SparkleAvatar({ size = 36 }: { size?: number }) {
         className="w-full h-full object-cover p-1"
         draggable={false}
       />
-      <span className="sr-only">{BRAND_NAME} coach</span>
+      <span className="sr-only">{COACH_NAME}</span>
     </motion.div>
   );
 }

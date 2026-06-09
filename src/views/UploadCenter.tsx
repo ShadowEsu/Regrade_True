@@ -5,6 +5,7 @@ import Advocate from './Advocate';
 import UploadGuidePanel from '../components/UploadGuidePanel';
 import AiEnginePicker from '../components/AiEnginePicker';
 import AppealFlowShell from '../components/AppealFlowShell';
+import AnimatedPrimaryButton from '../components/AnimatedPrimaryButton';
 import { caseService } from '../services/caseService';
 import { scanContentForThreats } from '../lib/securityScanner';
 import { sanitizeUserText } from '../lib/sanitize';
@@ -524,13 +525,7 @@ export default function UploadCenter({
         )}
       </AnimatePresence>
 
-    <AppealFlowShell
-      step="upload"
-      centered
-      title="Upload graded work"
-      subtitle="One PDF or photo is enough — Regrade reads scores, rubric, and teacher comments."
-      onBack={onBack}
-    >
+    <AppealFlowShell step="upload" centered hideHeader onBack={onBack}>
     <div className="space-y-6">
       <div className="space-y-6">
 
@@ -857,30 +852,31 @@ export default function UploadCenter({
         />
 
         <div className="space-y-3 pt-2">
-          <button
-            type="button"
+          <AnimatedPrimaryButton
             onClick={() => void handleSubmit()}
             disabled={loading}
-            className="rg-btn-primary w-full py-3.5 text-[15px] disabled:opacity-50 group"
+            className="w-full text-[16px] font-bold py-4"
           >
             {loading ? (
-              <span className="flex items-center gap-2">
+              <span className="flex items-center gap-2.5">
                 <span className="flex gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce [animation-delay:150ms]" />
-                  <span className="w-1.5 h-1.5 rounded-full bg-white/80 animate-bounce [animation-delay:300ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/90 animate-bounce" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/90 animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-white/90 animate-bounce [animation-delay:300ms]" />
                 </span>
                 {loadingDetail || 'Analyzing…'}
               </span>
             ) : (
               <>
                 Analyze worksheet
-                <ICONS.ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                <ICONS.ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" strokeWidth={2.25} />
               </>
             )}
-          </button>
-          <p className="text-center text-[12px] text-[#9ca3af] flex items-center justify-center gap-1.5">
-            <ICONS.Shield className="w-3.5 h-3.5" strokeWidth={2} />
+          </AnimatedPrimaryButton>
+          <p className="text-center text-[12px] text-ink-muted font-medium flex items-center justify-center gap-1.5">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/8 text-primary">
+              <ICONS.Shield className="w-3.5 h-3.5" strokeWidth={2} />
+            </span>
             Private & encrypted
           </p>
         </div>
@@ -895,7 +891,7 @@ export default function UploadCenter({
           </div>
           <div>
             <p className="text-[14px] font-semibold text-ink">Not sure what to upload?</p>
-            <p className="text-[12px] text-muted mt-0.5">Ask the AI coach for help</p>
+            <p className="text-[12px] text-muted mt-0.5">Ask Mr Whale for help</p>
           </div>
         </button>
       </div>

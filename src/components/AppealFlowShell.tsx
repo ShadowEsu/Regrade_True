@@ -21,13 +21,17 @@ export default function AppealFlowShell({
   onBack,
   children,
   centered = false,
+  hideHeader = false,
+  wide = false,
 }: {
   step: AppealFlowStepId;
-  title: string;
+  title?: string;
   subtitle?: string;
   onBack?: () => void;
   children: ReactNode;
   centered?: boolean;
+  hideHeader?: boolean;
+  wide?: boolean;
 }) {
   return (
     <div className={`space-y-6 ${centered ? 'text-center' : ''}`}>
@@ -44,27 +48,31 @@ export default function AppealFlowShell({
 
       <AppealFlowSteps current={step} />
 
-      <motion.header
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="space-y-3 max-w-lg mx-auto"
-      >
-        {STEP_EYEBROW[step] && (
-          <div className={centered ? 'flex justify-center' : ''}>
-            <MarketingEyebrow>{STEP_EYEBROW[step]}</MarketingEyebrow>
-          </div>
-        )}
-        <h1 className="rg-serif text-[clamp(26px,6vw,34px)] text-ink font-semibold leading-tight">
-          {title}
-        </h1>
-        {subtitle && (
-          <p className="rg-lead text-[15px] md:text-base text-ink-muted max-w-md mx-auto leading-relaxed">
-            {subtitle}
-          </p>
-        )}
-      </motion.header>
+      {!hideHeader && (title || subtitle || STEP_EYEBROW[step]) && (
+        <motion.header
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="space-y-3 max-w-lg mx-auto"
+        >
+          {STEP_EYEBROW[step] && (
+            <div className={centered ? 'flex justify-center' : ''}>
+              <MarketingEyebrow>{STEP_EYEBROW[step]}</MarketingEyebrow>
+            </div>
+          )}
+          {title && (
+            <h1 className="rg-serif text-[clamp(26px,6vw,34px)] text-ink font-semibold leading-tight">
+              {title}
+            </h1>
+          )}
+          {subtitle && (
+            <p className="rg-lead text-[15px] md:text-base text-ink-muted max-w-md mx-auto leading-relaxed">
+              {subtitle}
+            </p>
+          )}
+        </motion.header>
+      )}
 
-      <div className="max-w-xl mx-auto w-full">{children}</div>
+      <div className={`${wide ? 'max-w-xl lg:max-w-5xl' : 'max-w-xl'} mx-auto w-full`}>{children}</div>
     </div>
   );
 }
