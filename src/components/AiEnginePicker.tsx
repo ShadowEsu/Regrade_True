@@ -73,17 +73,6 @@ export default function AiEnginePicker({
                   selected ? opt.selectedClass : 'rg-ai-engine-opt-idle'
                 }`}
               >
-                {selected && (
-                  <motion.span
-                    layout={false}
-                    initial={{ opacity: 0, scale: 0.96 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
-                    className="rg-ai-engine-opt-glow"
-                    aria-hidden
-                  />
-                )}
-
                 <span
                   className={`rg-ai-engine-icon ${opt.iconClass} ${selected ? 'rg-ai-engine-icon-on' : ''}`}
                 >
@@ -98,8 +87,8 @@ export default function AiEnginePicker({
                   {opt.label}
                 </span>
                 <span
-                  className={`relative z-10 text-[9px] sm:text-[10px] font-mono tracking-wide leading-none ${
-                    selected ? 'text-white/75' : 'text-ink-muted'
+                  className={`relative z-10 text-[9px] sm:text-[10px] font-semibold tracking-wide leading-none ${
+                    selected ? 'text-white/85' : 'text-ink-muted'
                   }`}
                 >
                   {opt.hint}

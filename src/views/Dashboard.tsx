@@ -137,8 +137,8 @@ export default function Dashboard({
             </div>
 
             <div className="flex flex-col gap-3 pt-1">
-              <AnimatedPrimaryButton onClick={onStartAppeal} showPlus className="w-full">
-                Start new appeal
+              <AnimatedPrimaryButton onClick={onStartAppeal} showPlus hero className="w-full">
+                Start a New Appeal
               </AnimatedPrimaryButton>
               <motion.button
                 type="button"
@@ -156,14 +156,14 @@ export default function Dashboard({
             </div>
           </div>
 
-          <div className="relative flex shrink-0 items-center justify-center mx-auto sm:mx-0 pt-14 sm:pt-16">
+          <div className="flex shrink-0 flex-col items-center justify-center gap-2 mx-auto sm:mx-0">
             <motion.div
               initial={{ opacity: 0, scale: 0.92, y: 6 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ delay: 0.3, type: 'spring', stiffness: 320, damping: 22 }}
-              className="absolute top-0 left-0 sm:-left-1 z-10 max-w-[10.5rem] sm:max-w-[12.5rem]"
+              className="z-10 max-w-[11rem] sm:max-w-[13rem] text-center"
             >
-              <div className="rg-whale-speech">
+              <div className="rg-whale-speech rg-whale-speech-top">
                 <p className="text-[12px] sm:text-[13px] font-semibold text-ink leading-snug">
                   Hi I'm Mr Whale, your Personal Assistant. Mooooo..
                 </p>

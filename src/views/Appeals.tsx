@@ -59,11 +59,11 @@ export default function Appeals({
           <motion.h1
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="rg-serif text-[clamp(28px,7vw,36px)] text-ink font-semibold leading-[1.08] tracking-tight"
+            className="rg-serif text-[clamp(28px,7vw,38px)] text-ink font-bold leading-[1.06] tracking-tight"
           >
-            Start a new appeal.
+            Start a New Appeal
           </motion.h1>
-          <p className="rg-lead text-[15px] max-w-sm mx-auto">
+          <p className="rg-lead text-[15px] sm:text-[16px] font-medium max-w-sm mx-auto">
             Upload graded work from Canvas, Gradescope, or any LMS — we read the rubric and draft
             your email.
           </p>
@@ -88,8 +88,8 @@ export default function Appeals({
             ))}
           </div>
 
-          <AnimatedPrimaryButton onClick={onStartNew} showPlus className="max-w-xs mx-auto">
-            Start new appeal
+          <AnimatedPrimaryButton onClick={onStartNew} showPlus hero className="max-w-xs mx-auto">
+            Start a New Appeal
           </AnimatedPrimaryButton>
         </div>
       </section>

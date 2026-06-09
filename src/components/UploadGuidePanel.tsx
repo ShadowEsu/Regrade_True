@@ -85,14 +85,14 @@ export default function UploadGuidePanel({
         <MarketingEyebrow>before you upload</MarketingEyebrow>
         <h2
           id="upload-guide-title"
-          className="rg-serif text-[clamp(24px,5.5vw,32px)] text-ink font-semibold leading-tight"
+          className="rg-serif text-[clamp(26px,6vw,34px)] text-ink font-bold leading-tight"
         >
           What to send so the AI reads everything
         </h2>
-        <p className="text-[15px] text-ink-muted leading-relaxed max-w-md mx-auto">
-          Regrade looks for <strong className="font-medium text-ink">scores</strong>,{' '}
-          <strong className="font-medium text-ink">rubric lines</strong>, and{' '}
-          <strong className="font-medium text-primary">every teacher comment</strong> — then explains what to fix or appeal.
+        <p className="text-[15px] sm:text-[16px] font-medium text-ink/80 leading-relaxed max-w-md mx-auto">
+          Regrade looks for <strong className="font-bold text-ink">scores</strong>,{' '}
+          <strong className="font-bold text-ink">rubric lines</strong>, and{' '}
+          <strong className="font-bold text-primary">every teacher comment</strong> — then explains what to fix or appeal.
         </p>
       </header>
 
@@ -103,17 +103,17 @@ export default function UploadGuidePanel({
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.08 * i }}
-            className="flex gap-4 rounded-[var(--radius-card)] border border-hairline bg-canvas p-5"
+            className="flex gap-4 rounded-[var(--radius-card)] rg-glass-form-card p-5"
           >
             <div className="shrink-0 flex flex-col items-center gap-2">
-              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-muted">{step.num}</span>
-              <div className="p-2.5 rounded-xl bg-primary/8 text-primary">
-                <step.icon size={20} strokeWidth={1.75} />
+              <span className="text-[10px] font-mono uppercase tracking-[0.2em] text-ink-muted font-semibold">{step.num}</span>
+              <div className="p-2.5 rounded-xl bg-primary/10 text-primary">
+                <step.icon size={20} strokeWidth={2} />
               </div>
             </div>
             <div className="min-w-0 pt-0.5">
-              <p className="text-[17px] text-ink font-semibold leading-snug">{step.title}</p>
-              <p className="text-[13px] text-ink-muted leading-relaxed mt-1">{step.body}</p>
+              <p className="text-[17px] text-ink font-bold leading-snug">{step.title}</p>
+              <p className="text-[14px] font-medium text-ink/75 leading-relaxed mt-1">{step.body}</p>
             </div>
           </motion.li>
         ))}
@@ -176,46 +176,23 @@ export default function UploadGuidePanel({
             {filteredPlatforms.map((p) => {
               const isActive = p.id === selected;
               return (
-                <motion.div
+                <motion.button
                   key={p.id}
-                  whileTap={{ scale: 0.98 }}
-                  className={`inline-flex items-stretch rounded-[var(--radius-pill)] border shrink-0 overflow-hidden transition-all ${
+                  type="button"
+                  onClick={() => setSelected(p.id)}
+                  whileTap={{ scale: 0.96 }}
+                  className={`inline-flex items-center gap-2.5 rounded-[var(--radius-pill)] px-4 py-2.5 sm:px-5 sm:py-3 text-[13px] sm:text-[14px] font-bold transition-all border shrink-0 ${
                     isActive
                       ? 'bg-primary text-white border-primary shadow-md shadow-primary/20'
-                      : 'bg-canvas text-ink-muted border-hairline hover:border-primary/30'
+                      : 'bg-canvas text-ink border-hairline hover:border-primary/30'
                   }`}
+                  style={!isActive && p.color ? { color: p.color } : undefined}
                 >
-                  <button
-                    type="button"
-                    onClick={() => setSelected(p.id)}
-                    className={`inline-flex items-center gap-2.5 px-4 py-2.5 sm:px-5 sm:py-3 text-[13px] sm:text-[14px] font-semibold transition-colors ${
-                      isActive ? 'text-white' : ''
-                    }`}
-                    style={!isActive && p.color ? { color: p.color } : undefined}
-                  >
-                    {p.logo && (
-                      <img src={p.logo} alt="" className="h-5 sm:h-[22px] w-auto object-contain" draggable={false} />
-                    )}
-                    {p.name}
-                  </button>
-                  {p.appUrl && (
-                    <a
-                      href={p.appUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      onClick={(e) => e.stopPropagation()}
-                      className={`inline-flex items-center justify-center px-3 border-l transition-colors ${
-                        isActive
-                          ? 'border-white/25 text-white/90 hover:bg-white/15'
-                          : 'border-hairline text-primary/70 hover:bg-primary/[0.06] hover:text-primary'
-                      }`}
-                      aria-label={`Open ${p.name} in a new tab`}
-                      title={`Open ${p.name}`}
-                    >
-                      <ICONS.ExternalLink className="w-4 h-4" strokeWidth={2.25} />
-                    </a>
+                  {p.logo && (
+                    <img src={p.logo} alt="" className="h-5 sm:h-[22px] w-auto object-contain" draggable={false} />
                   )}
-                </motion.div>
+                  {p.name}
+                </motion.button>
               );
             })}
           </div>
@@ -228,75 +205,36 @@ export default function UploadGuidePanel({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -4 }}
             transition={{ duration: 0.22 }}
-            className="rounded-[var(--radius-card)] border border-hairline bg-parchment p-6 space-y-5 text-left"
+            className="rg-glass-form-card p-6 space-y-5 text-left"
           >
             <div className="text-center space-y-3">
               {active.logo ? (
-                active.appUrl ? (
-                  <a
-                    href={active.appUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block hover:opacity-80 transition-opacity"
-                  >
-                    <img
-                      src={active.logo}
-                      alt={active.name}
-                      className="h-8 mx-auto object-contain"
-                      draggable={false}
-                    />
-                  </a>
-                ) : (
-                  <img
-                    src={active.logo}
-                    alt={active.name}
-                    className="h-8 mx-auto object-contain"
-                    draggable={false}
-                  />
-                )
+                <img
+                  src={active.logo}
+                  alt={active.name}
+                  className="h-8 mx-auto object-contain"
+                  draggable={false}
+                />
               ) : (
-                active.appUrl ? (
-                  <a
-                    href={active.appUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xl font-bold hover:underline underline-offset-2"
-                    style={{ color: active.color ?? '#1d1d1f' }}
-                  >
-                    {active.name}
-                  </a>
-                ) : (
-                  <p
-                    className="text-xl font-bold"
-                    style={{ color: active.color ?? '#1d1d1f' }}
-                  >
-                    {active.name}
-                  </p>
-                )
-              )}
-              <h3 className="rg-serif text-xl text-ink font-semibold">{active.fileLabel}</h3>
-              <p className="text-[12px] text-muted font-mono">{active.short}</p>
-              {active.appUrl && (
-                <a
-                  href={active.appUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="rg-platform-open-link"
+                <p
+                  className="text-xl font-bold"
+                  style={{ color: active.color ?? '#1d1d1f' }}
                 >
-                  Open {active.name}
-                  <ICONS.ExternalLink className="w-4 h-4" strokeWidth={2.25} />
-                </a>
+                  {active.name}
+                </p>
               )}
+              <h3 className="rg-serif text-xl text-ink font-bold">{active.fileLabel}</h3>
+              <p className="text-[13px] text-ink-muted font-semibold">{active.short}</p>
             </div>
 
             <div className="rounded-xl bg-primary/[0.06] border border-primary/15 px-4 py-3">
-              <p className="text-[10px] font-mono uppercase tracking-wider text-primary mb-1">Where comments live</p>
-              <p className="text-[13px] text-ink leading-relaxed">{active.whereToLook}</p>
+              <p className="text-[11px] font-bold uppercase tracking-wider text-primary mb-1">Where comments live</p>
+              <p className="text-[14px] font-medium text-ink leading-relaxed">{active.whereToLook}</p>
             </div>
 
             <ol className="space-y-3">
               {active.steps.map((line, idx) => (
-                <li key={idx} className="flex gap-3 text-[14px] leading-relaxed text-ink">
+                <li key={idx} className="flex gap-3 text-[14px] font-medium leading-relaxed text-ink">
                   <span className="shrink-0 w-6 h-6 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center mt-0.5">
                     {idx + 1}
                   </span>
@@ -313,7 +251,7 @@ export default function UploadGuidePanel({
                 </p>
                 <ul className="space-y-1">
                   {active.mustInclude.map((item) => (
-                    <li key={item} className="text-[12px] text-ink flex gap-2">
+                    <li key={item} className="text-[13px] font-medium text-ink flex gap-2">
                       <span className="text-primary shrink-0">·</span>
                       {item}
                     </li>
@@ -325,7 +263,7 @@ export default function UploadGuidePanel({
                   <ICONS.AlertCircle size={14} />
                   Skip this
                 </p>
-                <p className="text-[12px] text-red-900/70 leading-snug">{active.avoid}</p>
+                <p className="text-[13px] font-medium text-red-900/80 leading-snug">{active.avoid}</p>
               </div>
             </div>
 
@@ -338,7 +276,7 @@ export default function UploadGuidePanel({
         </AnimatePresence>
       </div>
 
-      <p className="text-[11px] text-muted italic border-t border-hairline pt-5 max-w-md mx-auto">
+      <p className="text-[13px] font-medium text-ink-muted border-t border-hairline pt-5 max-w-md mx-auto">
         PDF and PNG/JPG work · Word → save as PDF first · Then use the upload box below
       </p>
     </motion.section>

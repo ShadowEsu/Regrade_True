@@ -21,8 +21,8 @@ export default function PreferredPlatformPicker({
   return (
     <div className="space-y-4">
       <div className="space-y-1.5 text-center sm:text-left">
-        <h3 className="rg-serif text-[clamp(18px,4vw,22px)] text-ink">Pick an option</h3>
-        <p className="text-[14px] text-ink-muted leading-relaxed">
+        <h3 className="rg-serif text-[clamp(18px,4vw,22px)] text-ink font-bold">Pick an option</h3>
+        <p className="text-[14px] font-medium text-ink/75 leading-relaxed">
           Tap the app where your professor posts grades. You can change this on any appeal.
         </p>
       </div>
@@ -31,68 +31,51 @@ export default function PreferredPlatformPicker({
         {PLATFORM_UPLOAD_GUIDES.map((p) => {
           const selected = current === p.id;
           return (
-            <motion.div
+            <motion.button
               key={p.id}
-              whileTap={{ scale: 0.98 }}
-              className={`rg-platform-pick-tile flex flex-col disabled:opacity-50 ${
+              type="button"
+              disabled={disabled}
+              onClick={() => onChange(p.id)}
+              whileTap={{ scale: 0.97 }}
+              role="radio"
+              aria-checked={selected}
+              className={`rg-platform-pick-tile disabled:opacity-50 ${
                 selected ? 'rg-platform-pick-tile-selected' : ''
               }`}
             >
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => onChange(p.id)}
-                role="radio"
-                aria-checked={selected}
-                className="flex flex-col items-center gap-2 w-full flex-1 disabled:opacity-50"
-              >
-                {selected && (
-                  <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center shadow-sm">
-                    <ICONS.Check className="w-3 h-3" strokeWidth={3} />
-                  </span>
-                )}
+              {selected && (
+                <span className="absolute top-2.5 right-2.5 w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center shadow-sm">
+                  <ICONS.Check className="w-3 h-3" strokeWidth={3} />
+                </span>
+              )}
 
-                <div className="flex items-center justify-center h-9 w-full px-1">
-                  {p.logo ? (
-                    <img
-                      src={p.logo}
-                      alt=""
-                      className="h-7 w-auto max-w-[85%] object-contain"
-                      draggable={false}
-                    />
-                  ) : (
-                    <span
-                      className="text-[17px] font-medium leading-none"
-                      style={{ color: p.color ?? 'var(--color-ink)' }}
-                    >
-                      {p.name}
-                    </span>
-                  )}
-                </div>
-
-                {p.logo && (
+              <div className="flex items-center justify-center h-9 w-full px-1">
+                {p.logo ? (
+                  <img
+                    src={p.logo}
+                    alt=""
+                    className="h-7 w-auto max-w-[85%] object-contain"
+                    draggable={false}
+                  />
+                ) : (
                   <span
-                    className="text-[13px] font-medium leading-tight"
-                    style={{ color: selected ? 'var(--color-primary)' : p.color ?? 'var(--color-ink-muted)' }}
+                    className="text-[17px] font-bold leading-none"
+                    style={{ color: p.color ?? 'var(--color-ink)' }}
                   >
                     {p.name}
                   </span>
                 )}
-              </button>
+              </div>
 
-              {p.appUrl && (
-                <a
-                  href={p.appUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-1 inline-flex items-center justify-center gap-1 text-[11px] font-semibold text-primary/75 hover:text-primary transition-colors pb-1"
-                  aria-label={`Open ${p.name}`}
+              {p.logo && (
+                <span
+                  className="text-[13px] font-bold leading-tight"
+                  style={{ color: selected ? 'var(--color-primary)' : p.color ?? 'var(--color-ink-muted)' }}
                 >
-                  Open app
-                  <ICONS.ExternalLink className="w-3 h-3" strokeWidth={2.5} />
-                </a>
+                  {p.name}
+                </span>
               )}
-            </motion.div>
+            </motion.button>
           );
         })}
       </div>
