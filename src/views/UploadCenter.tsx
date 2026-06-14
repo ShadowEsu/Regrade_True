@@ -1,7 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ICONS } from '../constants';
-import Advocate from './Advocate';
 import UploadGuidePanel from '../components/UploadGuidePanel';
 import AiEnginePicker from '../components/AiEnginePicker';
 import AppealFlowShell from '../components/AppealFlowShell';
@@ -58,14 +57,15 @@ async function fileToBase64Inline(file: File): Promise<{ mimeType: string; data:
 export default function UploadCenter({
   onSubmit,
   onBack,
+  onOpenChat,
 }: {
   onSubmit: (caseId?: string) => void;
   onBack?: () => void;
+  onOpenChat?: () => void;
 }) {
   /** Single optional box — rubric, marks, and feedback are inferred from the upload by default. */
   const [extraNotes, setExtraNotes] = useState('');
 
-  const [showAdvocate, setShowAdvocate] = useState(false);
   const [loading, setLoading] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState<string | null>(null);
   const [securityError, setSecurityError] = useState<string | null>(null);
@@ -446,10 +446,6 @@ export default function UploadCenter({
     }
   };
 
-  if (showAdvocate) {
-    return <Advocate onBack={() => setShowAdvocate(false)} />;
-  }
-
   return (
     <>
       <AnimatePresence>
@@ -539,7 +535,7 @@ export default function UploadCenter({
             <p className="text-[15px] font-medium text-ink/75">Drag graded PDF or photos here when you&apos;re ready</p>
             <button
               type="button"
-              onClick={() => setShowAdvocate(true)}
+              onClick={() => onOpenChat?.()}
               className="rg-btn-ghost text-sm py-2 px-5 mx-auto"
             >
               Questions? Chat
@@ -715,7 +711,7 @@ export default function UploadCenter({
 
         <button
           type="button"
-          onClick={() => setShowAdvocate(true)}
+          onClick={() => onOpenChat?.()}
           className="rg-card rg-card-hover w-full p-4 flex items-center gap-3 text-left"
         >
           <div className="w-10 h-10 rounded-xl bg-[#f0f4ff] flex items-center justify-center shrink-0">

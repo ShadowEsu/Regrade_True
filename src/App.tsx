@@ -86,6 +86,7 @@ export default function App() {
         <UploadCenter
           onSubmit={handleSubmitUpload}
           onBack={exitAppealFlow}
+          onOpenChat={() => setActiveTab('chat')}
         />
       );
     }
