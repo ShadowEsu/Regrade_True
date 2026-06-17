@@ -1,9 +1,10 @@
 import React from 'react';
 import { motion } from 'motion/react';
-import { BRAND_ICON_SRC, COACH_NAME } from '../branding';
+import { BRAND_ICON_SRC, COACH_NAME, COACH_NAV_LABEL } from '../branding';
 import Logo from './Logo';
 import { NAV_TAB_ICONS } from './BottomNavIcons';
 import ProfileHeaderMenu from './ProfileHeaderMenu';
+import ThemeQuickToggle from './ThemeQuickToggle';
 import type { ProfileSection } from '../views/Profile';
 
 interface LayoutProps {
@@ -17,7 +18,7 @@ interface LayoutProps {
 const tabs = [
   { id: 'dashboard', label: 'Home' },
   { id: 'upload', label: 'Appeal' },
-  { id: 'chat', label: 'Mr Whale' },
+  { id: 'chat', label: COACH_NAV_LABEL },
   { id: 'history', label: 'History' },
   { id: 'profile', label: 'Profile' },
 ] as const;
@@ -58,11 +59,14 @@ export default function Layout({
               <div className="text-center min-w-0">
                 <span className="rg-serif text-lg text-ink font-semibold">{COACH_NAME}</span>
               </div>
-              <ProfileHeaderMenu
-                activeSection={profileSection}
-                onSectionChange={onProfileSectionChange}
-                onOpenProfile={() => onTabChange('profile')}
-              />
+              <div className="flex items-center gap-1 shrink-0">
+                <ThemeQuickToggle />
+                <ProfileHeaderMenu
+                  activeSection={profileSection}
+                  onSectionChange={onProfileSectionChange}
+                  onOpenProfile={() => onTabChange('profile')}
+                />
+              </div>
             </>
           ) : (
             <>
@@ -74,11 +78,14 @@ export default function Layout({
               >
                 <Logo size="sm" compact className="!text-left !p-0" />
               </button>
-              <ProfileHeaderMenu
-                activeSection={profileSection}
-                onSectionChange={onProfileSectionChange}
-                onOpenProfile={() => onTabChange('profile')}
-              />
+              <div className="flex items-center gap-1 shrink-0">
+                <ThemeQuickToggle />
+                <ProfileHeaderMenu
+                  activeSection={profileSection}
+                  onSectionChange={onProfileSectionChange}
+                  onOpenProfile={() => onTabChange('profile')}
+                />
+              </div>
             </>
           )}
         </div>
@@ -158,11 +165,10 @@ export default function Layout({
                 </motion.div>
                 <motion.span
                   animate={{
-                    color: active ? '#0066cc' : '#7a7a7a',
                     scale: active ? 1.04 : 1,
                   }}
                   transition={{ type: 'spring', stiffness: 400, damping: 28 }}
-                  className={`text-[10px] tracking-wide ${active ? 'font-semibold' : 'font-medium'}`}
+                  className={`text-[10px] tracking-wide ${active ? 'font-semibold text-primary' : 'font-medium text-ink-muted'}`}
                 >
                   {tab.label}
                 </motion.span>

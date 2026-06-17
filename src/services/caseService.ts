@@ -8,7 +8,6 @@ import {
   getDoc,
   query,
   where,
-  orderBy,
   serverTimestamp,
 } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType } from '../lib/firebase';
@@ -39,6 +38,51 @@ export interface Case {
 }
 
 const previewCaseStore = new Map<string, Case>();
+const PREVIEW_CASES_STORAGE_KEY = 'regrade_preview_cases_v1';
+
+function caseTimestampMs(raw: Case['createdAt']): number {
+  if (!raw) return 0;
+  if (typeof raw?.toDate === 'function') return raw.toDate().getTime();
+  if (raw instanceof Date) return raw.getTime();
+  const parsed = new Date(raw).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function sortCasesNewestFirst(cases: Case[]): Case[] {
+  return [...cases].sort((a, b) => caseTimestampMs(b.createdAt) - caseTimestampMs(a.createdAt));
+}
+
+function loadPreviewCaseStore(): Map<string, Case> {
+  if (typeof window === 'undefined') return new Map();
+  try {
+    const raw = localStorage.getItem(PREVIEW_CASES_STORAGE_KEY);
+    if (!raw) return new Map();
+    const parsed = JSON.parse(raw) as Case[];
+    const map = new Map<string, Case>();
+    for (const c of parsed) {
+      if (c.id) map.set(c.id, c);
+    }
+    return map;
+  } catch {
+    return new Map();
+  }
+}
+
+function persistPreviewCaseStore() {
+  if (typeof window === 'undefined') return;
+  try {
+    const payload = [...previewCaseStore.values()];
+    localStorage.setItem(PREVIEW_CASES_STORAGE_KEY, JSON.stringify(payload));
+  } catch {
+    // localStorage full or unavailable — in-memory still works this session
+  }
+}
+
+if (isPreviewMode()) {
+  for (const [id, c] of loadPreviewCaseStore()) {
+    previewCaseStore.set(id, c);
+  }
+}
 
 /** Demo verdict only — not listed in History/Appeals for new preview users. */
 function ensurePreviewSampleCase(): Case {
@@ -50,9 +94,9 @@ function ensurePreviewSampleCase(): Case {
 }
 
 function listPreviewUserCases(): Case[] {
-  return [...previewCaseStore.values()]
-    .filter((c) => c.id !== PREVIEW_CASE_ID)
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  return sortCasesNewestFirst(
+    [...previewCaseStore.values()].filter((c) => c.id !== PREVIEW_CASE_ID),
+  );
 }
 
 export const caseService = {
@@ -70,6 +114,7 @@ export const caseService = {
         updatedAt: now,
       };
       previewCaseStore.set(id, saved);
+      persistPreviewCaseStore();
       return saved;
     }
 
@@ -96,15 +141,13 @@ export const caseService = {
       return listPreviewUserCases();
     }
 
-    const q = query(
-      collection(db, 'cases'), 
-      where('userId', '==', auth.currentUser.uid),
-      orderBy('createdAt', 'desc')
-    );
-    
+    const q = query(collection(db, 'cases'), where('userId', '==', auth.currentUser.uid));
+
     try {
       const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Case));
+      return sortCasesNewestFirst(
+        snapshot.docs.map((docSnap) => ({ id: docSnap.id, ...docSnap.data() } as Case)),
+      );
     } catch (error) {
       handleFirestoreError(error, OperationType.LIST, 'cases');
       throw error;
@@ -133,6 +176,7 @@ export const caseService = {
   async deleteCase(id: string) {
     if (isPreviewMode()) {
       previewCaseStore.delete(id);
+      persistPreviewCaseStore();
       return;
     }
 
@@ -153,6 +197,7 @@ export const caseService = {
           previewCaseStore.delete(key);
         }
       }
+      persistPreviewCaseStore();
       return;
     }
 
@@ -171,6 +216,7 @@ export const caseService = {
       const existing = previewCaseStore.get(id);
       if (!existing) return;
       previewCaseStore.set(id, { ...existing, ...updates, updatedAt: new Date() });
+      persistPreviewCaseStore();
       return;
     }
 

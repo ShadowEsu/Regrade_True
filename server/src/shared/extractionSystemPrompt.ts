@@ -15,7 +15,7 @@ INPUTS YOU RECEIVE
 - Optional TEXT: extracted from PDFs in the browser (often incomplete on scanned "Download Graded Copy" files — ALWAYS prioritize what you see in images when text is missing or conflicts).
 - Optional student notes.
 
-Read EVERY image before writing JSON. Students upload from Gradescope, Canvas, Moodle, Blackboard, D2L Brightspace, Google Classroom, Turnitin, Schoology, Teams Education, or marked paper.
+Read EVERY image before writing JSON. Students upload from Gradescope, Canvas, Moodle, Blackboard, D2L Brightspace, Google Classroom, Turnitin, Schoology, Teams, Crowdmark, Akindi, ManageBac, itslearning, Satchel One, Edmodo, Open LMS, PowerSchool, Sakai, or marked paper — worldwide.
 
 ═══════════════════════════════════════════════════════════════
 STEP 1 — CLASSIFY EACH IMAGE (internal; list in image_types_detected)
@@ -29,6 +29,10 @@ TYPE E — Instructor comment page (paragraph feedback)
 TYPE F — Canvas / LMS grade or SpeedGrader view
 TYPE G — Turnitin Feedback Studio (QuickMarks + rubric card; ignore similarity-only highlights)
 TYPE H — Moodle / Blackboard / D2L feedback or annotated PDF
+TYPE I — Crowdmark evaluation / annotated exam pages
+TYPE J — Akindi scan review (bubble sheet + optional grader notes)
+TYPE K — ManageBac / IB criterion rubric screenshot
+TYPE L — itslearning / Satchel One / regional LMS feedback view
 
 ${PLATFORM_READING_GUIDE}
 
@@ -56,12 +60,23 @@ RULE N7 — RUBRIC ITEMS vs FREEHAND COMMENTS: extract separately (checkbox rubr
 
 RULE N8 — INFORMAL MARKS: ticks, "see me", highlighter — map to question when possible; else flag unmapped.
 
+RULE N9 — NO COMMENT ≠ NO DEDUCTION: if points_earned < points_possible, you MUST hunt for rubric rows AND comments on every page. If none exist, set deductions_with_no_comment: true and explain in extraction_uncertainties.
+
+RULE N10 — STUDENT-PASTED RUBRIC: if the rubric input field contains actual criteria text (not "infer from upload"), treat it as the assignment rubric for cross-check — but still only extract applied items you SEE on images; do not mark rubric items applied unless visible on the graded export.
+
 ═══════════════════════════════════════════════════════════════
-STEP 3 — RETURN ONLY THIS JSON (evidence ledger)
+STEP 3 — COMPLETENESS PASS (before JSON)
+═══════════════════════════════════════════════════════════════
+- Re-scan each question: earned vs possible → any gap needs rubric OR comment evidence.
+- Score-only export (numbers only, no feedback)? → extraction_uncertainties + requires_retake when critical.
+- Multi-page: ensure annotated pages merged into same question_id.
+
+═══════════════════════════════════════════════════════════════
+STEP 4 — RETURN ONLY THIS JSON (evidence ledger)
 ═══════════════════════════════════════════════════════════════
 
 {
-  "source_platform": "gradescope | canvas | moodle | blackboard | brightspace | google_classroom | turnitin | paper | schoology | teams | mixed | unknown",
+  "source_platform": "gradescope | canvas | moodle | blackboard | brightspace | google_classroom | turnitin | paper | schoology | teams | crowdmark | akindi | managebac | itslearning | satchel_one | edmodo | openlms | powerschool | sakai | mixed | unknown",
   "image_types_detected": ["e.g. gradescope_graded_submission, gradescope_score_summary, canvas_speedgrader"],
   "scoring_method": "negative | positive | unknown",
   "assignment": {

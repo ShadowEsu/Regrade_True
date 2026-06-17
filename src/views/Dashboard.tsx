@@ -8,6 +8,7 @@ import MarketingEyebrow from '../components/MarketingEyebrow';
 import AnimatedPrimaryButton from '../components/AnimatedPrimaryButton';
 import SupportedPlatforms from '../components/SupportedPlatforms';
 import CoachWhale from '../components/CoachWhale';
+import { COACH_CTA, COACH_GREETING } from '../branding';
 import {
   getPossiblePointsBack,
   getClassName,
@@ -147,7 +148,7 @@ export default function Dashboard({
                 className="rg-dash-coach-chip group text-ink-muted hover:text-ink w-full justify-center"
               >
                 <CoachWhale size={36} animate={false} />
-                <span className="font-semibold text-ink">How can I help you?</span>
+                <span className="font-semibold text-ink">{COACH_CTA}</span>
                 <ICONS.ArrowRight
                   className="w-4 h-4 text-primary opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"
                   strokeWidth={2}
@@ -161,11 +162,11 @@ export default function Dashboard({
               initial={{ opacity: 0, scale: 0.92, y: 6 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ delay: 0.3, type: 'spring', stiffness: 320, damping: 22 }}
-              className="z-10 max-w-[11rem] sm:max-w-[13rem] text-center"
+              className="z-10 max-w-[14rem] sm:max-w-[17rem] text-center"
             >
               <div className="rg-whale-speech rg-whale-speech-top">
                 <p className="text-[12px] sm:text-[13px] font-semibold text-ink leading-snug">
-                  Hi I'm Mr Whale, your Personal Assistant. Mooooo..
+                  {COACH_GREETING}
                 </p>
               </div>
             </motion.div>

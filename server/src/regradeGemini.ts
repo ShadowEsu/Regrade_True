@@ -8,6 +8,11 @@ import { ANALYTICAL_SYSTEM_PROMPT } from "./shared/analyticalSystemPrompt.js";
 import { ADVOCATE_SYSTEM_PROMPT } from "./shared/advocateSystemPrompt.js";
 import { EXTRACTION_SYSTEM_PROMPT } from "./shared/extractionSystemPrompt.js";
 import {
+  auditGradingCompleteness,
+  mergeAuditIntoAnalysis,
+  mergeAuditIntoLedger
+} from "./shared/gradeExtractionAudit.js";
+import {
   analyzeSingleShot as claudeSingleShot,
   isAnthropicConfigured,
   reasonOverLedger as claudeReason,
@@ -328,6 +333,22 @@ function attachAiNotes(result: AnalysisLike, notes: AiNotes): AnalysisLike {
   return out;
 }
 
+function runGradingAudit(body: z.infer<typeof AnalyzeSchema>, ledger: LedgerLike) {
+  return auditGradingCompleteness(ledger, {
+    rubricData: body.rubricData,
+    feedbackData: body.feedbackData
+  });
+}
+
+function applyAuditToAnalysis(
+  body: z.infer<typeof AnalyzeSchema>,
+  analysis: AnalysisLike,
+  ledger?: LedgerLike
+): AnalysisLike {
+  const audit = runGradingAudit(body, ledger ?? analysis);
+  return mergeAuditIntoAnalysis(analysis, audit);
+}
+
 export function createRegradeGeminiRouter(env: Env): Router {
   const r = Router();
 
@@ -387,15 +408,19 @@ export function createRegradeGeminiRouter(env: Env): Router {
             feedbackText: body.feedbackData,
             inlineImages: normalizeInlineImages(body.inlineImages)
           })) as AnalysisLike;
-          const notes = buildSingleReaderNotes(claudeResult, "claude", true);
+          const audited = applyAuditToAnalysis(body, claudeResult);
+          const notes = buildSingleReaderNotes(audited, "claude", true);
           notes.cross_check_summary =
             "The first reader (Gemini) couldn't finish, so Claude handled the whole analysis on its own. Try again later to get the cross-check back.";
           if (env.NODE_ENV !== "production") {
             // eslint-disable-next-line no-console
             console.warn("Hybrid: Gemini extraction failed, used Claude single-shot.", geminiErr);
           }
-          return res.json(attachAiNotes(claudeResult, notes));
+          return res.json(attachAiNotes(audited, notes));
         }
+
+        const audit = runGradingAudit(body, ledger);
+        ledger = mergeAuditIntoLedger(ledger, audit);
 
         // Stage 2: Claude reasoning over the ledger
         let claudeResult: AnalysisLike;
@@ -410,7 +435,7 @@ export function createRegradeGeminiRouter(env: Env): Router {
         } catch (claudeErr) {
           // Claude failed — fall back to single-shot Gemini so the student
           // never sees a dead-end. Mark fallback in ai_notes.
-          const geminiOnly = await runGeminiSingleShot(getGemini(), body);
+          const geminiOnly = applyAuditToAnalysis(body, await runGeminiSingleShot(getGemini(), body));
           const notes = buildSingleReaderNotes(geminiOnly, "gemini", true);
           notes.cross_check_summary =
             "The second reader (Claude) couldn't finish, so Gemini handled the whole analysis. Your case is still useful — re-run later to get the cross-check.";
@@ -421,26 +446,30 @@ export function createRegradeGeminiRouter(env: Env): Router {
           return res.json(attachAiNotes(geminiOnly, notes));
         }
 
+        const auditedClaude = applyAuditToAnalysis(body, claudeResult, ledger);
+
         // Stage 3: deterministic diff
-        const { disagreements, summary: crossSummary } = diffLedgerVsClaude(ledger, claudeResult);
+        const { disagreements, summary: crossSummary } = diffLedgerVsClaude(ledger, auditedClaude);
 
         const extractionSummary =
           typeof ledger.extraction_summary === "string" && ledger.extraction_summary.trim()
             ? ledger.extraction_summary
             : templateExtractionSummary(ledger as AnalysisLike);
 
-        const extractionUncertainties = Array.isArray(ledger.extraction_uncertainties)
-          ? ledger.extraction_uncertainties.filter((s): s is string => typeof s === "string")
-          : [];
+        const extractionUncertainties = Array.isArray(auditedClaude.extraction_uncertainties)
+          ? auditedClaude.extraction_uncertainties.filter((s): s is string => typeof s === "string")
+          : Array.isArray(ledger.extraction_uncertainties)
+            ? ledger.extraction_uncertainties.filter((s): s is string => typeof s === "string")
+            : [];
 
         const reasoningSummary =
-          typeof claudeResult._reasoning_summary === "string" &&
-          claudeResult._reasoning_summary.trim()
-            ? claudeResult._reasoning_summary
-            : templateReasoningSummary(claudeResult);
+          typeof auditedClaude._reasoning_summary === "string" &&
+          auditedClaude._reasoning_summary.trim()
+            ? auditedClaude._reasoning_summary
+            : templateReasoningSummary(auditedClaude);
 
         // Bump confidence down slightly when scores actually disagreed.
-        const confidence = claudeResult.confidence;
+        const confidence = auditedClaude.confidence;
         if (
           disagreements.length > 0 &&
           confidence &&
@@ -464,19 +493,22 @@ export function createRegradeGeminiRouter(env: Env): Router {
           disagreements,
           fallback_used: false
         };
-        return res.json(attachAiNotes(claudeResult, notes));
+        return res.json(attachAiNotes(auditedClaude, notes));
       }
 
       // ───────────────────────── CLAUDE-ONLY PATH ─────────────────────────
       if (engine === "claude" && env.ANTHROPIC_API_KEY) {
         try {
-          const claudeResult = (await claudeSingleShot({
-            apiKey: env.ANTHROPIC_API_KEY,
-            assignmentText: body.assignmentData,
-            rubricText: body.rubricData,
-            feedbackText: body.feedbackData,
-            inlineImages: normalizeInlineImages(body.inlineImages)
-          })) as AnalysisLike;
+          const claudeResult = applyAuditToAnalysis(
+            body,
+            (await claudeSingleShot({
+              apiKey: env.ANTHROPIC_API_KEY,
+              assignmentText: body.assignmentData,
+              rubricText: body.rubricData,
+              feedbackText: body.feedbackData,
+              inlineImages: normalizeInlineImages(body.inlineImages)
+            })) as AnalysisLike
+          );
           const notes = buildSingleReaderNotes(claudeResult, "claude", false);
           return res.json(attachAiNotes(claudeResult, notes));
         } catch (claudeErr) {
@@ -484,7 +516,7 @@ export function createRegradeGeminiRouter(env: Env): Router {
             // eslint-disable-next-line no-console
             console.warn("Claude-only failed, falling back to Gemini single-shot.", claudeErr);
           }
-          const geminiOnly = await runGeminiSingleShot(getGemini(), body);
+          const geminiOnly = applyAuditToAnalysis(body, await runGeminiSingleShot(getGemini(), body));
           const notes = buildSingleReaderNotes(geminiOnly, "gemini", true);
           notes.cross_check_summary =
             "Claude couldn't finish this time, so Gemini handled the analysis. Try again later for Claude.";
@@ -493,7 +525,7 @@ export function createRegradeGeminiRouter(env: Env): Router {
       }
 
       // ───────────────────────── GEMINI-ONLY PATH (default fallback) ─────────────────────────
-      const geminiResult = await runGeminiSingleShot(getGemini(), body);
+      const geminiResult = applyAuditToAnalysis(body, await runGeminiSingleShot(getGemini(), body));
       const notes = buildSingleReaderNotes(geminiResult, "gemini", fallbackFromUserChoice);
       return res.json(attachAiNotes(geminiResult, notes));
     } catch (e) {

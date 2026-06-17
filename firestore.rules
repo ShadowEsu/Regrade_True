@@ -89,7 +89,7 @@ service cloud.firestore {
       return data.keys().hasAll(['title', 'userId', 'createdAt', 'updatedAt', 'ref', 'status']) &&
              data.keys().hasOnly(['title', 'description', 'ref', 'status', 'progress',
                                    'evidenceLogged', 'facultyReview', 'userId',
-                                   'analysis', 'rawInput', 'createdAt', 'updatedAt']) &&
+                                   'analysis', 'rawInput', 'draftEmail', 'createdAt', 'updatedAt']) &&
              boundedString(data.title, 200) &&
              optionalBoundedString(data.description, 4000) &&
              boundedString(data.ref, 64) &&
@@ -100,6 +100,7 @@ service cloud.firestore {
              data.userId == request.auth.uid &&
              (!('analysis' in data) || data.analysis is map) &&
              (!('rawInput' in data) || isValidRawInputBlock(data.rawInput)) &&
+             (!('draftEmail' in data) || optionalBoundedString(data.draftEmail, 64000)) &&
              data.createdAt == request.time &&
              data.updatedAt == request.time;
     }
@@ -124,7 +125,8 @@ service cloud.firestore {
              data.evidenceLogged is bool &&
              data.facultyReview is bool &&
              (!('analysis' in data) || data.analysis is map) &&
-             (!('rawInput' in data) || isValidRawInputBlock(data.rawInput));
+             (!('rawInput' in data) || isValidRawInputBlock(data.rawInput)) &&
+             (!('draftEmail' in data) || optionalBoundedString(data.draftEmail, 64000));
     }
 
     // --- Rules ---
@@ -160,7 +162,8 @@ service cloud.firestore {
                       isValidCaseUpdate(incoming(), existing()) &&
                       incoming().diff(existing()).affectedKeys().hasOnly([
                         'title', 'description', 'status', 'progress',
-                        'evidenceLogged', 'facultyReview', 'analysis', 'rawInput', 'updatedAt'
+                        'evidenceLogged', 'facultyReview', 'analysis', 'rawInput',
+                        'draftEmail', 'updatedAt'
                       ]);
       allow delete: if isSignedIn() && existing().userId == request.auth.uid;
 

@@ -46,7 +46,10 @@ import {
   LogOut,
   Copy,
   Loader2,
-  ExternalLink
+  ExternalLink,
+  Sun,
+  Moon,
+  Monitor
 } from 'lucide-react';
 
 export const ICONS = {
@@ -98,6 +101,9 @@ export const ICONS = {
   Copy,
   Loader2,
   ExternalLink,
+  Sun,
+  Moon,
+  Monitor,
   // Aliases for historical compatibility
   Bank: Landmark,
   Trending: TrendingUp,

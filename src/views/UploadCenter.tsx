@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ICONS } from '../constants';
 import UploadGuidePanel from '../components/UploadGuidePanel';
+import UploadIngredientsPanel from '../components/UploadIngredientsPanel';
+import { PLATFORM_UPLOAD_GUIDES } from '../lib/platformUploadGuides';
 import AiEnginePicker from '../components/AiEnginePicker';
 import AppealFlowShell from '../components/AppealFlowShell';
 import AnimatedPrimaryButton from '../components/AnimatedPrimaryButton';
@@ -20,6 +22,7 @@ import { buildStudentProfileContext, isValidPlatformGuideId } from '../lib/profi
 import type { PlatformGuideId } from '../lib/platformUploadGuides';
 import { AI_SERVICES_CONSENT, AI_TRADEMARK_FOOTER } from '../version';
 import type { AiEngine } from '../types';
+import { COACH_CTA } from '../branding';
 
 type PdfStatus = 'idle' | 'loading' | 'done' | 'error';
 
@@ -65,6 +68,8 @@ export default function UploadCenter({
 }) {
   /** Single optional box — rubric, marks, and feedback are inferred from the upload by default. */
   const [extraNotes, setExtraNotes] = useState('');
+  /** Paste assignment rubric / mark scheme when the graded export doesn't include criteria. */
+  const [rubricCriteria, setRubricCriteria] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState<string | null>(null);
@@ -302,7 +307,8 @@ export default function UploadCenter({
     const pdfTexts = stagedUploads.map((s) => s.pdfText).filter((t): t is string => !!t && t.length > 0);
     const hasPdfText = pdfTexts.length > 0;
     const notes = sanitizeUserText(extraNotes.trim(), 32_000);
-    const hasTypedContext = notes.length > 0;
+    const rubricPaste = sanitizeUserText(rubricCriteria.trim(), 32_000);
+    const hasTypedContext = notes.length > 0 || rubricPaste.length > 0;
     const hasVisionEvidence = hasImageEvidence || hasPdfFiles;
 
     if (!hasTypedContext && !hasVisionEvidence) {
@@ -333,13 +339,14 @@ export default function UploadCenter({
       : '';
 
     const inferFromUpload = hasVisionEvidence
-      ? `(Infer from uploads. Detect platform: Gradescope, Canvas, Moodle, Blackboard, D2L Brightspace, Google Classroom, Turnitin, Schoology, PowerSchool, Sakai, or handwritten paper. Extract EVERY instructor comment including Gradescope bubbles, Canvas SpeedGrader pins, Turnitin QuickMarks, Schoology rubric rows, and margin notes. ${platformHint})`
+      ? `(Infer from uploads. Detect platform: Gradescope, Canvas, Moodle, Blackboard, D2L Brightspace, Google Classroom, Turnitin, Crowdmark, Akindi, ManageBac, itslearning, Satchel One, Schoology, PowerSchool, Sakai, or handwritten paper. Extract EVERY instructor comment including Gradescope bubbles, Canvas SpeedGrader pins, Turnitin QuickMarks, and margin notes. Flag score-only exports with no rubric or comments. ${platformHint})`
       : platformHint;
 
-    const rubricBlock =
-      hasTypedContext && !hasVisionEvidence
+    const rubricBlock = rubricPaste
+      ? `--- Assignment rubric / mark scheme (pasted by student — use to check whether marks align) ---\n${rubricPaste}`
+      : hasTypedContext && !hasVisionEvidence
         ? '(Student notes only — extract any rubric or criteria mentioned in the notes.)'
-        : inferFromUpload || '(No separate rubric text.)';
+        : inferFromUpload || '(No separate rubric text — infer criteria only from what is visible on the graded export.)';
 
     const feedbackBlock =
       hasTypedContext && !hasVisionEvidence
@@ -428,7 +435,7 @@ export default function UploadCenter({
         analysis: analysisResult,
         rawInput: {
           assignment: notes + (pdfTexts.length ? `\n[${pdfTexts.length} PDF(s) extracted]` : ''),
-          rubric: '',
+          rubric: rubricPaste,
           feedback: '',
         },
       });
@@ -464,7 +471,7 @@ export default function UploadCenter({
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.96, opacity: 0 }}
               transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
-              className="bg-white rounded-3xl max-w-lg w-full p-8 md:p-10 shadow-2xl border border-primary/10 space-y-6"
+              className="rg-glass-form-card max-w-lg w-full p-8 md:p-10 shadow-2xl space-y-6"
             >
               <div className="flex items-start gap-3">
                 <div className="p-2 rounded-xl bg-primary/5">
@@ -522,6 +529,15 @@ export default function UploadCenter({
           }
         />
 
+        <UploadIngredientsPanel
+          hasUpload={stagedUploads.length > 0}
+          hasRubricPaste={rubricCriteria.trim().length > 0}
+          platformName={
+            PLATFORM_UPLOAD_GUIDES.find((g) => g.id === appealPlatform)?.name ??
+            appealPlatform.replace(/_/g, ' ')
+          }
+        />
+
         <motion.div
           initial={{ opacity: 0, scale: 0.99 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -538,7 +554,7 @@ export default function UploadCenter({
               onClick={() => onOpenChat?.()}
               className="rg-btn-ghost text-sm py-2 px-5 mx-auto"
             >
-              Questions? Chat
+              Get upload guidance
             </button>
           </div>
 
@@ -589,7 +605,7 @@ export default function UploadCenter({
                 e.target.value = '';
               }}
             />
-            <div className="bg-white p-3 rounded-xl shadow-md shadow-primary/10">
+            <div className="rg-glass-chip p-3 rounded-xl shadow-md shadow-primary/10">
               <ICONS.Upload className="text-primary w-7 h-7" />
             </div>
             <p className="rg-serif text-[clamp(20px,4.5vw,24px)] text-ink font-bold">Drop or choose PDF / photo</p>
@@ -601,7 +617,7 @@ export default function UploadCenter({
               {stagedUploads.map((u) => (
                 <div
                   key={u.id}
-                  className="relative rounded-xl border border-primary/10 bg-white overflow-hidden shadow-sm"
+                  className="relative rounded-xl border border-primary/10 rg-glass-chip overflow-hidden shadow-sm"
                 >
                   {u.previewUrl ? (
                     <img src={u.previewUrl} alt="" className="w-full h-40 object-contain bg-black/[0.03]" />
@@ -646,6 +662,23 @@ export default function UploadCenter({
 
           <div className="space-y-2 pt-2 border-t border-primary/5">
             <label className="text-[13px] font-bold text-ink/70">
+              Optional — assignment rubric or mark scheme
+            </label>
+            <p className="text-[12px] text-ink/55 leading-relaxed">
+              Paste criteria if your graded export only shows scores (common on Akindi, gradebook PDFs, or score-summary pages).
+            </p>
+            <textarea
+              value={rubricCriteria}
+              onChange={(e) => setRubricCriteria(e.target.value)}
+              maxLength={8000}
+              rows={3}
+              className="w-full rg-glass-input rounded-xl px-4 py-3 text-sm outline-none resize-y text-ink placeholder:text-ink-muted/50"
+              placeholder="e.g. Q1: correct formula (+5), units required (−1). Q2: show all work (−2 if missing steps)…"
+            />
+          </div>
+
+          <div className="space-y-2 pt-2 border-t border-primary/5">
+            <label className="text-[13px] font-bold text-ink/70">
               Optional — only if the worksheet doesn&apos;t show everything
             </label>
             <textarea
@@ -653,7 +686,7 @@ export default function UploadCenter({
               onChange={(e) => setExtraNotes(e.target.value)}
               maxLength={8000}
               rows={3}
-              className="w-full bg-white border border-primary/10 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-primary/10 focus:border-primary/20 resize-y text-primary/85 placeholder:text-primary/30"
+              className="w-full rg-glass-input rounded-xl px-4 py-3 text-sm outline-none resize-y text-ink placeholder:text-ink-muted/50"
               placeholder="e.g. course name, which question you’re appealing, or text that’s cut off in the photo…"
             />
           </div>
@@ -712,14 +745,14 @@ export default function UploadCenter({
         <button
           type="button"
           onClick={() => onOpenChat?.()}
-          className="rg-card rg-card-hover w-full p-4 flex items-center gap-3 text-left"
-        >
-          <div className="w-10 h-10 rounded-xl bg-[#f0f4ff] flex items-center justify-center shrink-0">
+            className="rg-card rg-card-hover w-full p-4 flex items-center gap-3 text-left border border-hairline"
+          >
+            <div className="w-10 h-10 rounded-xl rg-coach-chip-icon flex items-center justify-center shrink-0">
             <ICONS.Bot className="w-5 h-5 text-primary" strokeWidth={1.75} />
           </div>
           <div>
-            <p className="text-[14px] font-semibold text-ink">Not sure what to upload?</p>
-            <p className="text-[12px] text-muted mt-0.5">Ask Mr Whale for help</p>
+            <p className="text-[14px] font-semibold text-ink">Need upload guidance?</p>
+            <p className="text-[12px] text-muted mt-0.5">{COACH_CTA}</p>
           </div>
         </button>
       </div>

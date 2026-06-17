@@ -87,7 +87,7 @@ After identifying image types and reading all numbers carefully,
 return ONLY this JSON object. No preamble, no markdown, just the JSON.
 
 {
-  "source_platform": "gradescope | canvas | moodle | blackboard | brightspace | google_classroom | turnitin | paper | schoology | teams | mixed | unknown",
+  "source_platform": "gradescope | canvas | moodle | blackboard | brightspace | google_classroom | turnitin | paper | schoology | teams | crowdmark | akindi | managebac | itslearning | satchel_one | edmodo | openlms | powerschool | sakai | mixed | unknown",
 
   "image_types_detected": [
     "List what each image was: e.g. ['gradescope_score_summary', 'gradescope_graded_submission', 'worksheet_with_comments']"

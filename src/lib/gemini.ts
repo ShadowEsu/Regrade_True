@@ -61,7 +61,7 @@ export async function chatWithAdvocate(
     await new Promise((r) => setTimeout(r, 400));
     if (options?.caseContext) {
       return (
-        'Preview mode: Mr Whale would use your worksheet analysis here. ' +
+        'Preview mode: your appeal assistant would use worksheet analysis here. ' +
         'Ask me to polish your draft, explain a finding, or suggest what to say to your professor.'
       );
     }
@@ -90,7 +90,7 @@ export async function chatWithAdvocate(
     console.error('Advocate API Error:', error);
     if (error instanceof Error && error.message.includes('AI analysis is coming soon')) {
       throw new Error(
-        'Mr Whale chat needs the analysis server. Sign-in and appeals work on Firebase — AI chat will connect when you deploy the API.',
+        'Appeal assistant chat requires the analysis server. Sign-in and appeals work on Firebase — AI chat will connect when you deploy the API.',
       );
     }
     throw new Error(

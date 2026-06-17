@@ -8,7 +8,7 @@ DETECT PLATFORM FIRST (set source_platform + image_types_detected)
 ═══════════════════════════════════════════════════════════════
 
 Use visual branding, URL bars in screenshots, and layout. Allowed source_platform values:
-gradescope | canvas | moodle | blackboard | brightspace | google_classroom | turnitin | paper | schoology | powerschool | sakai | teams | mixed | unknown
+gradescope | canvas | moodle | blackboard | brightspace | google_classroom | turnitin | paper | schoology | powerschool | sakai | teams | crowdmark | akindi | managebac | itslearning | satchel_one | edmodo | openlms | mixed | unknown
 
 GRADESCOPE — teacher comments & marks (CRITICAL)
 Visual cues: "Gradescope" header, green/red rubric tiles, question list with "X / Y pts", "Download Graded Copy" style PDF.
@@ -85,12 +85,71 @@ WHERE COMMENTS LIVE:
 - Gradebook item comments → overall_professor_comments.
 - Rubric on submission if enabled → rubric_items_applied.
 
+CROWDMARK (Canada, UK, Australia — common in STEM)
+Visual cues: Crowdmark logo, question-by-question grading pages, "Evaluation" sidebar, handwritten annotation layer on PDF.
+WHERE COMMENTS LIVE:
+- Per-question evaluation panel with grader comments → professor_comments side_panel or rubric_panel.
+- Applied evaluation criteria with point adjustments → rubric_items_applied.
+- Handwritten grader marks on the page → margin_handwritten.
+- Score summary listing Q1, Q2 with points → per-question scores.
+
+AKINDI (scantron / bubble-sheet exams)
+Visual cues: Akindi branding, question grid, "Review" view, wrong-answer highlighting on scan sheets.
+WHERE COMMENTS LIVE:
+- Often MINIMAL text — mostly which answer was marked wrong and points per question.
+- Instructor may add free-text feedback in review panel → professor_comments.
+- If only correct/incorrect with no rubric: set deductions_with_no_comment when points lost without explanation.
+
+MANAGEBAC (IB schools worldwide)
+Visual cues: ManageBac assignment view, IB criterion rubrics (A/B/C/D), "Teacher Comments", assessment criteria levels.
+WHERE COMMENTS LIVE:
+- Criterion-level rubric selections (e.g. Criterion A: Level 5) → rubric_items_applied with criterion name.
+- Teacher comment box on task → overall_professor_comments or per-criterion comments.
+- IB grades may use levels not raw points — extract both level labels AND any numeric score shown.
+
+ITSLEARNING (Nordics, Benelux, UK)
+Visual cues: itslearning purple/green, "Assessment", rubric matrix, teacher feedback field.
+WHERE COMMENTS LIVE:
+- Rubric matrix cells selected → rubric_items_applied.
+- Feedback text area and file annotations → professor_comments.
+
+SATCEL ONE / SHOW MY HOMEWORK (UK, common in secondary schools)
+Visual cues: Satchel One branding, homework grade, teacher comment thread, skills rubric.
+WHERE COMMENTS LIVE:
+- Teacher comment on submission → professor_comments.
+- Skills rubric or mark scheme checklist → rubric_items_applied.
+
+EDMODO / CLASSROOM ALTERNATIVES
+Visual cues: Assignment grade with comment bubble, simple rubric checklist.
+WHERE COMMENTS LIVE: Comment thread + optional rubric ticks — same extraction rules as Schoology.
+
+OPEN LMS / POPULI / REGIONAL PORTALS
+Visual cues: Generic LMS assignment feedback page with grade + comments.
+WHERE COMMENTS LIVE: Feedback text, attached marked PDF, rubric table if present. If branding unclear, use source_platform: unknown and still extract all visible marks.
+
 HANDWRITTEN / MARKED PAPER (photo, scan, or PDF)
 Visual cues: Different ink color than student work, pen marks, stamps, circled scores.
 WHERE COMMENTS LIVE:
 - Margin notes, interlinear comments, arrows → professor_comments (handwritten — transcribe best effort).
 - Circled "18/25", "−3", checks, crosses → points_earned/possible or rubric_items_applied.
 - If illegible: extraction_uncertainties with both guesses; never invent text.
+
+NON-ENGLISH / INTERNATIONAL MARKS
+- Letter grades (A–F, 1–6 German, IB levels, UK GCSE 9–1) → letter_grade or note in extraction_uncertainties.
+- Decimal comma (3,5 / 10) → parse as 3.5.
+- Rubric text in any language → extract verbatim; do not translate.
+
+═══════════════════════════════════════════════════════════════
+COMPLETENESS AUDIT (run mentally before returning JSON)
+═══════════════════════════════════════════════════════════════
+For EVERY question where points_earned < points_possible (or points were deducted):
+1. List ALL rubric_items_applied with was_applied_to_student: true.
+2. List ALL professor_comments (bubbles, pins, QuickMarks, margin notes, feedback boxes).
+3. Set deductions_with_no_comment: true if points were lost AND there is NO written explanation — not even a rubric checkbox label counts as a full explanation unless it states WHY.
+4. SCORE-ONLY EXPORT: if you see X/Y per question but zero rubric rows and zero comments anywhere → flag in extraction_uncertainties: "score-only export — no rubric or comments visible".
+5. MISSING RUBRIC ON PAGE: if student pasted rubric text separately (in rubric field), note that criteria exist off-page — do not invent applied items; still flag unexplained gaps on the graded export.
+6. Cross-check: sum of per-question earned vs total_score_earned if both visible — note mismatch in extraction_uncertainties.
+7. Read EVERY page of multi-page PDFs — comments often on page 2+ (annotated submission, not summary).
 
 ═══════════════════════════════════════════════════════════════
 MERGE RULES (multi-page / multi-file)
@@ -105,14 +164,16 @@ REQUIRED PER QUESTION (when visible)
 question_id, points_possible, points_earned, rubric_items_applied (all applied lines), professor_comments (ALL instructor text including Gradescope bubbles), deductions_with_no_comment.
 
 PRIORITY ORDER WHEN TIME-LIMITED
-1) Total score display  2) Per-question earned/possible  3) Instructor comments (typed + handwritten)  4) Rubric lines applied
+1) Total score display  2) Per-question earned/possible  3) Instructor comments (typed + handwritten)  4) Rubric lines applied  5) Completeness audit flags
 
 IMAGES vs TEXT
 - Images (including PDF page renders) are PRIMARY for marks, colors, bubbles, and handwriting.
 - Extracted PDF text is supplementary; if conflict, trust images and note in extraction_uncertainties.
+- Student-pasted rubric/feedback text in INPUT fields is authoritative for CRITERIA — use it to judge whether marks align, not to invent deductions on the upload.
 
 NEVER
 - Invent comments, rubric lines, or scores.
 - Treat Turnitin similarity % as points off without explicit rubric linkage.
-- Fabricate totals by summing questions.
+- Fabricate totals by summing questions unless cross-checking and noting discrepancy.
+- Assume "no comment" means full credit — always compare earned vs possible.
 `;

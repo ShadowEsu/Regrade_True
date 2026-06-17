@@ -1,6 +1,7 @@
 /* App tokens aligned with public/regrade.css (regradeapp.tech) */
 @import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@500;600;700&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap');
 @import "tailwindcss";
+@import "./theme-dark.css";
 
 @theme {
   --font-sans: "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
@@ -27,7 +28,7 @@
 
 @layer base {
   body {
-    @apply text-ink font-sans font-semibold text-[17px] antialiased;
+    @apply text-ink font-sans font-medium text-[16px] antialiased;
     background: linear-gradient(165deg, #eaf2ff 0%, #f4f0ff 32%, #f0f6fc 58%, #fafbfd 100%);
     line-height: 1.5;
     letter-spacing: -0.01em;
@@ -370,7 +371,8 @@
   }
 
   .rg-glass-input {
-    @apply transition-all duration-200;
+    @apply rounded-xl text-ink;
+    transition: all 0.2s ease;
     background: rgba(255, 255, 255, 0.7);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -382,6 +384,10 @@
     background: rgba(255, 255, 255, 0.92);
     border-color: rgba(0, 102, 204, 0.35);
     box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.12);
+  }
+
+  .rg-coach-chip-icon {
+    background: #f0f4ff;
   }
 
   .rg-glass-chip {
@@ -402,6 +408,20 @@
     background: linear-gradient(135deg, rgba(0, 102, 204, 0.92) 0%, rgba(0, 113, 227, 0.88) 100%);
     border-color: rgba(0, 102, 204, 0.4);
     box-shadow: 0 6px 20px rgba(0, 102, 204, 0.28);
+  }
+
+  .rg-upload-ingredients {
+    background: linear-gradient(
+      160deg,
+      rgba(255, 255, 255, 0.88) 0%,
+      rgba(236, 244, 255, 0.55) 100%
+    );
+    border: 1px solid rgba(0, 102, 204, 0.1);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.85);
+  }
+
+  .rg-ai-pipeline-panel {
+    background: rgba(255, 255, 255, 0.9);
   }
 
   .rg-ai-reader-panel {
@@ -494,6 +514,32 @@
   .rg-pixel-mascot {
     image-rendering: pixelated;
     image-rendering: crisp-edges;
+  }
+
+  /* Coach whale PNG has a baked-in black background — frame it so it stays visible in dark mode */
+  .rg-coach-whale-wrap {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(180deg, #ffffff 0%, #eef4ff 100%);
+    border-radius: 22px;
+    padding: 10px 14px;
+    border: 1px solid rgba(0, 102, 204, 0.12);
+    box-shadow: 0 8px 24px rgba(0, 102, 204, 0.14);
+  }
+
+  .rg-coach-whale-wrap-sm {
+    padding: 4px 6px;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(0, 102, 204, 0.1);
+  }
+
+  .rg-brand-wordmark {
+    display: block;
+  }
+
+  .rg-platform-logo-img {
+    display: block;
   }
 
   .rg-btn-primary {
@@ -825,6 +871,23 @@
 
   .rg-insight {
     @apply rounded-[var(--radius-card)] border border-hairline bg-canvas px-4 py-3.5;
+  }
+
+  .rg-score-card {
+    @apply rounded-[var(--radius-card)] border border-hairline bg-white/90 shadow-sm;
+  }
+
+  .rg-summary-card {
+    @apply rounded-[var(--radius-card)] border border-hairline bg-[#f0f4f8]/80;
+  }
+
+  .rg-evidence-bubble {
+    @apply rounded-2xl border border-hairline bg-white/95 px-4 py-3.5 text-[14px] leading-relaxed text-ink/80 shadow-sm;
+    letter-spacing: -0.01em;
+  }
+
+  .rg-finding-card {
+    @apply rounded-2xl border border-hairline bg-canvas overflow-hidden transition-colors hover:bg-white/60;
   }
 
   .rg-section-title {

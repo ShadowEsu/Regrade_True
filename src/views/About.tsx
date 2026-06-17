@@ -9,6 +9,7 @@ import {
   APP_SUPPORT_EMAIL,
   APP_PRIVACY_URL,
   APP_TERMS_URL,
+  APP_EULA_URL,
   APP_WEBSITE_URL,
   APP_DISCLAIMER,
   APP_LEGAL_OWNER,
@@ -92,6 +93,7 @@ export default function About({ onBack }: AboutProps) {
         <div className="grid grid-cols-1 gap-3">
           <LinkRow label="Privacy Policy" href={APP_PRIVACY_URL} external />
           <LinkRow label="Terms of Service" href={APP_TERMS_URL} external />
+          <LinkRow label="EULA (App Store)" href={APP_EULA_URL} external />
           <LinkRow label="Website" href={APP_WEBSITE_URL} external />
           <LinkRow
             label={`Contact: ${APP_SUPPORT_EMAIL}`}

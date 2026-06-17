@@ -24,9 +24,16 @@
     "licenses": "npx --yes license-checker --production --json > THIRD_PARTY_LICENSES.json",
     "deploy:hosting": "npm run build && firebase deploy --only hosting:regrade-75d1a",
     "deploy:rules": "firebase deploy --only firestore:rules",
-    "deploy:regradeapp.tech": "bash scripts/deploy-regradeapp-tech.sh"
+    "deploy:regradeapp.tech": "bash scripts/deploy-regradeapp-tech.sh",
+    "cap:sync": "npm run build && node scripts/prepare-capacitor.mjs && npx cap sync",
+    "cap:ios": "npm run cap:sync && npx cap open ios"
   },
   "dependencies": {
+    "@capacitor-community/apple-sign-in": "^7.1.0",
+    "@capacitor/app": "^7.1.2",
+    "@capacitor/cli": "^7.6.6",
+    "@capacitor/core": "^7.6.6",
+    "@capacitor/ios": "^7.6.6",
     "@firebase/eslint-plugin-security-rules": "^0.0.2",
     "@tailwindcss/vite": "^4.1.14",
     "@types/dompurify": "^3.0.5",

@@ -11,6 +11,7 @@ import type { PlatformGuideId } from '../lib/platformUploadGuides';
 import type { AiEngine } from '../types';
 import {
   AI_TRADEMARK_FOOTER,
+  APP_EULA_URL,
   APP_MIN_AGE,
   APP_PRIVACY_URL,
   APP_SUPPORT_EMAIL,
@@ -25,6 +26,9 @@ import AiEnginePicker from '../components/AiEnginePicker';
 import PreferredPlatformPicker from '../components/PreferredPlatformPicker';
 import DeleteAccountDialog from '../components/DeleteAccountDialog';
 import MarketingEyebrow from '../components/MarketingEyebrow';
+import ThemePicker from '../components/ThemePicker';
+import { useTheme } from '../context/ThemeContext';
+import type { ThemePreference } from '../lib/theme';
 
 interface ProfileProps {
   onShowAbout?: () => void;
@@ -58,7 +62,7 @@ const EMPTY_FORM: ProfileForm = {
 
 const SECTION_LABELS: Record<ProfileSection, string> = {
   you: 'Profile',
-  platform: 'App',
+  platform: 'Theme & app',
   ai: 'AI',
   account: 'Account',
 };
@@ -100,6 +104,8 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const { preference: themePreference, resolved: themeResolved, setPreference: setThemePreference } = useTheme();
+  const [themeSaving, setThemeSaving] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -136,6 +142,21 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
       console.error('Failed to save AI engine preference:', err);
     } finally {
       setAiSaving(false);
+    }
+  };
+
+  const handleThemeChange = async (next: ThemePreference) => {
+    if (next === themePreference || themeSaving) return;
+    setThemeSaving(true);
+    try {
+      await setThemePreference(next);
+      setToastMessage('Appearance updated');
+      setShowSavedToast(true);
+      setTimeout(() => setShowSavedToast(false), 2200);
+    } catch (err) {
+      console.error('Failed to save theme preference:', err);
+    } finally {
+      setThemeSaving(false);
     }
   };
 
@@ -292,6 +313,18 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
                 {aiEngine} reader
               </span>
             )}
+            <button
+              type="button"
+              onClick={() => setActiveTab('platform')}
+              className="rg-glass-chip px-3 py-1.5 text-[11px] font-semibold text-primary inline-flex items-center gap-1.5"
+            >
+              {themeResolved === 'dark' ? (
+                <ICONS.Moon className="w-3.5 h-3.5" strokeWidth={2} />
+              ) : (
+                <ICONS.Sun className="w-3.5 h-3.5" strokeWidth={2} />
+              )}
+              {themePreference === 'system' ? 'Theme: System' : themeResolved === 'dark' ? 'Dark mode' : 'Light mode'}
+            </button>
           </div>
         </div>
       </section>
@@ -403,15 +436,23 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
-              className="rg-glass-form-card p-5 sm:p-6 space-y-4"
+              className="rg-glass-form-card p-5 sm:p-6 space-y-6"
             >
-              <p className="text-[13px] text-ink-muted leading-relaxed">
-                Your default grading app — new appeals start with the right export steps for that platform.
-              </p>
-              <PreferredPlatformPicker
-                value={form.preferredPlatform}
-                onChange={(id) => setForm({ ...form, preferredPlatform: id })}
+              <ThemePicker
+                value={themePreference}
+                onChange={(next) => void handleThemeChange(next)}
+                disabled={themeSaving}
               />
+
+              <div className="border-t border-hairline pt-5 space-y-4">
+                <p className="text-[13px] text-ink-muted leading-relaxed">
+                  Your default grading app — new appeals start with the right export steps for that platform.
+                </p>
+                <PreferredPlatformPicker
+                  value={form.preferredPlatform}
+                  onChange={(id) => setForm({ ...form, preferredPlatform: id })}
+                />
+              </div>
             </motion.div>
           )}
 
@@ -467,6 +508,15 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
                     className="flex items-center justify-between px-4 py-3 rounded-xl rg-glass-chip hover:border-primary/30 transition-all"
                   >
                     <span className="text-[14px] font-medium text-ink">Terms of Service</span>
+                    <ICONS.ArrowRight className="w-4 h-4 text-muted" strokeWidth={1.75} />
+                  </a>
+                  <a
+                    href={APP_EULA_URL}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between px-4 py-3 rounded-xl rg-glass-chip hover:border-primary/30 transition-all"
+                  >
+                    <span className="text-[14px] font-medium text-ink">EULA</span>
                     <ICONS.ArrowRight className="w-4 h-4 text-muted" strokeWidth={1.75} />
                   </a>
                   <a

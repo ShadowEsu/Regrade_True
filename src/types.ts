@@ -113,6 +113,13 @@ export type SourcePlatform =
   | 'powerschool'
   | 'sakai'
   | 'teams'
+  | 'crowdmark'
+  | 'akindi'
+  | 'managebac'
+  | 'itslearning'
+  | 'satchel_one'
+  | 'edmodo'
+  | 'openlms'
   | 'mixed'
   | 'unknown';
 

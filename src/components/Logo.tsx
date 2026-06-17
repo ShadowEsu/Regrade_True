@@ -39,16 +39,16 @@ const Logo: React.FC<LogoProps> = ({
       } ${className}`}
     >
       <motion.div
-        initial={{ scale: 0.96, opacity: 0 }}
+        initial={{ scale: 0.98, opacity: 1 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ duration: 0.45, ease: 'easeOut' }}
+        transition={{ duration: 0.35, ease: 'easeOut' }}
         className="inline-flex max-w-full"
       >
         <img
           src={BRAND_LOGO_SRC}
           alt={BRAND_NAME}
           height={height}
-          className={`w-auto object-contain object-left ${
+          className={`rg-brand-wordmark w-auto object-contain object-left ${
             isNav ? NAV_HEIGHT_CLASS : 'h-auto max-w-[min(100%,40rem)]'
           }`}
           style={

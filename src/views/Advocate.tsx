@@ -10,6 +10,7 @@ import SparkleAvatar from '../components/SparkleAvatar';
 import ThinkingIndicator from '../components/ThinkingIndicator';
 import CoachComposer from '../components/CoachComposer';
 import CoachWhale from '../components/CoachWhale';
+import { COACH_HEADING, COACH_SUBHEADING } from '../branding';
 
 type ChatMessage = { role: 'ai' | 'user'; text: string; sentAt?: number };
 
@@ -120,8 +121,11 @@ function CoachEmptyState() {
     >
       <CoachWhale size={156} className="sm:scale-105" />
       <h1 className="rg-serif text-[clamp(28px,5.5vw,40px)] text-ink mt-8 sm:mt-10 tracking-tight leading-[1.1]">
-        How can I help you?
+        {COACH_HEADING}
       </h1>
+      <p className="text-[15px] text-ink-muted mt-3 max-w-md leading-relaxed">
+        {COACH_SUBHEADING}
+      </p>
     </motion.div>
   );
 }

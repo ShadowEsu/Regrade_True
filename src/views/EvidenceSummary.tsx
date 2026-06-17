@@ -5,6 +5,26 @@ import { caseService, Case } from '../services/caseService';
 import AppealFlowShell from '../components/AppealFlowShell';
 import { getPossiblePointsBack } from '../lib/appealHelpers';
 
+function formatScore(analysis: NonNullable<Case['analysis']>) {
+  const a = analysis.assignment;
+  if (a.total_score_display) return a.total_score_display;
+  if (a.total_score_earned != null && a.total_score_possible != null) {
+    return `${a.total_score_earned} / ${a.total_score_possible} pts`;
+  }
+  return '—';
+}
+
+function buildEvidenceBullets(analysis: NonNullable<Case['analysis']>): string[] {
+  const fromAppeal = analysis.case_analysis.strongest_appeal_points?.slice(0, 3);
+  if (fromAppeal?.length) return fromAppeal;
+
+  return (
+    analysis.case_analysis.unexplained_deductions?.slice(0, 3).map(
+      (d) => `${d.question_id}: ${d.what_is_missing}`,
+    ) ?? []
+  );
+}
+
 export default function EvidenceSummary({
   caseId,
   onFinalize,
@@ -36,7 +56,8 @@ export default function EvidenceSummary({
           color: 'text-primary',
         }
       : null,
-    (analysis?.case_analysis?.unexplained_deductions?.length ?? 0) > 0
+    (analysis?.case_analysis?.unexplained_deductions?.length ?? 0) > 0 ||
+    (analysis?.case_analysis?.potential_calculation_errors?.length ?? 0) > 0
       ? {
           label: 'Possible issue',
           value: 'Partial credit or explanation missing',
@@ -57,12 +78,7 @@ export default function EvidenceSummary({
     color: string;
   }[];
 
-  const evidenceChips =
-    analysis?.case_analysis?.strongest_appeal_points?.slice(0, 3) ??
-    analysis?.case_analysis?.unexplained_deductions?.map(
-      (d) => `Q${d.question_id}: −${d.points_lost} pts unexplained`,
-    ) ??
-    [];
+  const evidenceBullets = analysis ? buildEvidenceBullets(analysis) : [];
 
   return (
     <AppealFlowShell
@@ -73,18 +89,19 @@ export default function EvidenceSummary({
     >
       <div className="space-y-4">
         {analysis && (
-          <div className="rg-card p-4 flex items-center justify-between">
+          <div className="rg-score-card p-4 flex items-center justify-between gap-4">
             <div>
               <p className="rg-meta-k">Current score</p>
-              <p className="rg-meta-v mt-0.5">
-                {analysis.assignment.total_score_display ||
-                  `${analysis.assignment.total_score_earned}/${analysis.assignment.total_score_possible}`}
+              <p className="text-[22px] font-semibold text-ink tracking-tight mt-0.5 leading-none">
+                {formatScore(analysis)}
               </p>
             </div>
             {pts > 0 && (
               <div className="text-right">
                 <p className="rg-meta-k">Recoverable</p>
-                <p className="rg-meta-v text-primary mt-0.5">+{pts}</p>
+                <p className="text-[22px] font-semibold text-primary tracking-tight mt-0.5 leading-none">
+                  +{pts}
+                </p>
               </div>
             )}
           </div>
@@ -100,7 +117,7 @@ export default function EvidenceSummary({
               className="rg-insight flex items-start gap-3"
             >
               <item.icon className={`w-4 h-4 mt-0.5 shrink-0 ${item.color}`} strokeWidth={2} />
-              <div>
+              <div className="min-w-0">
                 <p className="rg-meta-k">{item.label}</p>
                 <p className="text-[14px] font-medium text-ink mt-0.5 capitalize">
                   {item.value}
@@ -110,26 +127,29 @@ export default function EvidenceSummary({
           ))}
         </div>
 
-        {evidenceChips.length > 0 && (
-          <div>
-            <p className="rg-section-title mb-2">Evidence</p>
-            <div className="flex flex-wrap gap-2">
-              {evidenceChips.map((chip, i) => (
-                <span
+        {evidenceBullets.length > 0 && (
+          <div className="space-y-2">
+            <p className="rg-section-title">Evidence</p>
+            <div className="space-y-2.5">
+              {evidenceBullets.map((text, i) => (
+                <motion.div
                   key={i}
-                  className="rg-pill text-[12px] px-3 py-1.5 leading-snug"
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 + i * 0.06 }}
+                  className="rg-evidence-bubble"
                 >
-                  {chip}
-                </span>
+                  {text}
+                </motion.div>
               ))}
             </div>
           </div>
         )}
 
         {analysis?.case_analysis?.case_strength_reason && (
-          <div className="rg-card p-4">
-            <p className="rg-meta-k mb-1">AI summary</p>
-            <p className="text-[14px] text-ink-80 leading-relaxed">
+          <div className="rg-summary-card p-4">
+            <p className="rg-meta-k mb-1.5">AI summary</p>
+            <p className="text-[14px] text-ink/80 leading-relaxed">
               {analysis.case_analysis.case_strength_reason}
             </p>
           </div>
@@ -145,7 +165,7 @@ export default function EvidenceSummary({
             Continue to draft
             <ICONS.ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
           </motion.button>
-          <p className="text-center text-[12px] text-muted">
+          <p className="text-center text-[12px] text-ink-muted">
             Next: review your professor-safe message
           </p>
         </div>

@@ -2,7 +2,11 @@ import {Component, StrictMode, type ReactNode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import AuthGate from './AuthGate.tsx';
+import { bootstrapTheme } from './lib/theme';
+import { ThemeProvider } from './context/ThemeContext';
 import './index.css';
+
+bootstrapTheme();
 
 class BootErrorBoundary extends Component<{children: ReactNode}, {error: Error | null}> {
   declare props: {children: ReactNode};
@@ -44,9 +48,11 @@ try {
   createRoot(el).render(
     <StrictMode>
       <BootErrorBoundary>
-        <AuthGate>
-          <App />
-        </AuthGate>
+        <ThemeProvider>
+          <AuthGate>
+            <App />
+          </AuthGate>
+        </ThemeProvider>
       </BootErrorBoundary>
     </StrictMode>,
   );

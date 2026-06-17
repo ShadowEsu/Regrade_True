@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth } from './lib/firebase';
+import { auth, completeAuthRedirectIfNeeded } from './lib/firebase';
 import { isPreviewMode, isPreviewSignInView } from './lib/previewMode';
 import PreviewBanner from './components/PreviewBanner';
 import Auth from './views/Auth';
 import BrandSpinner from './components/BrandSpinner';
 import { userService } from './services/userService';
+import { needsEmailVerification } from './lib/authVerification';
+import VerifyEmailPrompt from './components/VerifyEmailPrompt';
 
 interface AuthGateProps {
   children: React.ReactNode;
@@ -28,22 +30,34 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
       return;
     }
 
-    const unsub = onAuthStateChanged(auth, async (u) => {
-      setUser(u);
-      setLoading(false);
-      if (u) {
-        try {
-          await userService.syncProfile(u.uid, {
-            name: u.displayName || '',
-            email: u.email || '',
-            avatarUrl: u.photoURL || '',
-          });
-        } catch (err) {
-          console.error('Institutional profile out of sync:', err);
+    let unsub: (() => void) | undefined;
+    let cancelled = false;
+
+    void (async () => {
+      await completeAuthRedirectIfNeeded();
+      if (cancelled) return;
+      unsub = onAuthStateChanged(auth, async (u) => {
+        if (cancelled) return;
+        setUser(u);
+        setLoading(false);
+        if (u) {
+          try {
+            await userService.syncProfile(u.uid, {
+              name: u.displayName || '',
+              email: u.email || '',
+              avatarUrl: u.photoURL || '',
+            });
+          } catch (err) {
+            console.error('Institutional profile out of sync:', err);
+          }
         }
-      }
-    });
-    return unsub;
+      });
+    })();
+
+    return () => {
+      cancelled = true;
+      unsub?.();
+    };
   }, []);
 
   if (isPreviewMode()) {
@@ -76,6 +90,10 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
 
   if (!user) {
     return <Auth />;
+  }
+
+  if (needsEmailVerification(user)) {
+    return <VerifyEmailPrompt user={user} />;
   }
 
   return <>{children}</>;

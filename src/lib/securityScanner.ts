@@ -1,4 +1,5 @@
 import { apiFetch } from './api';
+import { isPreviewMode } from './previewMode';
 
 export interface SecurityScanResult {
   isSafe: boolean;
@@ -75,11 +76,20 @@ export async function scanContentForThreats(
   } catch (error) {
     console.error('Security scan error:', error);
     if (error instanceof Error && error.message.includes('AI analysis is coming soon')) {
+      if (import.meta.env.DEV || isPreviewMode()) {
+        return {
+          isSafe: true,
+          threatLevel: 'low',
+          detectedPatterns: ['regex-only-no-api'],
+          recommendation: 'Safe to proceed.',
+        };
+      }
       return {
-        isSafe: true,
-        threatLevel: 'low',
-        detectedPatterns: ['regex-only-no-api'],
-        recommendation: 'Safe to proceed.',
+        isSafe: false,
+        threatLevel: 'medium',
+        detectedPatterns: ['Security scan unavailable'],
+        recommendation:
+          'We could not verify your input because the analysis server is not connected. Try again after deployment is complete.',
       };
     }
     const errText = error instanceof Error ? error.message : String(error);

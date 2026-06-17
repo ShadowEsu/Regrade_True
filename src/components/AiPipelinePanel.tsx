@@ -18,8 +18,13 @@ const PLATFORMS: PlatformCard[] = [
   { id: 'brightspace', name: 'D2L Brightspace', cues: 'Evaluation panel · achievement rubric' },
   { id: 'google_classroom', name: 'Google Classroom', cues: 'Margin chips · grading panel' },
   { id: 'turnitin', name: 'Turnitin', cues: 'QuickMarks + rubric — not similarity % alone' },
+  { id: 'crowdmark', name: 'Crowdmark', cues: 'Per-question evaluation · grader comments' },
+  { id: 'akindi', name: 'Akindi', cues: 'Scan review · wrong-answer grid · optional notes' },
+  { id: 'managebac', name: 'ManageBac', cues: 'IB criterion rubric · teacher comments' },
   { id: 'paper', name: 'Marked paper', cues: 'Pen marks · circled scores · margin handwriting' },
   { id: 'schoology', name: 'Schoology', cues: 'Checklist rubric · feedback text' },
+  { id: 'powerschool', name: 'PowerSchool', cues: 'Assignment feedback · rubric rows' },
+  { id: 'sakai', name: 'Sakai', cues: 'Submission feedback · gradebook comments' },
   { id: 'teams', name: 'Microsoft Teams', cues: 'Assignment feedback · rubric checklist' },
 ];
 
@@ -42,8 +47,8 @@ const STAGES = [
   },
   {
     id: 'STG_03',
-    title: 'Cross-check',
-    model: 'Verification',
+    title: 'Audit',
+    model: 'Completeness check',
     label: 'Verification',
     icon: 'ShieldCheck',
     accent: 'from-violet-600/15 via-purple-500/10 to-transparent',
@@ -81,7 +86,7 @@ export default function AiPipelinePanel({
   return (
     <section
       ref={wrapperRef}
-      className="relative overflow-hidden rounded-[1.75rem] sm:rounded-[2.5rem] md:rounded-[3rem] border border-primary/10 bg-white/90 shadow-[0_25px_90px_-60px_rgba(0,35,111,0.35)]"
+      className="relative overflow-hidden rounded-[1.75rem] sm:rounded-[2.5rem] md:rounded-[3rem] border border-primary/10 rg-ai-pipeline-panel shadow-huge"
     >
       <div className="absolute inset-0 paper-texture opacity-20 pointer-events-none" />
       <div className="absolute -top-40 -right-40 w-[44rem] h-[44rem] bg-gradient-to-br from-primary/15 via-primary/5 to-transparent rounded-full blur-3xl pointer-events-none" />
@@ -131,7 +136,7 @@ export default function AiPipelinePanel({
                   initial={{ opacity: 0, y: 14 }}
                   animate={inView ? { opacity: 1, y: 0 } : undefined}
                   transition={{ delay: 0.06 * idx, duration: 0.55, ease: 'easeOut' }}
-                  className={`w-[min(85vw,20rem)] sm:w-[22rem] shrink-0 rounded-[1.75rem] border p-5 bg-white/85 backdrop-blur-xl shadow-sm ${
+                  className={`w-[min(85vw,20rem)] sm:w-[22rem] shrink-0 rounded-[1.75rem] border p-5 rg-glass-chip backdrop-blur-xl shadow-sm ${
                     p.id === sourcePlatform
                       ? 'border-primary/25 ring-1 ring-primary/10'
                       : 'border-primary/10 hover:border-primary/20 transition-colors'
@@ -157,7 +162,7 @@ export default function AiPipelinePanel({
         {/* Stage stepper + cards */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
           <div className="lg:col-span-4 sticky top-28">
-            <div className="rounded-[2rem] border border-primary/10 bg-white/90 backdrop-blur-2xl p-6 shadow-sm">
+            <div className="rounded-[2rem] border border-primary/10 rg-glass-form-card backdrop-blur-2xl p-6 shadow-sm">
               <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-primary/40 mb-4">Pipeline</p>
               <div className="space-y-4">
                 {STAGES.map((s, i) => {
@@ -203,13 +208,13 @@ export default function AiPipelinePanel({
               </div>
 
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="rounded-2xl bg-white/70 border border-primary/10 p-6">
+                <div className="rounded-2xl rg-glass-field p-6">
                   <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/45 mb-2">What it extracted</p>
-                  <p className="text-[14px] sm:text-[15px] italic text-primary/85 leading-relaxed">
+                  <p className="text-[14px] sm:text-[15px] italic text-ink/85 leading-relaxed">
                     {aiNotes.extraction_summary}
                   </p>
                 </div>
-                <div className="rounded-2xl bg-white/70 border border-primary/10 p-6">
+                <div className="rounded-2xl rg-glass-field p-6">
                   <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/45 mb-2">
                     What was hard to read
                   </p>
@@ -252,9 +257,9 @@ export default function AiPipelinePanel({
                 </div>
               </div>
 
-              <div className="mt-6 rounded-2xl bg-white/70 border border-primary/10 p-6">
+              <div className="mt-6 rounded-2xl rg-glass-field p-6">
                 <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/45 mb-2">Summary</p>
-                <p className="text-[14px] sm:text-[15px] italic text-primary/85 leading-relaxed">
+                <p className="text-[14px] sm:text-[15px] italic text-ink/85 leading-relaxed">
                   {aiNotes.reasoning_summary}
                 </p>
               </div>
@@ -273,7 +278,7 @@ export default function AiPipelinePanel({
                     {STAGES[2].id} · {STAGES[2].label}
                   </p>
                   <p className="font-serif text-2xl sm:text-3xl text-primary font-semibold tracking-tight">
-                    It cross-checks numbers to catch mistakes
+                    It flags missing comments, rubric gaps, and math errors
                   </p>
                 </div>
                 <div className="text-right">
@@ -283,13 +288,13 @@ export default function AiPipelinePanel({
               </div>
 
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <div className="rounded-2xl bg-white/70 border border-primary/10 p-6">
+                <div className="rounded-2xl rg-glass-field p-6">
                   <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/45 mb-2">Cross-check note</p>
-                  <p className="text-[14px] sm:text-[15px] italic text-primary/85 leading-relaxed">
+                  <p className="text-[14px] sm:text-[15px] italic text-ink/85 leading-relaxed">
                     {aiNotes.cross_check_summary}
                   </p>
                 </div>
-                <div className="rounded-2xl bg-white/70 border border-primary/10 p-6">
+                <div className="rounded-2xl rg-glass-field p-6">
                   <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/45 mb-2">Disagreements</p>
                   {aiNotes.disagreements.length > 0 ? (
                     <ul className="space-y-2 text-[13px] text-on-surface-variant/85">

@@ -14,7 +14,7 @@ import Logo from '../components/Logo';
 import BrandSpinner from '../components/BrandSpinner';
 import ContinueWithGoogleButton from '../components/ContinueWithGoogleButton';
 import ContinueWithAppleButton from '../components/ContinueWithAppleButton';
-import { APP_MIN_AGE, APP_PRIVACY_URL, APP_TERMS_URL } from '../version';
+import { APP_MIN_AGE, APP_EULA_URL, APP_PRIVACY_URL, APP_TERMS_URL } from '../version';
 
 const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -37,8 +37,9 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
     if (provider === 'google') setGoogleLoading(true);
     else setAppleLoading(true);
     try {
-      if (provider === 'google') await loginWithGoogle();
-      else await loginWithApple();
+      const cred =
+        provider === 'google' ? await loginWithGoogle() : await loginWithApple();
+      if (!cred) return;
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
       if (e.code === 'auth/popup-closed-by-user' || e.message?.includes('popup-closed-by-user')) {
@@ -95,14 +96,14 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
       : 'Join Regrade — your personal grade appeal assistant.';
 
   return (
-    <div className="min-h-screen relative flex items-center justify-center p-4 sm:p-8 overflow-hidden bg-[#f4f6fb]">
+    <div className="min-h-screen relative flex items-center justify-center p-4 sm:p-8 overflow-hidden rg-auth-screen">
       <div
         className="pointer-events-none absolute inset-0"
         aria-hidden
       >
         <div className="absolute -top-32 -right-24 w-[28rem] h-[28rem] rounded-full bg-primary/[0.07] blur-3xl" />
         <div className="absolute -bottom-40 -left-20 w-[32rem] h-[32rem] rounded-full bg-secondary/[0.08] blur-3xl" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(100%,36rem)] h-64 bg-white/40 blur-3xl rounded-full" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[min(100%,36rem)] h-64 bg-canvas/40 blur-3xl rounded-full" />
       </div>
 
       <motion.div
@@ -119,7 +120,7 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
           </p>
         </div>
 
-        <div className="rounded-[1.75rem] bg-white border border-primary/[0.08] shadow-[0_8px_40px_-12px_rgba(0,35,111,0.18)] p-6 sm:p-8 relative overflow-hidden">
+        <div className="rounded-[1.75rem] rg-auth-card p-6 sm:p-8 relative overflow-hidden">
           <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-primary/0 via-primary/50 to-primary/0" />
 
           <AnimatePresence mode="wait">
@@ -179,7 +180,7 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full bg-[#f8f9fc] border border-primary/10 rounded-xl pl-11 pr-4 py-3.5 text-[15px] text-primary outline-none focus:border-primary/35 focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-primary/30"
+                    className="rg-auth-input w-full rounded-xl pl-11 pr-4 py-3.5 text-[15px] outline-none transition-all"
                     placeholder="you@university.edu"
                     autoComplete="email"
                   />
@@ -210,7 +211,7 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
                       required={!forgotPassword}
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full bg-[#f8f9fc] border border-primary/10 rounded-xl pl-11 pr-4 py-3.5 text-[15px] text-primary outline-none focus:border-primary/35 focus:ring-2 focus:ring-primary/10 transition-all placeholder:text-primary/30"
+                      className="rg-auth-input w-full rounded-xl pl-11 pr-4 py-3.5 text-[15px] outline-none transition-all"
                       placeholder="••••••••"
                       autoComplete={isLogin ? 'current-password' : 'new-password'}
                     />
@@ -222,7 +223,7 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
             <button
               type="submit"
               disabled={busy}
-              className="w-full min-h-[52px] bg-primary text-white rounded-xl text-[15px] font-semibold shadow-lg shadow-primary/25 hover:bg-[#001a57] active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              className="w-full min-h-[52px] bg-primary text-white rounded-xl text-[15px] font-semibold shadow-lg shadow-primary/25 hover:bg-primary-focus active:scale-[0.99] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
               {loading ? (
                 <BrandSpinner size={20} />
@@ -263,6 +264,10 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
           and{' '}
           <a href={APP_PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">
             Privacy Policy
+          </a>{' '}
+          and{' '}
+          <a href={APP_EULA_URL} target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">
+            EULA
           </a>
           .
         </p>

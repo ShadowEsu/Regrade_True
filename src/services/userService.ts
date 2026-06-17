@@ -10,6 +10,7 @@ import { isPreviewMode } from '../lib/previewMode';
 import { PREVIEW_USER_UID } from '../lib/previewFixtures';
 import type { PlatformGuideId } from '../lib/platformUploadGuides';
 import type { AiEngine } from '../types';
+import type { ThemePreference } from '../lib/theme';
 
 export interface UserProfile {
   name: string;
@@ -32,6 +33,8 @@ export interface UserProfile {
   aiEngine?: AiEngine;
   /** Server timestamp of the first time the user accepted the AI consent prompt. */
   aiConsentAt?: Timestamp;
+  /** Light / dark / system appearance preference */
+  theme?: ThemePreference;
 }
 
 /** Fresh preview user — empty until they fill Profile or start an appeal. */
@@ -93,6 +96,7 @@ export const userService = {
           'appealGoal',
           'preferredPlatform',
           'avatarUrl',
+          'theme',
         ] as const;
         for (const key of fields) {
           if (profile[key] !== undefined) updates[key] = profile[key];
@@ -146,6 +150,29 @@ export const userService = {
     delete previewProfile.preferredPlatform;
     delete previewProfile.aiEngine;
     delete previewProfile.aiConsentAt;
+    delete previewProfile.theme;
+  },
+
+  async setThemePreference(uid: string, theme: ThemePreference) {
+    if (isPreviewMode()) {
+      if (uid === PREVIEW_USER_UID) {
+        previewProfile.theme = theme;
+      }
+      return previewProfile;
+    }
+
+    const docRef = doc(db, 'users', uid);
+    try {
+      await setDoc(
+        docRef,
+        { theme, updatedAt: serverTimestamp() },
+        { merge: true },
+      );
+      return { theme };
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${uid}`);
+      throw error;
+    }
   },
 
   async setAiPreference(uid: string, aiEngine: AiEngine) {

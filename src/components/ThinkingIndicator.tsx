@@ -8,7 +8,7 @@ export default function ThinkingIndicator({ label = 'Thinking' }: { label?: stri
       animate={{ opacity: 1, y: 0 }}
       className="flex gap-3 items-start"
     >
-      <SparkleAvatar size={36} />
+      <SparkleAvatar size={40} animate />
       <div className="flex-1 min-w-0">
         <div className="rounded-[var(--radius-card)] border border-primary/15 bg-gradient-to-br from-primary/[0.08] to-canvas px-4 py-3.5">
           <p className="text-[11px] font-mono uppercase tracking-[0.12em] text-primary mb-2">{label}</p>

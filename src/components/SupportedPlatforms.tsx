@@ -99,7 +99,7 @@ export default function SupportedPlatforms({ compact = false }: { compact?: bool
                   <img
                     src={item.src}
                     alt={item.name}
-                    className="w-auto max-w-[90%] object-contain"
+                    className="rg-platform-logo-img w-auto max-w-[90%] object-contain"
                     style={{ height: item.height ?? LOGO_BOX_HEIGHT }}
                     loading="lazy"
                     draggable={false}

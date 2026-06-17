@@ -30,6 +30,10 @@ const EnvSchema = z
    * Prefer a real auth system later; this is for “public endpoints” protection now.
    */
   API_KEYS: z.string().optional(),
+  /** Firebase Admin SDK — paste single-line JSON (production: required). */
+  FIREBASE_SERVICE_ACCOUNT_JSON: z.string().optional(),
+  /** Firebase Admin SDK — path to service account .json (alternative to JSON env var). */
+  GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(),
   /**
    * Rate limiting defaults (per-IP and per-user key).
    */
@@ -59,6 +63,19 @@ const EnvSchema = z
         message: "API_KEYS is required in production for POST /v1/feedback (or remove that route)",
         path: ["API_KEYS"]
       });
+    }
+    if (data.NODE_ENV === "production") {
+      const hasAdmin =
+        Boolean((data.FIREBASE_SERVICE_ACCOUNT_JSON ?? "").trim()) ||
+        Boolean((data.GOOGLE_APPLICATION_CREDENTIALS ?? "").trim());
+      if (!hasAdmin) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "FIREBASE_SERVICE_ACCOUNT_JSON or GOOGLE_APPLICATION_CREDENTIALS is required in production",
+          path: ["FIREBASE_SERVICE_ACCOUNT_JSON"]
+        });
+      }
     }
   });
 

@@ -96,7 +96,7 @@ export default function CoachComposer({
                 submit();
               }
             }}
-            placeholder="Write a message…"
+            placeholder="Ask about your appeal, rubric, or draft email…"
             rows={1}
             disabled={loading}
             className="rg-coach-composer-input"

@@ -4,7 +4,6 @@ import {
   getAuth,
   GoogleAuthProvider,
   OAuthProvider,
-  signInWithPopup,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,
@@ -151,29 +150,4 @@ export {
   deleteUser,
 };
 
-async function signInWithProviderPopup(provider: GoogleAuthProvider | OAuthProvider) {
-  try {
-    return await signInWithPopup(auth, provider);
-  } catch (error: unknown) {
-    const code = typeof error === 'object' && error !== null && 'code' in error ? (error as { code?: string }).code : '';
-    if (code !== 'auth/popup-closed-by-user') {
-      console.error('Auth Error', error);
-    }
-    throw error;
-  }
-}
-
-export const loginWithGoogle = async () => {
-  if (isPreviewMode()) {
-    throw new Error('Google sign-in is disabled in preview mode.');
-  }
-  return signInWithProviderPopup(googleProvider);
-};
-
-/** Required on iOS when Google sign-in is offered (App Store Guideline 4.8). */
-export const loginWithApple = async () => {
-  if (isPreviewMode()) {
-    throw new Error('Sign in with Apple is disabled in preview mode.');
-  }
-  return signInWithProviderPopup(appleProvider);
-};
+export { loginWithGoogle, loginWithApple, completeAuthRedirectIfNeeded, isNativeApp } from './nativeAuth';

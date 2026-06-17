@@ -389,10 +389,11 @@ Full steps: `FIREBASE_SETUP.md` (“Mobile wrapper”).
 
 ## Legal
 
-This repository is **proprietary**. The source code is licensed under the terms in [`LICENSE`](LICENSE).
+This repository is **proprietary**. The source code is licensed under the terms in [`LICENSE`](LICENSE). Authorized contributors (interns, contractors) must sign a CIIAA and NDA **before** repo access — see [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 | Document | Path |
 |----------|------|
+| Contributor / intern policy | [`CONTRIBUTING.md`](CONTRIBUTING.md) |
 | Privacy Policy | [`legal/PRIVACY_POLICY.md`](legal/PRIVACY_POLICY.md) · [public](public/legal/privacy.html) |
 | Terms of Service | [`legal/TERMS_OF_SERVICE.md`](legal/TERMS_OF_SERVICE.md) · [public](public/legal/terms.html) |
 | EULA | [`legal/EULA.md`](legal/EULA.md) |

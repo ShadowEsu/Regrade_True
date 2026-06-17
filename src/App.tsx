@@ -92,7 +92,7 @@ export default function App() {
     }
 
     if (activeTab === 'history') {
-      return <History onStartAppeal={handleStartAppeal} />;
+      return <History onStartAppeal={handleStartAppeal} onOpenAppeal={handleOpenAppeal} />;
     }
 
     if (activeTab === 'profile') {

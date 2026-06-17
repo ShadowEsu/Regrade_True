@@ -10,6 +10,7 @@
  *  - public/legal/terms.html  "Last updated"
  *  - legal/PRIVACY_POLICY.md  "Last updated"
  *  - legal/TERMS_OF_SERVICE.md "Last updated"
+ *  - legal/EULA.md "Last updated"
  */
 export const APP_VERSION = '1.0.0';
 
@@ -34,6 +35,7 @@ export const APP_SUPPORT_EMAIL = 'pretonjs2024@gmail.com';
 /** Published URLs reviewers will be asked for. Deploy `public/legal/*.html`. */
 export const APP_PRIVACY_URL = 'https://regrade.app/legal/privacy.html';
 export const APP_TERMS_URL = 'https://regrade.app/legal/terms.html';
+export const APP_EULA_URL = 'https://regrade.app/legal/eula.html';
 export const APP_WEBSITE_URL = 'https://regrade.app';
 
 /** Minimum age shown on sign-in (App Store / Play Families & COPPA). */

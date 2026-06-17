@@ -60,12 +60,37 @@ property laws.
    https://regrade.app/terms and within the application itself. This file
    governs the SOURCE CODE in this repository, not the end-user application.
 
-8. CONTRIBUTIONS
-   By submitting any code, content, suggestion, bug report, or other material
-   ("Contribution") to the Licensor in connection with the Software, you
-   agree that the Licensor may use, modify, sublicense, and relicense your
-   Contribution under any terms, without obligation or compensation to you,
-   and you represent that you have the right to grant such permission.
+8. CONTRIBUTIONS AND INTELLECTUAL PROPERTY ASSIGNMENT
+   By submitting any code, content, design, prompt, documentation, suggestion,
+   bug report, or other material ("Contribution") to the Licensor in connection
+   with the Software, you represent and agree that:
+
+     (a) To the maximum extent permitted by applicable law, each Contribution
+         is "work made for hire" for the Licensor, and the Licensor is the
+         exclusive owner of all rights in that Contribution from the moment of
+         creation;
+
+     (b) To the extent any Contribution is not deemed work made for hire, you
+         hereby irrevocably assign to the Licensor all right, title, and
+         interest in and to that Contribution, including all copyrights,
+         patent rights, trade secret rights, trademark rights, and other
+         intellectual property rights, worldwide, in perpetuity;
+
+     (c) You will not use any Contribution, or any portion of the Software, to
+         develop, assist, or operate a competing product or service without the
+         Licensor's prior written consent;
+
+     (d) The Licensor may use, modify, sublicense, and relicense your
+         Contribution under any terms, without obligation or compensation to
+         you; and
+
+     (e) You have the legal right to make the Contribution and to grant the
+         rights above.
+
+   Authorized contributors must also comply with CONTRIBUTING.md and any signed
+   CIIAA, NDA, or contractor agreement. If those signed agreements grant the
+   Licensor broader rights or impose additional duties, those agreements control
+   over this section to the extent of any conflict.
 
 9. DISCLAIMER OF WARRANTY
    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR

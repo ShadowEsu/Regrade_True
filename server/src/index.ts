@@ -12,10 +12,16 @@ import { buildRateLimiters } from "./middleware/rateLimit.js";
 import { z } from "zod";
 import { validate } from "./middleware/validate.js";
 import { requireFirebaseUser } from "./middleware/firebaseAuth.js";
+import { requireAiConsent } from "./middleware/requireAiConsent.js";
 import { createRegradeGeminiRouter } from "./regradeGemini.js";
 import { deleteUserAccountCompletely } from "./accountDeletion.js";
+import { ensureFirebaseAdmin } from "./firebaseAdmin.js";
 
 const env = loadEnv();
+
+if (env.NODE_ENV === "production") {
+  ensureFirebaseAdmin();
+}
 
 if (env.NODE_ENV !== "production" && !env.GEMINI_API_KEY.trim()) {
   // eslint-disable-next-line no-console
@@ -32,8 +38,8 @@ app.set("trust proxy", 1);
 app.use(requestId);
 app.use(
   helmet({
-    // API-only server; no need for CSP here (leave to frontend hosting).
-    contentSecurityPolicy: false
+    contentSecurityPolicy: false,
+    hsts: env.NODE_ENV === "production" ? { maxAge: 31_536_000, includeSubDomains: true } : false
   })
 );
 
@@ -59,6 +65,7 @@ app.use(
   "/v1/gemini",
   express.json({ limit: "25mb", type: ["application/json", "application/*+json"] }),
   requireFirebaseUser,
+  requireAiConsent,
   createRegradeGeminiRouter(env)
 );
 

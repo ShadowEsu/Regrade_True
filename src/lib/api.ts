@@ -10,7 +10,10 @@ export function isRemoteApiConfigured(): boolean {
 
 /** True when AI routes can reach the Node server (local proxy or remote URL). */
 export function isApiLikelyAvailable(): boolean {
-  return import.meta.env.DEV || isRemoteApiConfigured();
+  if (import.meta.env.DEV) return true;
+  if (isRemoteApiConfigured()) return true;
+  // Capacitor production builds have no /api proxy — require VITE_API_BASE_URL.
+  return false;
 }
 
 export const API_NOT_DEPLOYED_MESSAGE =
