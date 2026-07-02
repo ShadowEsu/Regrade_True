@@ -37,11 +37,19 @@ export default function EvidenceSummary({
   const [currentCase, setCurrentCase] = useState<Case | null>(null);
 
   useEffect(() => {
-    if (caseId) {
-      caseService.getCaseById(caseId).then((data) => {
-        if (data) setCurrentCase(data);
+    if (!caseId) return;
+    let cancelled = false;
+    caseService
+      .getCaseById(caseId)
+      .then((data) => {
+        if (!cancelled && data) setCurrentCase(data);
+      })
+      .catch(() => {
+        /* summary view degrades gracefully without analysis data */
       });
-    }
+    return () => {
+      cancelled = true;
+    };
   }, [caseId]);
 
   const analysis = currentCase?.analysis;

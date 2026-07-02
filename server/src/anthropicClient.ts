@@ -30,23 +30,33 @@ type AnthropicImageBlock = {
 
 type AnthropicTextBlock = { type: "text"; text: string };
 
-function normalizeMediaType(input: string): AnthropicMediaType {
-  const lower = input.toLowerCase();
+function toAnthropicMediaType(input: string): AnthropicMediaType | null {
+  const lower = input.trim().toLowerCase();
   if (lower === "image/jpeg" || lower === "image/jpg") return "image/jpeg";
+  if (lower === "image/png") return "image/png";
   if (lower === "image/gif") return "image/gif";
   if (lower === "image/webp") return "image/webp";
-  return "image/png";
+  return null;
 }
 
 function buildImageBlocks(images: InlineImage[]): AnthropicImageBlock[] {
-  return images.map((img) => ({
-    type: "image",
-    source: {
-      type: "base64",
-      media_type: normalizeMediaType(img.mimeType),
-      data: img.data,
-    },
-  }));
+  const out: AnthropicImageBlock[] = [];
+  for (const img of images) {
+    // Anthropic rejects HEIC/HEIF (and any mislabeled bytes) with a 400 that
+    // aborts the whole request — skip those images here so the Claude stage
+    // still runs on the rest. Gemini reads them in its own stage regardless.
+    const mediaType = toAnthropicMediaType(img.mimeType);
+    if (!mediaType) continue;
+    out.push({
+      type: "image",
+      source: {
+        type: "base64",
+        media_type: mediaType,
+        data: img.data,
+      },
+    });
+  }
+  return out;
 }
 
 function stripJsonFences(text: string): string {

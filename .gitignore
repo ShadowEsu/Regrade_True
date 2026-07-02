@@ -77,3 +77,6 @@ coverage/
 *.tsbuildinfo
 .tmp/
 tmp/
+
+# --- Temp UI capture output ---
+tmp-ui-screenshots/

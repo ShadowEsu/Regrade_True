@@ -18,7 +18,11 @@ import {
   reasonOverLedger as claudeReason,
 } from "./anthropicClient.js";
 import { InlineImageSchema } from "./security/inputGuards.js";
-import { buildHeavyAiRateLimiter } from "./middleware/heavyAiRateLimit.js";
+import {
+  buildChatRateLimiter,
+  buildHeavyAiRateLimiter,
+  buildScanRateLimiter
+} from "./middleware/heavyAiRateLimit.js";
 
 const AnalyzeSchema = z.object({
   assignmentData: z.string().max(500_000),
@@ -377,6 +381,8 @@ export function createRegradeGeminiRouter(env: Env): Router {
   const anthropicReady = isAnthropicConfigured(env.ANTHROPIC_API_KEY);
   const hybridAllowed = env.HYBRID_ENABLED && anthropicReady;
   const heavyAiLimiter = buildHeavyAiRateLimiter();
+  const chatLimiter = buildChatRateLimiter();
+  const scanLimiter = buildScanRateLimiter();
 
   r.post("/analyze", heavyAiLimiter, validate(AnalyzeSchema, "body"), async (req, res, next) => {
     try {
@@ -533,7 +539,7 @@ export function createRegradeGeminiRouter(env: Env): Router {
     }
   });
 
-  r.post("/advocate", heavyAiLimiter, validate(AdvocateSchema, "body"), async (req, res, next) => {
+  r.post("/advocate", chatLimiter, validate(AdvocateSchema, "body"), async (req, res, next) => {
     try {
       const body = req.body as z.infer<typeof AdvocateSchema>;
       const systemInstruction = body.caseContext
@@ -565,7 +571,7 @@ export function createRegradeGeminiRouter(env: Env): Router {
     }
   });
 
-  r.post("/security-scan", validate(SecurityScanSchema, "body"), async (req, res, next) => {
+  r.post("/security-scan", scanLimiter, validate(SecurityScanSchema, "body"), async (req, res, next) => {
     try {
       const body = req.body as z.infer<typeof SecurityScanSchema>;
       const maxLlm = 12_000;

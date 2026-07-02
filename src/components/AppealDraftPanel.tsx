@@ -110,7 +110,12 @@ export default function AppealDraftPanel({
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `appeal-draft-${analysis.assignment.title || 'letter'}.txt`;
+    const safeTitle = (analysis.assignment.title || 'letter')
+      .replace(/[^\w\- ]+/g, '')
+      .trim()
+      .replace(/\s+/g, '-')
+      .slice(0, 60) || 'letter';
+    a.download = `appeal-draft-${safeTitle}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };

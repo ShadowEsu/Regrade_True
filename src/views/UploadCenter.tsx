@@ -43,20 +43,6 @@ function isPdfFile(file: File): boolean {
   return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
 }
 
-async function fileToBase64Inline(file: File): Promise<{ mimeType: string; data: string }> {
-  const buf = await file.arrayBuffer();
-  const bytes = new Uint8Array(buf);
-  const chunk = 0x8000;
-  let binary = '';
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk) as unknown as number[]);
-  }
-  return {
-    mimeType: file.type || 'application/octet-stream',
-    data: btoa(binary),
-  };
-}
-
 export default function UploadCenter({
   onSubmit,
   onBack,
@@ -162,25 +148,15 @@ export default function UploadCenter({
     }
   };
 
-  const simulateUploadProgress = (fileId: string) => {
-    let progress = 0;
-    const interval = setInterval(() => {
-      progress += Math.random() * 30;
-      if (progress >= 100) {
-        progress = 100;
-        clearInterval(interval);
-      }
-      setStagedUploads((prev) =>
-        prev.map((f) => (f.id === fileId ? { ...f, progress } : f)),
-      );
-    }, 400);
-  };
-
   const handleFiles = (files: FileList | null) => {
     if (!files?.length) return;
 
+    // Track the count locally — state updates are batched, so checking
+    // stagedUploads.length alone lets a single multi-file drop blow past the cap.
+    let stagedCount = stagedUploads.length;
+
     for (const file of Array.from(files)) {
-      if (stagedUploads.length >= MAX_STAGED_UPLOAD_FILES) {
+      if (stagedCount >= MAX_STAGED_UPLOAD_FILES) {
         setSecurityError(`You can stage up to ${MAX_STAGED_UPLOAD_FILES} files at a time.`);
         break;
       }
@@ -214,11 +190,14 @@ export default function UploadCenter({
       const entry: StagedUpload = {
         id,
         file,
-        progress: 0,
+        // Images stage instantly (nothing uploads until Analyze); PDFs show
+        // their real text-extraction progress via pdfStatus.
+        progress: isPdf ? 0 : 100,
         previewUrl,
         pdfStatus: isPdf ? 'loading' : 'idle',
       };
 
+      stagedCount += 1;
       setStagedUploads((prev) => [...prev, entry]);
 
       if (isPdf) {
@@ -248,8 +227,6 @@ export default function UploadCenter({
             );
           }
         })();
-      } else {
-        simulateUploadProgress(id);
       }
     }
   };
@@ -380,13 +357,14 @@ export default function UploadCenter({
       const { renderPdfPagesToInlineImages, pdfVisionPageBudget } = await import(
         '../lib/pdfPageImages',
       );
+      const { imageFileToInlinePayload } = await import('../lib/imagePrep');
 
       setLoadingDetail('Preparing page images for AI (Gradescope, Canvas, handwriting…)…');
       const inlineImages: { mimeType: string; data: string }[] = [];
 
       for (const s of imageFiles) {
         if (inlineImages.length >= MAX_INLINE_IMAGES) break;
-        inlineImages.push(await fileToBase64Inline(s.file));
+        inlineImages.push(await imageFileToInlinePayload(s.file));
       }
 
       const pdfCount = pdfStaged.length;

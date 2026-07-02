@@ -116,13 +116,28 @@ export default function VerdictReport({
   onBack?: () => void;
 }) {
   const [currentCase, setCurrentCase] = useState<Case | null>(null);
+  const [loadFailed, setLoadFailed] = useState(false);
 
   useEffect(() => {
-    if (caseId) {
-      caseService.getCaseById(caseId).then((data) => {
-        if (data) setCurrentCase(data);
-      });
+    if (!caseId) {
+      setLoadFailed(true);
+      return;
     }
+    let cancelled = false;
+    setLoadFailed(false);
+    caseService
+      .getCaseById(caseId)
+      .then((data) => {
+        if (cancelled) return;
+        if (data) setCurrentCase(data);
+        else setLoadFailed(true);
+      })
+      .catch(() => {
+        if (!cancelled) setLoadFailed(true);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [caseId]);
 
   const analysis = currentCase?.analysis;
@@ -167,6 +182,13 @@ export default function VerdictReport({
             initialDraft={currentCase?.draftEmail}
             autoGenerate
           />
+        ) : loadFailed ? (
+          <div className="rg-card p-6 text-center space-y-2">
+            <p className="text-[14px] font-medium text-ink">We couldn&apos;t load this case.</p>
+            <p className="text-[13px] text-ink-muted">
+              It may have been deleted, or your connection dropped. Go back and try again.
+            </p>
+          </div>
         ) : (
           <div className="rg-card p-6 text-center text-ink-muted text-[14px]">Loading your case…</div>
         )}

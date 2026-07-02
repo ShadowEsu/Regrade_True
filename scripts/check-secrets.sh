@@ -75,8 +75,10 @@ echo "==> Scanning tracked file contents for key material..."
 candidates=$(echo "$tracked" | tr '\n' '\0' | xargs -0 -I {} sh -c 'test -f "{}" && echo "{}"' 2>/dev/null)
 
 if [ -n "$candidates" ]; then
-  # Google API keys.
-  hits=$(echo "$candidates" | xargs grep -EnH 'AIza[0-9A-Za-z_-]{30,}' 2>/dev/null | grep -Ev '\.env\.example' || true)
+  # Google API keys. Firebase *web* config keys are public by design (they ship
+  # in every browser bundle; security comes from Firestore rules + key
+  # restrictions), so firebaseWebConfig.ts is allowlisted.
+  hits=$(echo "$candidates" | xargs grep -EnH 'AIza[0-9A-Za-z_-]{30,}' 2>/dev/null | grep -Ev '\.env\.example|src/lib/firebaseWebConfig\.ts' || true)
   if [ -n "$hits" ]; then
     note_finding "Google API key pattern found in tracked content:"
     echo "$hits" | sed 's/^/      /'

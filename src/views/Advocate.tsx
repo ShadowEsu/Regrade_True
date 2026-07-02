@@ -10,63 +10,16 @@ import SparkleAvatar from '../components/SparkleAvatar';
 import ThinkingIndicator from '../components/ThinkingIndicator';
 import CoachComposer from '../components/CoachComposer';
 import CoachWhale from '../components/CoachWhale';
+import ChatMarkdown from '../components/ChatMarkdown';
 import { COACH_HEADING, COACH_SUBHEADING } from '../branding';
 
 type ChatMessage = { role: 'ai' | 'user'; text: string; sentAt?: number };
 
+/** Server AdvocateSchema caps history at 80 entries — stay under it client-side. */
+const MAX_HISTORY_MESSAGES = 40;
+
 function looksLikeInsight(text: string): boolean {
-  return (
-    /\bO\s*\([^)]+\)/i.test(text) ||
-    /rubric/i.test(text) ||
-    /key insight/i.test(text) ||
-    /complexity/i.test(text) ||
-    /`[^`]+`/.test(text)
-  );
-}
-
-function formatInsightText(text: string): React.ReactNode[] {
-  const parts: React.ReactNode[] = [];
-  const regex = /(`[^`]+`)|(\bO\s*\([^)]+\))/gi;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(text)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(text.slice(lastIndex, match.index));
-    }
-
-    const token = match[0];
-    if (token.startsWith('`')) {
-      parts.push(
-        <code
-          key={match.index}
-          className="px-1.5 py-0.5 rounded bg-primary/10 text-ink font-mono text-[14px]"
-        >
-          {token.slice(1, -1)}
-        </code>,
-      );
-    } else if (/n²|n\^2|\^2/i.test(token)) {
-      parts.push(
-        <span key={match.index} className="text-[#dc2626] font-semibold">
-          {token}
-        </span>,
-      );
-    } else {
-      parts.push(
-        <span key={match.index} className="text-primary font-semibold">
-          {token}
-        </span>,
-      );
-    }
-
-    lastIndex = match.index + token.length;
-  }
-
-  if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
-  }
-
-  return parts.length ? parts : [text];
+  return /\bkey insight\b/i.test(text);
 }
 
 function AiMessage({ text }: { text: string }) {
@@ -82,9 +35,7 @@ function AiMessage({ text }: { text: string }) {
               <ICONS.Lightbulb className="w-4 h-4 text-primary" strokeWidth={2} />
               <span className="text-sm font-semibold text-primary">Key Insight</span>
             </div>
-            <p className="text-[15px] leading-[1.65] text-ink">
-              {formatInsightText(text)}
-            </p>
+            <ChatMarkdown text={text} />
           </div>
         </div>
       </div>
@@ -96,7 +47,7 @@ function AiMessage({ text }: { text: string }) {
       <SparkleAvatar size={38} />
       <div className="flex-1 min-w-0">
         <div className="rounded-[var(--radius-card)] border border-primary/15 bg-canvas/90 px-4 py-3.5 border-l-[3px] border-l-primary shadow-sm">
-          <p className="text-[15px] leading-[1.65] text-ink whitespace-pre-wrap">{text}</p>
+          <ChatMarkdown text={text} />
         </div>
       </div>
     </div>
@@ -192,7 +143,7 @@ export default function Advocate({
         return;
       }
 
-      const history = messages.map((m) => ({
+      const history = messages.slice(-MAX_HISTORY_MESSAGES).map((m) => ({
         role: m.role === 'ai' ? ('model' as const) : ('user' as const),
         text: m.text,
       }));

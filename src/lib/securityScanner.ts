@@ -57,6 +57,17 @@ export async function scanContentForThreats(
     };
   }
 
+  // Preview tour has no signed-in user or API — the regex pass above is the
+  // whole check, matching how the AI calls themselves are stubbed.
+  if (isPreviewMode()) {
+    return {
+      isSafe: true,
+      threatLevel: 'low',
+      detectedPatterns: ['regex-only-preview'],
+      recommendation: 'Safe to proceed.',
+    };
+  }
+
   try {
     const res = await apiFetch('/v1/gemini/security-scan', {
       method: 'POST',
