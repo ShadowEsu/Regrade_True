@@ -61,10 +61,11 @@ export default function Dashboard({
   onOpenSampleVerdict?: () => void;
 }) {
   const user = auth.currentUser;
+  /** Real first name when we have one; null renders the nameless greeting. */
   const firstName =
     user?.displayName?.split(' ')[0] ||
-    (isPreviewMode() ? 'there' : user?.email?.split('@')[0]) ||
-    'there';
+    (isPreviewMode() ? null : user?.email?.split('@')[0]) ||
+    null;
   const [latestCase, setLatestCase] = useState<Case | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -101,8 +102,17 @@ export default function Dashboard({
                 animate={{ opacity: 1, y: 0 }}
                 className="rg-serif text-[clamp(32px,8vw,44px)] text-ink font-bold leading-[1.05] tracking-tight"
               >
-                Welcome,{' '}
-                <span className="text-primary font-bold">{firstName}</span>.
+                {firstName ? (
+                  <>
+                    Welcome,{' '}
+                    <span className="text-primary font-bold">{firstName}</span>.
+                  </>
+                ) : (
+                  <>
+                    Let&apos;s win back{' '}
+                    <span className="text-primary font-bold">your points</span>.
+                  </>
+                )}
               </motion.h1>
               <p className="text-[15px] text-ink-muted leading-relaxed max-w-md">
                 Upload graded work — we find rubric gaps and draft your appeal email.

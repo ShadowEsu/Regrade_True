@@ -134,6 +134,18 @@ WHERE COMMENTS LIVE:
 - Circled "18/25", "−3", checks, crosses → points_earned/possible or rubric_items_applied.
 - If illegible: extraction_uncertainties with both guesses; never invent text.
 
+GRADER SHORTHAND GLOSSARY (decode, then transcribe verbatim + meaning)
+- ✓ = correct; ✗ / X = wrong; ✓+ = strong; ✓− = weak-but-credited; ~ or wavy underline = questionable.
+- "sp" = spelling; "gr" = grammar; "awk" = awkward phrasing; "frag" = fragment; "wc" = word choice; "wp" / "w.p." = wrong process/working; "ECF" = error carried forward (later steps credited despite earlier mistake).
+- "?" alone = grader confused by this part; "!" = notable (good or bad — use surrounding ink); "see me" = unresolved issue, flag it.
+- Caret ^ = something missing/inserted; arrow → = "this led to the deduction here"; stacked marks like "−1 −1" on one line = TWO separate deductions, sum them.
+- Circled score = final for that item; crossed-out score with rewrite = use the rewrite, note the change in extraction_uncertainties.
+- Boxed or double-underlined totals = authoritative total_score_display.
+- Separate GRADER INK from student work: grader is usually red/green pen or darker overlay on pencil/type. When two hands wrote on the page, only grader ink counts as marks/comments.
+
+TONE CAPTURE (feed the tone field — do not judge here)
+While transcribing comments, note the grader's register with verbatim examples: terse single words ("no", "wrong", "?"), encouraging ("nice setup, small slip"), dismissive/sarcastic ("did you even read the question?"), or neutral-technical. Record observations in comment_tone — the Reasoner uses this for the teacher profile; you only report what the ink says.
+
 NON-ENGLISH / INTERNATIONAL MARKS
 - Letter grades (A–F, 1–6 German, IB levels, UK GCSE 9–1) → letter_grade or note in extraction_uncertainties.
 - Decimal comma (3,5 / 10) → parse as 3.5.

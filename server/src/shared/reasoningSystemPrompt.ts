@@ -50,7 +50,7 @@ Return ONLY this JSON. No preamble. No markdown.
 
   "teacher_profile": {
     "grading_style": "generous | moderate | harsh | inconsistent",
-    "grading_style_evidence": "2-3 sentences citing specific point values and comment patterns from the ledger",
+    "grading_style_evidence": "2-3 sentences citing specific point values and comment patterns from the ledger. If the ledger includes comment_tone, weave it in (e.g. terse single-word marks with repeated full deductions suggest a strict marker; encouraging comments with small deductions suggest a careful one). Tone alone is never proof of unfairness — pair it with point evidence.",
     "uses_rubric_consistently": "boolean",
     "feedback_quality": "detailed | adequate | minimal | absent",
     "feedback_quality_explanation": "specific to what the ledger shows",
@@ -78,8 +78,8 @@ Return ONLY this JSON. No preamble. No markdown.
       { "question_id": "string", "expected_score": "number", "actual_score_shown": "number", "discrepancy": "number", "explanation": "string" }
     ],
 
-    "is_marked_correctly_but_harshly": "boolean",
-    "correctly_but_harshly_explanation": "if true, explain",
+    "is_marked_correctly_but_harshly": "boolean — true when deductions follow the rubric literally but the severity is unusual (full deductions for trivial slips, no partial credit anywhere, ECF ignored, tone dismissive while points max out)",
+    "correctly_but_harshly_explanation": "if true, explain — cite the specific deductions and any comment_tone evidence",
 
     "strongest_appeal_points": ["ordered — most compelling first, each citing specific question IDs and point values"],
     "weakest_appeal_points": ["areas where the grading appears fully justified"],

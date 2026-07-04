@@ -117,6 +117,7 @@ STEP 4 — RETURN ONLY THIS JSON (evidence ledger)
     }
   ],
   "overall_professor_comments": "string or null",
+  "comment_tone": "string or null — neutral description of the grader's register with 1-2 verbatim examples (e.g. 'terse: mostly single-word marks like \\"no\\", \\"?\\"' or 'encouraging but strict: \\"good approach, execution slipped\\"'). null if no comments.",
   "extraction_summary": "1-2 sentences to the student: what you read (counts of questions, comments, total if seen). No legal advice.",
   "extraction_uncertainties": ["specific unreadable or conflicting items; [] if none"],
   "confidence": {

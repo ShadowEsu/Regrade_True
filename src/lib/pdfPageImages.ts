@@ -12,8 +12,10 @@ function ensurePdfWorker() {
 
 export type InlineImagePayload = { mimeType: string; data: string };
 
-const MAX_RENDER_WIDTH = 1400;
-const JPEG_QUALITY = 0.78;
+/** 1600px + q0.82 keeps faint pencil marks and grader shorthand legible while
+ * staying well under the API's 25 MB JSON budget (~350 KB/page typical). */
+const MAX_RENDER_WIDTH = 1600;
+const JPEG_QUALITY = 0.82;
 
 /**
  * Render PDF pages to JPEG base64 so vision models read scans, platform
