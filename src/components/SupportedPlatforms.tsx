@@ -1,166 +1,236 @@
+import React from 'react';
 import { motion } from 'motion/react';
 import { ICONS } from '../constants';
 import { PLATFORM_APP_LINKS } from '../lib/platformUploadGuides';
 import MarketingEyebrow from './MarketingEyebrow';
 
-type LogoPlatform = {
-  kind: 'logo';
-  id: string;
-  name: string;
-  src: string;
-  height?: number;
-  users: string;
-};
+type PlatformStatus = 'Supported' | 'Manual upload' | 'Coming soon';
 
-type TextPlatform = {
-  kind: 'text';
+type Platform = {
   id: string;
   name: string;
+  /** Brand color for the monogram chip. */
   color: string;
-  fontWeight?: number;
-  letterSpacing?: string;
-  users: string;
+  /** What Regrade reads from this platform's exports. */
+  reads: string;
+  status: PlatformStatus;
 };
 
-/** Publicly reported user/student figures (approximate; sources linked in footnote). */
-const LOGO_PLATFORMS: LogoPlatform[] = [
-  { kind: 'logo', id: 'canvas', name: 'Canvas', src: '/platforms/canvas.png', height: 32, users: '30M+ users' },
-  { kind: 'logo', id: 'instructure', name: 'Instructure', src: '/platforms/instructure.png', height: 26, users: '30M+ users' },
-  { kind: 'logo', id: 'impact', name: 'Impact', src: '/platforms/impact.png', height: 32, users: '8K+ institutions' },
-  { kind: 'logo', id: 'mastery', name: 'Mastery', src: '/platforms/mastery.png', height: 32, users: '21M+ students' },
-  { kind: 'logo', id: 'd2l', name: 'D2L Brightspace', src: '/platforms/d2l.png', height: 30, users: '20M+ users' },
-  { kind: 'logo', id: 'classroom', name: 'Google Classroom', src: '/platforms/google-classroom.png', height: 32, users: '150M+ users' },
+const COLLEGE_PLATFORMS: Platform[] = [
+  { id: 'canvas', name: 'Canvas', color: '#E4060F', reads: 'Rubrics + comments', status: 'Supported' },
+  { id: 'gradescope', name: 'Gradescope', color: '#0095D9', reads: 'Rubrics + comments', status: 'Supported' },
+  { id: 'blackboard', name: 'Blackboard', color: '#262626', reads: 'Scores + feedback', status: 'Supported' },
+  { id: 'moodle', name: 'Moodle', color: '#F98012', reads: 'Scores + feedback', status: 'Supported' },
+  { id: 'd2l', name: 'D2L Brightspace', color: '#D64000', reads: 'Rubrics + feedback', status: 'Supported' },
+  { id: 'turnitin', name: 'Turnitin', color: '#0055A4', reads: 'QuickMarks + rubric', status: 'Supported' },
 ];
 
-const TEXT_PLATFORMS: TextPlatform[] = [
-  { kind: 'text', id: 'gradescope', name: 'Gradescope', color: '#0095D9', fontWeight: 700, letterSpacing: '-0.02em', users: '3.2M+ students' },
-  { kind: 'text', id: 'turnitin', name: 'Turnitin', color: '#0055A4', fontWeight: 700, letterSpacing: '-0.01em', users: '71M students' },
-  { kind: 'text', id: 'blackboard', name: 'Blackboard', color: '#262626', fontWeight: 700, users: '150M+ users' },
-  { kind: 'text', id: 'moodle', name: 'Moodle', color: '#F98012', fontWeight: 700, letterSpacing: '-0.02em', users: '500M+ accounts' },
-  { kind: 'text', id: 'schoology', name: 'Schoology', color: '#47BBD1', fontWeight: 700, users: 'Millions daily' },
-  { kind: 'text', id: 'powerschool', name: 'PowerSchool', color: '#0066B3', fontWeight: 700, letterSpacing: '-0.01em', users: '55M+ students' },
-  { kind: 'text', id: 'sakai', name: 'Sakai', color: '#6B4C9A', fontWeight: 600, letterSpacing: '0.01em', users: 'Millions worldwide' },
+const SCHOOL_PLATFORMS: Platform[] = [
+  { id: 'classroom', name: 'Google Classroom', color: '#188038', reads: 'Comments + grades', status: 'Supported' },
+  { id: 'schoology', name: 'Schoology', color: '#47BBD1', reads: 'Rubrics + feedback', status: 'Supported' },
+  { id: 'canvas-hs', name: 'Canvas', color: '#E4060F', reads: 'Rubrics + comments', status: 'Supported' },
+  { id: 'powerschool', name: 'PowerSchool', color: '#0066B3', reads: 'Scores + feedback', status: 'Supported' },
+  { id: 'paper', name: 'Marked paper', color: '#7C5CFC', reads: 'Handwriting + marks', status: 'Supported' },
 ];
 
-const CAPABILITIES = [
-  { stat: '12+', label: 'platforms', detail: 'LMS & gradebook formats' },
-  { stat: '60s', label: 'to first draft', detail: 'from one photo or PDF' },
-  { stat: 'Any', label: 'graded file', detail: 'PDF, screenshot, or scan' },
+/** What "Supported" actually means — shown instead of marketing user counts. */
+const CAPABILITY_TAGS = ['PDF upload', 'Screenshot upload', 'Rubric detection', 'Comments detected'] as const;
+
+const FLOW_STEPS = [
+  { icon: ICONS.Upload, label: 'Upload' },
+  { icon: ICONS.Search, label: 'Detect rubric' },
+  { icon: ICONS.CheckCircle2, label: 'Find issues' },
+  { icon: ICONS.Edit3, label: 'Draft appeal' },
 ] as const;
 
-const LOGO_BOX_HEIGHT = 42;
-const TEXT_SIZE = 19;
+const STACK_ROW = [
+  { name: 'Canvas', color: '#E4060F' },
+  { name: 'Gradescope', color: '#0095D9' },
+  { name: 'Classroom', color: '#188038' },
+] as const;
 
-export default function SupportedPlatforms({ compact = false }: { compact?: boolean }) {
-  const allItems = [...LOGO_PLATFORMS, ...TEXT_PLATFORMS];
-
+function Monogram({ name, color, size = 34 }: { name: string; color: string; size?: number }) {
   return (
-    <section className={compact ? 'space-y-4' : 'space-y-6'}>
+    <span
+      aria-hidden
+      className="inline-flex items-center justify-center rounded-[10px] font-bold shrink-0"
+      style={{
+        width: size,
+        height: size,
+        color,
+        backgroundColor: `${color}14`,
+        border: `1px solid ${color}26`,
+        fontSize: size * 0.44,
+      }}
+    >
+      {name.charAt(0)}
+    </span>
+  );
+}
+
+function StatusPill({ status }: { status: PlatformStatus }) {
+  const style =
+    status === 'Supported'
+      ? 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20'
+      : status === 'Manual upload'
+        ? 'bg-primary/8 text-primary border-primary/20'
+        : 'bg-ink/5 text-ink-muted border-ink/10';
+  return (
+    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${style}`}>
+      {status}
+    </span>
+  );
+}
+
+const PlatformCard: React.FC<{ platform: Platform; index: number }> = ({ platform, index }) => {
+  const href = PLATFORM_APP_LINKS[platform.id];
+  const body = (
+    <>
+      <Monogram name={platform.name} color={platform.color} />
+      <div className="flex-1 min-w-0 text-left">
+        <p className="text-[13.5px] font-semibold text-ink leading-tight truncate">{platform.name}</p>
+        <p className="text-[11px] text-ink-muted mt-0.5 truncate">{platform.reads}</p>
+      </div>
+      <StatusPill status={platform.status} />
+    </>
+  );
+  const cls =
+    'rg-glass-chip w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl border border-hairline hover:border-primary/30 transition-all';
+
+  return href ? (
+    <motion.a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.05 + index * 0.04 }}
+      whileTap={{ scale: 0.98 }}
+      className={`${cls} no-underline`}
+      aria-label={`${platform.name} — ${platform.reads}`}
+    >
+      {body}
+    </motion.a>
+  ) : (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.05 + index * 0.04 }}
+      className={cls}
+    >
+      {body}
+    </motion.div>
+  );
+};
+
+export default function SupportedPlatforms({
+  compact = false,
+  onAddPlatform,
+}: {
+  compact?: boolean;
+  onAddPlatform?: () => void;
+}) {
+  return (
+    <section className="space-y-5">
+      <div className="text-center space-y-2">
+        <MarketingEyebrow>your gradebooks</MarketingEyebrow>
+        <h2 className="rg-serif text-[clamp(22px,5vw,28px)] text-ink font-semibold leading-tight">
+          Connect where your grades live
+        </h2>
+        <p className="rg-lead text-[15px] max-w-sm mx-auto">
+          Regrade works best when it understands your{' '}
+          <strong className="text-ink font-medium">rubric</strong>,{' '}
+          <strong className="text-ink font-medium">score</strong>, and{' '}
+          <strong className="text-primary font-medium">teacher feedback</strong>.
+        </p>
+      </div>
+
+      {/* Your grading stack */}
+      <div className="rg-glass-form-card p-4 sm:p-5 space-y-3">
+        <p className="text-[11px] font-mono uppercase tracking-wider text-primary/70">Your grading stack</p>
+        <div className="flex items-center justify-center gap-1.5 flex-wrap">
+          {STACK_ROW.map((p) => (
+            <span key={p.name} className="inline-flex items-center gap-1.5">
+              <span className="inline-flex items-center gap-1.5 rg-glass-chip pl-1.5 pr-3 py-1.5 rounded-full">
+                <Monogram name={p.name} color={p.color} size={22} />
+                <span className="text-[12px] font-semibold text-ink/80">{p.name}</span>
+              </span>
+              <ICONS.ChevronRight className="w-3.5 h-3.5 text-primary/40" strokeWidth={2.5} aria-hidden />
+            </span>
+          ))}
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-primary text-white pl-3 pr-3.5 py-1.5 shadow-md shadow-primary/25">
+            <ICONS.Zap className="w-3.5 h-3.5" strokeWidth={2.5} aria-hidden />
+            <span className="text-[12px] font-bold">Regrade</span>
+          </span>
+        </div>
+        <div className="flex flex-wrap items-center justify-center gap-1.5 pt-1">
+          {CAPABILITY_TAGS.map((tag) => (
+            <span key={tag} className="text-[10.5px] font-medium text-primary bg-primary/6 border border-primary/15 rounded-full px-2.5 py-1">
+              {tag}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {/* Grouped platforms */}
+      <div className="space-y-2.5">
+        <p className="rg-section-title px-1">Common at colleges</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {COLLEGE_PLATFORMS.map((p, i) => (
+            <PlatformCard key={p.id} platform={p} index={i} />
+          ))}
+        </div>
+      </div>
+
+      <div className="space-y-2.5">
+        <p className="rg-section-title px-1">Common in high school</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          {SCHOOL_PLATFORMS.map((p, i) => (
+            <PlatformCard key={p.id} platform={p} index={i} />
+          ))}
+        </div>
+      </div>
+
+      {/* No login required */}
+      <div className="rg-glass-form-card p-5 flex items-start gap-3.5">
+        <div className="p-2.5 rounded-xl bg-emerald-500/10 shrink-0">
+          <ICONS.Lock className="w-5 h-5 text-emerald-700" strokeWidth={2} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-[15px] font-semibold text-ink leading-tight">No login required</p>
+          <p className="text-[13px] text-ink-muted leading-relaxed mt-1">
+            Upload a screenshot or PDF from your gradebook. Regrade never asks for your school password.
+          </p>
+        </div>
+      </div>
+
+      {/* Mini flow */}
       {!compact && (
-        <div className="grid grid-cols-3 gap-2">
-          {CAPABILITIES.map((c, i) => (
-            <motion.div
-              key={c.label}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + i * 0.06 }}
-              className="rg-glass-stat text-center px-2 py-3"
-            >
-              <p className="rg-serif text-2xl text-ink font-semibold">{c.stat}</p>
-              <p className="text-[11px] font-semibold text-ink mt-0.5">{c.label}</p>
-              <p className="text-[10px] text-muted leading-snug mt-0.5">{c.detail}</p>
-            </motion.div>
+        <div className="flex items-center justify-center gap-1 sm:gap-2 flex-wrap">
+          {FLOW_STEPS.map((step, i) => (
+            <span key={step.label} className="inline-flex items-center gap-1 sm:gap-2">
+              <span className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-ink/75">
+                <step.icon className="w-4 h-4 text-primary" strokeWidth={2} aria-hidden />
+                {step.label}
+              </span>
+              {i < FLOW_STEPS.length - 1 && (
+                <ICONS.ArrowRight className="w-3.5 h-3.5 text-primary/35" strokeWidth={2.5} aria-hidden />
+              )}
+            </span>
           ))}
         </div>
       )}
 
-      <div className="text-center space-y-2">
-        <MarketingEyebrow>platforms we read</MarketingEyebrow>
-        <h2 className="rg-serif text-[clamp(22px,5vw,28px)] text-ink font-semibold leading-tight">
-          Built for the gradebooks you already use
-        </h2>
-        <p className="rg-lead text-[15px] max-w-sm mx-auto">
-          Regrade reads <strong className="text-ink font-medium">scores</strong>,{' '}
-          <strong className="text-ink font-medium">rubric lines</strong>, and{' '}
-          <strong className="text-primary font-medium">every teacher comment</strong> — then drafts your appeal.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        {allItems.map((item, i) => {
-          const href = PLATFORM_APP_LINKS[item.id];
-          const inner = (
-            <>
-              <div
-                className="flex items-center justify-center w-full px-2"
-                style={{ height: LOGO_BOX_HEIGHT }}
-              >
-                {item.kind === 'logo' ? (
-                  <img
-                    src={item.src}
-                    alt={item.name}
-                    className="rg-platform-logo-img w-auto max-w-[90%] object-contain"
-                    style={{ height: item.height ?? LOGO_BOX_HEIGHT }}
-                    loading="lazy"
-                    draggable={false}
-                  />
-                ) : (
-                  <span
-                    className="leading-none"
-                    style={{
-                      color: item.color,
-                      fontWeight: item.fontWeight ?? 700,
-                      fontSize: TEXT_SIZE,
-                      letterSpacing: item.letterSpacing ?? '-0.02em',
-                    }}
-                  >
-                    {item.name}
-                  </span>
-                )}
-              </div>
-              <p className="text-[11px] font-mono text-primary/80 tracking-wide">{item.users}</p>
-              {href && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-semibold text-primary/60 group-hover:text-primary transition-colors">
-                  Open
-                  <ICONS.ExternalLink className="w-3 h-3" strokeWidth={2.5} />
-                </span>
-              )}
-            </>
-          );
-
-          return href ? (
-            <motion.a
-              key={item.id}
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1 + i * 0.04 }}
-              whileHover={{ scale: 1.03 }}
-              whileTap={{ scale: 0.97 }}
-              className="rg-platform-tile group flex flex-col items-center justify-center text-center gap-2 cursor-pointer no-underline"
-              aria-label={`Open ${item.name}`}
-            >
-              {inner}
-            </motion.a>
-          ) : (
-            <motion.div
-              key={item.id}
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.1 + i * 0.04 }}
-              className="rg-platform-tile flex flex-col items-center justify-center text-center gap-2 cursor-default"
-            >
-              {inner}
-            </motion.div>
-          );
-        })}
-      </div>
-
-      <p className="text-center text-[10px] text-muted leading-relaxed max-w-sm mx-auto">
-        Public estimates from vendor reports &amp; industry data (2024–25). Counts may include students, educators, or registered accounts.
-      </p>
+      {onAddPlatform && (
+        <button
+          type="button"
+          onClick={onAddPlatform}
+          className="rg-btn-cta w-full py-3.5 text-[15px] flex items-center justify-center gap-2"
+        >
+          <ICONS.PlusCircle className="w-4.5 h-4.5" strokeWidth={2} />
+          Add a platform
+        </button>
+      )}
     </section>
   );
 }

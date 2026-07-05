@@ -24,8 +24,12 @@ export interface UserProfile {
   gradeLevel?: string;
   /** e.g. 3.8 or A- */
   gpa?: string;
-  /** What the student wants from appeals — tone, outcomes, etc. */
+  /** Extra instructions for drafts — free text the student writes. */
   appealGoal?: string;
+  /** How Regrade should sound — chip ids like 'polite', 'confident'. */
+  appealTone?: string[];
+  /** What Regrade should prioritize — chip ids like 'rubric_mismatch'. */
+  appealFocus?: string[];
   /** Default LMS — pre-selects platform guide on new appeals */
   preferredPlatform?: PlatformGuideId;
   avatarUrl?: string;

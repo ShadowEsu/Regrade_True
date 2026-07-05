@@ -54,11 +54,13 @@ export default function Dashboard({
   onOpenChat,
   onOpenAppeal,
   onOpenSampleVerdict,
+  onOpenPlatforms,
 }: {
   onStartAppeal: () => void;
   onOpenChat: () => void;
   onOpenAppeal?: (caseId: string) => void;
   onOpenSampleVerdict?: () => void;
+  onOpenPlatforms?: () => void;
 }) {
   const user = auth.currentUser;
   /** Real first name when we have one; null renders the nameless greeting. */
@@ -336,7 +338,7 @@ export default function Dashboard({
         </section>
       )}
 
-      <SupportedPlatforms compact />
+      <SupportedPlatforms compact onAddPlatform={onOpenPlatforms} />
 
       {onOpenSampleVerdict && (
         <button type="button" onClick={onOpenSampleVerdict} className="rg-text-link text-sm w-full justify-center">

@@ -43,8 +43,35 @@ type ProfileForm = {
   gradeLevel: string;
   gpa: string;
   appealGoal: string;
+  appealTone: string[];
+  appealFocus: string[];
   preferredPlatform: PlatformGuideId | null;
 };
+
+/** How Regrade should sound — stored as lowercase ids, shown as labels. */
+const TONE_CHIPS = [
+  { id: 'polite', label: 'Polite' },
+  { id: 'confident', label: 'Confident' },
+  { id: 'friendly', label: 'Friendly' },
+  { id: 'formal', label: 'Formal' },
+  { id: 'short', label: 'Short' },
+  { id: 'detailed', label: 'Detailed' },
+  { id: 'evidence_first', label: 'Evidence-first' },
+] as const;
+
+const FOCUS_CHIPS = [
+  { id: 'rubric_mismatch', label: 'Rubric mismatch' },
+  { id: 'calculation_errors', label: 'Calculation errors' },
+  { id: 'missing_feedback', label: 'Missing feedback' },
+  { id: 'partial_credit', label: 'Partial credit' },
+  { id: 'unclear_deduction', label: 'Unclear deduction' },
+  { id: 'tone_check', label: 'Tone check' },
+  { id: 'stronger_evidence', label: 'Stronger evidence' },
+] as const;
+
+function toggleChip(list: string[], id: string): string[] {
+  return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
+}
 
 export type ProfileSection = 'you' | 'platform' | 'ai' | 'account';
 
@@ -57,11 +84,13 @@ const EMPTY_FORM: ProfileForm = {
   gradeLevel: '',
   gpa: '',
   appealGoal: '',
+  appealTone: [],
+  appealFocus: [],
   preferredPlatform: null,
 };
 
 const SECTION_LABELS: Record<ProfileSection, string> = {
-  you: 'Profile',
+  you: 'Appeal Profile',
   platform: 'Theme & app',
   ai: 'AI',
   account: 'Account',
@@ -77,6 +106,8 @@ function profileToForm(data: UserProfile, user: User): ProfileForm {
     gradeLevel: data.gradeLevel || '',
     gpa: data.gpa || '',
     appealGoal: data.appealGoal || '',
+    appealTone: Array.isArray(data.appealTone) ? data.appealTone : [],
+    appealFocus: Array.isArray(data.appealFocus) ? data.appealFocus : [],
     preferredPlatform: data.preferredPlatform ?? null,
   };
 }
@@ -188,6 +219,8 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
       return;
     }
 
+    const knownTone = new Set<string>(TONE_CHIPS.map((c) => c.id));
+    const knownFocus = new Set<string>(FOCUS_CHIPS.map((c) => c.id));
     const payload: Partial<UserProfile> = {
       name: sanitizeInput(form.name),
       school: sanitizeInput(form.school),
@@ -196,6 +229,8 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
       gradeLevel: sanitizeInput(form.gradeLevel),
       gpa: sanitizeInput(form.gpa),
       appealGoal: sanitizeInput(form.appealGoal),
+      appealTone: form.appealTone.filter((id) => knownTone.has(id)),
+      appealFocus: form.appealFocus.filter((id) => knownFocus.has(id)),
       email: form.email,
       preferredPlatform: form.preferredPlatform ?? undefined,
     };
@@ -211,8 +246,10 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
         gradeLevel: payload.gradeLevel ?? prev.gradeLevel,
         gpa: payload.gpa ?? prev.gpa,
         appealGoal: payload.appealGoal ?? prev.appealGoal,
+        appealTone: payload.appealTone ?? prev.appealTone,
+        appealFocus: payload.appealFocus ?? prev.appealFocus,
       }));
-      setToastMessage('Profile saved');
+      setToastMessage('Appeal profile saved');
       setShowSavedToast(true);
       setTimeout(() => setShowSavedToast(false), 2800);
     } catch (err) {
@@ -268,7 +305,30 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
 
   const platformLabel = getPlatformGuideName(form.preferredPlatform ?? undefined);
 
-  const filledFields = [form.school, form.university, form.major, form.gradeLevel, form.gpa, form.appealGoal].filter(Boolean).length;
+  /** Appeal-profile readiness: each unit makes drafts measurably better. */
+  const completionUnits: boolean[] = [
+    Boolean(form.name),
+    Boolean(form.school || form.university),
+    Boolean(form.major),
+    Boolean(form.gradeLevel),
+    Boolean(form.gpa),
+    form.appealTone.length > 0,
+    form.appealFocus.length > 0,
+    Boolean(form.appealGoal),
+    Boolean(form.preferredPlatform),
+    Boolean(aiEngine),
+  ];
+  const completionPct = Math.round(
+    (completionUnits.filter(Boolean).length / completionUnits.length) * 100,
+  );
+  const completionHint =
+    completionPct >= 100
+      ? 'Fully tuned — your drafts use everything here.'
+      : !form.appealTone.length
+        ? 'Pick a tone so drafts sound like you.'
+        : !(form.school || form.university)
+          ? 'Add your school for better context in drafts.'
+          : 'Add your school, tone, and grading style for better drafts.';
 
   return (
     <div className="space-y-6 pb-8">
@@ -276,7 +336,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
         <div className="absolute -top-12 -right-8 w-40 h-40 rounded-full bg-primary/10 blur-3xl pointer-events-none" aria-hidden />
         <div className="absolute -bottom-10 -left-6 w-32 h-32 rounded-full bg-violet-400/10 blur-3xl pointer-events-none" aria-hidden />
         <div className="relative space-y-4">
-          <MarketingEyebrow>your profile</MarketingEyebrow>
+          <MarketingEyebrow>appeal profile</MarketingEyebrow>
           <motion.div
             initial={{ opacity: 0, scale: 0.92 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -296,6 +356,9 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
             <div>
               <h1 className="rg-serif text-[clamp(24px,5vw,30px)] text-ink font-semibold">{form.name || 'Student'}</h1>
               <p className="text-[12px] text-muted mt-0.5">{form.email}</p>
+              <p className="text-[13px] text-ink-muted mt-2 max-w-[300px] mx-auto leading-relaxed">
+                Regrade uses this to draft appeals that sound like you.
+              </p>
             </div>
           </motion.div>
 
@@ -305,9 +368,6 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
                 {platformLabel}
               </span>
             )}
-            <span className="rg-glass-chip px-3 py-1.5 text-[11px] font-medium text-ink-muted">
-              {filledFields}/6 fields filled
-            </span>
             {aiEngine && (
               <span className="rg-glass-chip px-3 py-1.5 text-[11px] font-medium text-violet-700 capitalize">
                 {aiEngine} reader
@@ -341,92 +401,203 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -4 }}
-              className="rg-glass-form-card p-5 sm:p-6 space-y-3.5"
+              className="space-y-4"
             >
-              <p className="text-[14px] text-ink-muted leading-relaxed pb-1">
-                Regrade uses this when drafting appeals — all optional except name.
-              </p>
-
-              <label className="rg-glass-field">
-                <span className="rg-glass-field-label">Name</span>
-                <input
-                  type="text"
-                  required
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  className={inputClass}
-                  placeholder="Full name"
-                />
-              </label>
-
-              <label className="rg-glass-field">
-                <span className="rg-glass-field-label">School</span>
-                <input
-                  type="text"
-                  value={form.school}
-                  onChange={(e) => setForm({ ...form, school: e.target.value })}
-                  className={inputClass}
-                  placeholder="High school name"
-                />
-              </label>
-
-              <label className="rg-glass-field">
-                <span className="rg-glass-field-label">University / college</span>
-                <input
-                  type="text"
-                  value={form.university}
-                  onChange={(e) => setForm({ ...form, university: e.target.value })}
-                  className={inputClass}
-                  placeholder="e.g. Wesley College"
-                />
-              </label>
-
-              <label className="rg-glass-field">
-                <span className="rg-glass-field-label">Major</span>
-                <input
-                  type="text"
-                  value={form.major}
-                  onChange={(e) => setForm({ ...form, major: e.target.value })}
-                  className={inputClass}
-                  placeholder="e.g. Computer Science"
-                />
-              </label>
-
-              <div className="grid grid-cols-2 gap-3">
-                <label className="rg-glass-field">
-                  <span className="rg-glass-field-label">Year / grade</span>
-                  <input
-                    type="text"
-                    value={form.gradeLevel}
-                    onChange={(e) => setForm({ ...form, gradeLevel: e.target.value })}
-                    className={inputClass}
-                    placeholder="Sophomore"
+              {/* Completion */}
+              <div className="rg-glass-form-card p-5 space-y-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[15px] font-semibold text-ink">
+                    Your appeal profile is{' '}
+                    <span className="text-primary">{completionPct}% ready</span>
+                  </p>
+                  <span className="text-[11px] font-mono text-primary/60">{completionUnits.filter(Boolean).length}/{completionUnits.length}</span>
+                </div>
+                <div className="h-2 rounded-full bg-primary/10 overflow-hidden" role="progressbar" aria-valuenow={completionPct} aria-valuemin={0} aria-valuemax={100}>
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${completionPct}%` }}
+                    transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+                    className="h-full rounded-full bg-gradient-to-r from-primary to-violet-500"
                   />
-                </label>
-                <label className="rg-glass-field">
-                  <span className="rg-glass-field-label">GPA</span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={4}
-                    step={0.1}
-                    value={form.gpa}
-                    onChange={(e) => setForm({ ...form, gpa: e.target.value })}
-                    className={inputClass}
-                    placeholder="3.8"
-                  />
-                </label>
+                </div>
+                <p className="text-[12px] text-ink-muted leading-relaxed">{completionHint}</p>
               </div>
 
-              <label className="rg-glass-field">
-                <span className="rg-glass-field-label">What you want</span>
+              {/* Student context */}
+              <div className="rg-glass-form-card p-5 sm:p-6 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-primary/8 shrink-0">
+                    <ICONS.BookOpen className="w-4 h-4 text-primary" strokeWidth={2} />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-[16px] font-semibold text-ink leading-tight">Student Context</h2>
+                    <p className="text-[12px] text-ink-muted mt-0.5">Who the appeal is coming from — only what you add gets used.</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="rg-glass-field col-span-2">
+                    <span className="rg-glass-field-label">Name</span>
+                    <input
+                      type="text"
+                      required
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      className={inputClass}
+                      placeholder="Full name"
+                    />
+                  </label>
+                  <label className="rg-glass-field">
+                    <span className="rg-glass-field-label">School</span>
+                    <input
+                      type="text"
+                      value={form.school}
+                      onChange={(e) => setForm({ ...form, school: e.target.value })}
+                      className={inputClass}
+                      placeholder="High school"
+                    />
+                  </label>
+                  <label className="rg-glass-field">
+                    <span className="rg-glass-field-label">College / university</span>
+                    <input
+                      type="text"
+                      value={form.university}
+                      onChange={(e) => setForm({ ...form, university: e.target.value })}
+                      className={inputClass}
+                      placeholder="e.g. Wesley College"
+                    />
+                  </label>
+                  <label className="rg-glass-field">
+                    <span className="rg-glass-field-label">Major</span>
+                    <input
+                      type="text"
+                      value={form.major}
+                      onChange={(e) => setForm({ ...form, major: e.target.value })}
+                      className={inputClass}
+                      placeholder="Computer Science"
+                    />
+                  </label>
+                  <label className="rg-glass-field">
+                    <span className="rg-glass-field-label">Year / grade</span>
+                    <input
+                      type="text"
+                      value={form.gradeLevel}
+                      onChange={(e) => setForm({ ...form, gradeLevel: e.target.value })}
+                      className={inputClass}
+                      placeholder="Sophomore"
+                    />
+                  </label>
+                  <label className="rg-glass-field col-span-2 sm:col-span-1">
+                    <span className="rg-glass-field-label">GPA</span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={4}
+                      step={0.1}
+                      value={form.gpa}
+                      onChange={(e) => setForm({ ...form, gpa: e.target.value })}
+                      className={inputClass}
+                      placeholder="3.8"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* Appeal tone */}
+              <div className="rg-glass-form-card p-5 sm:p-6 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-primary/8 shrink-0">
+                    <ICONS.MessageSquare className="w-4 h-4 text-primary" strokeWidth={2} />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-[16px] font-semibold text-ink leading-tight">How should Regrade sound?</h2>
+                    <p className="text-[12px] text-ink-muted mt-0.5">Pick a few — drafts match this voice.</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Appeal tone">
+                  {TONE_CHIPS.map((chip) => {
+                    const selected = form.appealTone.includes(chip.id);
+                    return (
+                      <button
+                        key={chip.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() =>
+                          setForm((prev) => ({ ...prev, appealTone: toggleChip(prev.appealTone, chip.id) }))
+                        }
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold transition-all ${
+                          selected
+                            ? 'bg-primary text-white shadow-md shadow-primary/25 scale-[1.02]'
+                            : 'rg-glass-chip text-ink/75 hover:border-primary/35 hover:text-primary'
+                        }`}
+                      >
+                        {selected && <ICONS.Check className="w-3.5 h-3.5" strokeWidth={3} />}
+                        {chip.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Focus areas */}
+              <div className="rg-glass-form-card p-5 sm:p-6 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-primary/8 shrink-0">
+                    <ICONS.Search className="w-4 h-4 text-primary" strokeWidth={2} />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-[16px] font-semibold text-ink leading-tight">What should Regrade focus on?</h2>
+                    <p className="text-[12px] text-ink-muted mt-0.5">We check everything — these get extra attention.</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2" role="group" aria-label="Focus areas">
+                  {FOCUS_CHIPS.map((chip) => {
+                    const selected = form.appealFocus.includes(chip.id);
+                    return (
+                      <button
+                        key={chip.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() =>
+                          setForm((prev) => ({ ...prev, appealFocus: toggleChip(prev.appealFocus, chip.id) }))
+                        }
+                        className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full text-[13px] font-semibold transition-all ${
+                          selected
+                            ? 'bg-primary text-white shadow-md shadow-primary/25 scale-[1.02]'
+                            : 'rg-glass-chip text-ink/75 hover:border-primary/35 hover:text-primary'
+                        }`}
+                      >
+                        {selected && <ICONS.Check className="w-3.5 h-3.5" strokeWidth={3} />}
+                        {chip.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Extra instructions */}
+              <div className="rg-glass-form-card p-5 sm:p-6 space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="p-2 rounded-xl bg-primary/8 shrink-0">
+                    <ICONS.Edit3 className="w-4 h-4 text-primary" strokeWidth={2} />
+                  </div>
+                  <div className="min-w-0">
+                    <h2 className="text-[16px] font-semibold text-ink leading-tight">Extra instructions</h2>
+                    <p className="text-[12px] text-ink-muted mt-0.5">Anything else your drafts should always respect.</p>
+                  </div>
+                </div>
                 <textarea
                   value={form.appealGoal}
                   onChange={(e) => setForm({ ...form, appealGoal: e.target.value })}
                   className={textareaClass}
-                  placeholder="Fair rubric checks, polite tone, explain calculation errors…"
+                  maxLength={2000}
+                  placeholder="Example: Keep the tone respectful, mention rubric evidence first, and avoid sounding angry."
                 />
-              </label>
+                <p className="text-[12px] text-ink-muted leading-relaxed flex items-start gap-2">
+                  <ICONS.Shield className="w-3.5 h-3.5 text-primary/60 shrink-0 mt-0.5" strokeWidth={2} />
+                  We use this to make your appeal calmer, clearer, and more personal — never to judge you.
+                </p>
+              </div>
             </motion.div>
           )}
 
@@ -591,14 +762,16 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
         )}
 
         {activeTab !== 'ai' && activeTab !== 'account' && (
-          <button
-            type="submit"
-            disabled={saving}
-            className="rg-btn-cta w-full py-3.5 text-[15px] disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {saving ? <ICONS.RefreshCcw className="animate-spin w-4 h-4" /> : null}
-            {saving ? 'Saving…' : 'Save profile'}
-          </button>
+          <div className="sticky bottom-[84px] z-30 -mx-1 px-1 pointer-events-none">
+            <button
+              type="submit"
+              disabled={saving}
+              className="rg-btn-cta w-full py-3.5 text-[15px] disabled:opacity-50 flex items-center justify-center gap-2 pointer-events-auto shadow-xl shadow-primary/20 backdrop-blur-sm"
+            >
+              {saving ? <ICONS.RefreshCcw className="animate-spin w-4 h-4" /> : null}
+              {saving ? 'Saving…' : activeTab === 'you' ? 'Save Appeal Profile' : 'Save profile'}
+            </button>
+          </div>
         )}
       </form>
 

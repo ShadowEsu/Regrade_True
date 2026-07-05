@@ -114,6 +114,10 @@ export default function App() {
         onStartAppeal={handleStartAppeal}
         onOpenChat={() => setActiveTab('chat')}
         onOpenAppeal={handleOpenAppeal}
+        onOpenPlatforms={() => {
+          setProfileSection('platform');
+          setActiveTab('profile');
+        }}
         onOpenSampleVerdict={
           isPreviewMode()
             ? () => {

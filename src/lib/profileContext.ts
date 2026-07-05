@@ -28,7 +28,15 @@ export function buildStudentProfileContext(
   if (profile.major) lines.push(`Major: ${profile.major}`);
   if (profile.gradeLevel) lines.push(`Year / grade: ${profile.gradeLevel}`);
   if (profile.gpa) lines.push(`GPA / grade average: ${profile.gpa}`);
-  if (profile.appealGoal) lines.push(`What they want from appeals: ${profile.appealGoal}`);
+  if (profile.appealTone?.length) {
+    lines.push(`Preferred appeal voice: ${profile.appealTone.join(', ')} — match this register when drafting.`);
+  }
+  if (profile.appealFocus?.length) {
+    lines.push(
+      `Prioritize these issue types when they appear: ${profile.appealFocus.join(', ')}.`,
+    );
+  }
+  if (profile.appealGoal) lines.push(`Extra instructions from the student: ${profile.appealGoal}`);
 
   const platformName = getPlatformGuideName(appealPlatformId ?? profile.preferredPlatform);
   if (platformName) {
