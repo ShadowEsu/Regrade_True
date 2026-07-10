@@ -8,7 +8,16 @@ DETECT PLATFORM FIRST (set source_platform + image_types_detected)
 ═══════════════════════════════════════════════════════════════
 
 Use visual branding, URL bars in screenshots, and layout. Allowed source_platform values:
-gradescope | canvas | moodle | blackboard | brightspace | google_classroom | turnitin | paper | schoology | powerschool | sakai | teams | crowdmark | akindi | managebac | itslearning | satchel_one | edmodo | openlms | mixed | unknown
+gradescope | canvas | moodle | blackboard | brightspace | google_classroom | google_workspace | turnitin | paper | schoology | powerschool | infinite_campus | skyward | sakai | teams | crowdmark | akindi | managebac | itslearning | open_edx | fedena | teachmint | dingtalk | lark | wecom | toddle | edunext | vidyalaya | classter | alma | veracross | facts | clever | classlink | sharepoint | box | google_drive | onedrive | dropbox | apple_files | email_import | satchel_one | edmodo | openlms | mixed | unknown
+
+UNIVERSAL COMMENT ATTRIBUTION (RUN FOR EVERY SOURCE)
+- First separate four layers: student answer, teacher/grader annotation, platform UI text, and rubric/answer-key text.
+- A name/avatar, “teacher feedback”, “grader comment”, annotation pin, QuickMark, selected rubric cell, or visibly different grader ink can support teacher attribution. A platform button, notification, automated similarity message, AI suggestion, peer comment, or student note cannot.
+- Preserve each teacher comment verbatim. Store your interpretation separately. Never silently rewrite a terse or non-English comment into a stronger claim.
+- Anchor the comment to a page, question, highlighted span, rubric criterion, or attempt when visible. If the anchor is unclear, use location: unknown and lower confidence.
+- Determine whether a score is earned points, lost points, a percentage, a weighted category, a criterion level, or a grade-band label before converting anything.
+- Treat a course average, report-card grade, predicted grade, attendance mark, behavior mark, and assignment score as different fields. Never substitute one for another.
+- When a returned file and a portal summary disagree, preserve both values and flag the conflict. Do not pick the value that creates a better appeal.
 
 GRADESCOPE — teacher comments & marks (CRITICAL)
 Visual cues: "Gradescope" header, green/red rubric tiles, question list with "X / Y pts", "Download Graded Copy" style PDF.
@@ -78,6 +87,20 @@ WHERE COMMENTS LIVE:
 - Grade report PDFs or student portal assignment view with instructor notes → professor_comments.
 - Rubric rows in grading panel → rubric_items_applied.
 
+INFINITE CAMPUS / SKYWARD (student or family portal)
+Visual cues: district-branded Campus Student/Parent or Skyward Family Access portal, grading-period summaries, assignment rows, teacher notes, or a downloadable report card/progress report.
+WHERE COMMENTS LIVE:
+- Assignment rows and portal comments can show a score and a short teacher note. Extract the note verbatim, but do not invent a rubric or marked document when the portal only exposes a grade.
+- A grading-period average or report-card grade is summary evidence only. It cannot establish why a particular assignment was graded as it was.
+- Treat these portals as score-only unless a returned assignment, rubric, or question-level feedback is visibly supplied. For an appeal review, ask for the marked paper or feedback view that corresponds to the assignment.
+
+MICROSOFT TEAMS FOR EDUCATION
+Visual cues: Teams class, Assignments, Returned, Feedback, rubric, points, and attached feedback files.
+WHERE COMMENTS LIVE:
+- Read the submission outcome, score, rubric, typed feedback, and attached feedback resources separately.
+- A Team assignment can have multiple attempts or updated grades. Keep attempt/date context when visible and do not merge attempts without a matching identifier.
+- If only the class-grade summary is present, classify the evidence as score-only and request the returned submission or feedback attachment before evaluating a grading discrepancy.
+
 SAKAI
 Visual cues: Sakai course site, Assignments tool, Gradebook, Feedback on submission.
 WHERE COMMENTS LIVE:
@@ -112,6 +135,57 @@ Visual cues: itslearning purple/green, "Assessment", rubric matrix, teacher feed
 WHERE COMMENTS LIVE:
 - Rubric matrix cells selected → rubric_items_applied.
 - Feedback text area and file annotations → professor_comments.
+
+OPEN EDX
+Visual cues: Open edX course navigation, Progress, problem score, subsection grade, instructor dashboard, or an operator-branded Open edX site.
+WHERE COMMENTS LIVE:
+- Learner progress and grade APIs commonly provide scores, attempts, and problem status, but not a teacher-annotated paper. Treat those records as structured score evidence only.
+- Staff comments, peer-review comments, automated problem feedback, and answer explanations are different sources. Only staff-authored feedback belongs in professor_comments.
+- A course-grade or subsection summary cannot explain a question-level deduction. Request the problem attempt or returned assessment view when missing.
+
+FEDENA / TEACHMINT / EDUNEXT / VIDYALAYA (India)
+Visual cues: school-branded ERP, examination, marks, report card, gradebook, remarks, answer-sheet attachment, or parent/student portal.
+WHERE COMMENTS LIVE:
+- Exam score rows, subject totals, grade letters, and teacher remarks may be separate. Preserve their labels and examination term.
+- “Remarks” can be academic, attendance, behavior, or general report-card text. Only connect a remark to a deduction when the screen explicitly links it to that exam, subject, or question.
+- These systems often expose summary marks without the marked answer sheet. Classify those as score-only; do not infer question mistakes or create Study weaknesses from them.
+- If a returned answer sheet or teacher-marked attachment is included, read it using HANDWRITTEN / MARKED PAPER rules and reconcile it with the ERP score.
+
+DINGTALK / FEISHU-LARK / WECOM (China)
+Visual cues: 钉钉, 飞书/Lark, 企业微信/WeCom classroom, document, form, message card, homework, score notification, or school mini-app.
+WHERE COMMENTS LIVE:
+- Separate teacher-authored chat/document comments from automated bot messages, workflow notifications, parent messages, and student replies.
+- Extract Chinese comments verbatim. You may add a cautious English explanation for the student, but retain the source text and do not strengthen its meaning.
+- A spreadsheet/form score or notification is summary evidence unless it includes the rubric, returned file, or question-level feedback.
+- Workspace APIs can return files and messages, not necessarily official grade records. Use the source label and document identity visible in the supplied data.
+
+TODDLE (IB and international schools)
+Visual cues: Toddle learning experience, assessment evidence, teacher feedback, IB criteria, achievement levels, portfolio, or progress report.
+WHERE COMMENTS LIVE:
+- Keep narrative feedback, selected criterion levels, learning goals, and overall achievement separate.
+- IB/MYP/PYP descriptors are levels, not automatic point deductions. Preserve criterion name, level, descriptor, and any teacher comment exactly.
+- Portfolio observations or formative feedback do not become exam mistakes unless the uploaded item is clearly a marked exam.
+
+CLASSTER / ALMA / VERACROSS / FACTS (SIS and school portals)
+Visual cues: student information system, gradebook row, progress report, report card, assignment detail, narrative comment, or standards grid.
+WHERE COMMENTS LIVE:
+- Assignment-detail comments can be teacher feedback; term comments and report-card narratives are broader context.
+- Standards mastery, conduct, effort, missing-work flags, and academic scores are distinct. Never convert conduct or completion flags into subject weaknesses.
+- Summary portals frequently lack the submitted work. Mark as score-only unless a returned assessment, rubric, or annotation is present.
+
+CLEVER / CLASSLINK
+Visual cues: district launchpad, application tile, SSO portal, roster identity, or linked LMS launch.
+WHERE COMMENTS LIVE:
+- Clever and ClassLink usually identify the learner and launch the actual LMS; they are not themselves proof of a grade or teacher comment.
+- Attribute marks to the downstream LMS shown in the record. If no downstream assessment data is supplied, return no grading findings.
+
+GOOGLE WORKSPACE / DRIVE / ONEDRIVE / SHAREPOINT / DROPBOX / BOX / APPLE FILES / EMAIL IMPORT
+Visual cues: file picker, cloud-drive metadata, shared document, email attachment, returned PDF, Google Doc comments, Word comments, or scanned image.
+WHERE COMMENTS LIVE:
+- Storage and email are transport sources. Detect the grading platform or document type inside the selected file rather than treating the storage provider as the grader.
+- Distinguish resolved/active document comments, suggested edits, version history, email body, and annotations embedded in the attachment.
+- A sender name alone does not prove the sender is the teacher. Use the explicit course/assignment context supplied by the student and keep uncertain attribution flagged.
+- Never read unrelated files, folders, messages, or recipients. Analyze only the user-selected evidence.
 
 SATCEL ONE / SHOW MY HOMEWORK (UK, common in secondary schools)
 Visual cues: Satchel One branding, homework grade, teacher comment thread, skills rubric.
@@ -149,7 +223,8 @@ While transcribing comments, note the grader's register with verbatim examples: 
 NON-ENGLISH / INTERNATIONAL MARKS
 - Letter grades (A–F, 1–6 German, IB levels, UK GCSE 9–1) → letter_grade or note in extraction_uncertainties.
 - Decimal comma (3,5 / 10) → parse as 3.5.
-- Rubric text in any language → extract verbatim; do not translate.
+- Rubric text in any language → extract verbatim. If an explanation is useful, provide a separate cautious translation and mark uncertainty for ambiguous abbreviations.
+- Common labels include: marks/score/grade; remarks/feedback/comments; 得分/成绩/评语/批注; अंक/ग्रेड/टिप्पणी. Labels are navigation clues, not proof that nearby text was teacher-authored.
 
 ═══════════════════════════════════════════════════════════════
 COMPLETENESS AUDIT (run mentally before returning JSON)

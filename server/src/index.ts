@@ -17,6 +17,7 @@ import { createRegradeGeminiRouter } from "./regradeGemini.js";
 import { createConnectionsRouter } from "./connections.js";
 import { deleteUserAccountCompletely } from "./accountDeletion.js";
 import { ensureFirebaseAdmin } from "./firebaseAdmin.js";
+import { createBillingRouter, createStripeWebhookHandler } from "./billing.js";
 
 const env = loadEnv();
 
@@ -61,6 +62,9 @@ app.use(userLimiter);
 // Health (public)
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
+// Stripe must receive the exact raw request bytes so its signature can be verified.
+app.post("/v1/billing/webhook", express.raw({ type: "application/json" }), createStripeWebhookHandler(env));
+
 // Gemini proxy: large JSON — must run before the global 64kb parser.
 app.use(
   "/v1/gemini",
@@ -72,8 +76,18 @@ app.use(
 
 app.use(express.json({ limit: "64kb", type: ["application/json", "application/*+json"] }));
 
+app.use("/v1/billing", requireFirebaseUser, createBillingRouter(env));
+
 // Platform connections: encrypted credential store + Canvas token verify.
-app.use("/v1/connections", requireFirebaseUser, createConnectionsRouter(env));
+// This route has a small JSON payload (tokens and connection metadata). It
+// needs its own parser because the global parser is intentionally mounted
+// later with a much smaller limit.
+app.use(
+  "/v1/connections",
+  express.json({ limit: "16kb", type: ["application/json", "application/*+json"] }),
+  requireFirebaseUser,
+  createConnectionsRouter(env)
+);
 
 // Example “public endpoint” with strict validation/sanitization.
 // (Keeps the API useful even before you wire the mobile app to it.)
@@ -146,4 +160,3 @@ app.listen(env.PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`regrade-api listening on :${env.PORT}`);
 });
-

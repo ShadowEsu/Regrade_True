@@ -58,7 +58,7 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 const previewUser = {
   uid: PREVIEW_USER_UID,
   displayName: null,
-  email: 'preview@regrade.app',
+  email: 'preview@regradeapp.tech',
   emailVerified: true,
   photoURL: null,
   isAnonymous: false,

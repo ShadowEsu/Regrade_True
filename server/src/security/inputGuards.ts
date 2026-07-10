@@ -12,7 +12,7 @@ export const ALLOWED_INLINE_IMAGE_MIMES = new Set([
 ]);
 
 /** ~6 MB decoded per inline image (base64 expands ~4/3). */
-export const MAX_INLINE_IMAGE_BASE64_CHARS = 8_000_000;
+export const MAX_INLINE_IMAGE_BASE64_CHARS = 4_000_000;
 
 export function isAllowedInlineImageMime(mimeType: string): boolean {
   const m = mimeType.trim().toLowerCase();
@@ -34,6 +34,12 @@ export const InlineImageSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Unsupported image type. Use JPEG, PNG, or WebP."
+      });
+    }
+    if (!/^[A-Za-z0-9+/=]+$/.test(img.data)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Image data must be base64-encoded."
       });
     }
   });

@@ -1,6 +1,6 @@
 /**
  * Connector authorization contracts.
- * One interface for all fourteen platforms. Each connector declares its real
+ * One interface for every cataloged platform. Each connector declares its real
  * capability honestly; nothing renders a working-looking button for a flow
  * that cannot complete.
  */
@@ -25,7 +25,31 @@ export type ConnectPlatformId =
   | 'schoology'
   | 'powerschool'
   | 'turnitin'
-  | 'teams_assignments';
+  | 'teams_assignments'
+  | 'sakai'
+  | 'itslearning'
+  | 'managebac'
+  | 'open_edx'
+  | 'fedena'
+  | 'teachmint'
+  | 'dingtalk'
+  | 'lark'
+  | 'wecom'
+  | 'toddle'
+  | 'edunext'
+  | 'vidyalaya'
+  | 'classter'
+  | 'infinite_campus'
+  | 'skyward'
+  | 'alma'
+  | 'veracross'
+  | 'facts'
+  | 'clever'
+  | 'classlink'
+  | 'google_workspace'
+  | 'sharepoint'
+  | 'box'
+  | 'email_import';
 
 export type ConnectionResult =
   | {

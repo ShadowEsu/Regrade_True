@@ -8,6 +8,7 @@ import BrandSpinner from './components/BrandSpinner';
 import { userService } from './services/userService';
 import { needsEmailVerification } from './lib/authVerification';
 import VerifyEmailPrompt from './components/VerifyEmailPrompt';
+import WelcomeSurvey from './components/WelcomeSurvey';
 
 interface AuthGateProps {
   children: React.ReactNode;
@@ -16,17 +17,30 @@ interface AuthGateProps {
 const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [onboardingLoading, setOnboardingLoading] = useState(true);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   useEffect(() => {
     if (isPreviewMode()) {
       const u = auth.currentUser;
       setUser(u);
       setLoading(false);
-      if (u) {
-        void userService.syncProfile(u.uid, {
-          email: u.email || '',
-        });
+      if (!u) {
+        setOnboardingLoading(false);
+        return;
       }
+      void (async () => {
+        try {
+          await userService.syncProfile(u.uid, { email: u.email || '' });
+          const profile = await userService.getProfile(u.uid);
+          setNeedsOnboarding(profile?.onboardingComplete !== true);
+        } catch (err) {
+          console.error('Preview profile could not load:', err);
+          setNeedsOnboarding(false);
+        } finally {
+          setOnboardingLoading(false);
+        }
+      })();
       return;
     }
 
@@ -49,7 +63,18 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
             });
           } catch (err) {
             console.error('Institutional profile out of sync:', err);
+          } finally {
+            try {
+              const profile = await userService.getProfile(u.uid);
+              setNeedsOnboarding(profile?.onboardingComplete !== true);
+            } catch {
+              // A temporary Firestore issue should not trap someone at launch.
+              setNeedsOnboarding(false);
+            }
+            setOnboardingLoading(false);
           }
+        } else {
+          setOnboardingLoading(false);
         }
       });
     })();
@@ -69,6 +94,17 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
         </>
       );
     }
+    if (onboardingLoading) {
+      return <BrandSpinner size={48} />;
+    }
+    if (needsOnboarding) {
+      return (
+        <>
+          <PreviewBanner />
+          <WelcomeSurvey onComplete={() => setNeedsOnboarding(false)} />
+        </>
+      );
+    }
     return (
       <>
         <PreviewBanner />
@@ -77,7 +113,7 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     );
   }
 
-  if (loading) {
+  if (loading || (user && onboardingLoading)) {
     return (
       <div className="min-h-screen bg-surface flex items-center justify-center p-6 paper-texture">
         <div className="text-center space-y-4">
@@ -94,6 +130,10 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
 
   if (needsEmailVerification(user)) {
     return <VerifyEmailPrompt user={user} />;
+  }
+
+  if (needsOnboarding) {
+    return <WelcomeSurvey onComplete={() => setNeedsOnboarding(false)} />;
   }
 
   return <>{children}</>;

@@ -8,10 +8,10 @@ import type { AppealFlowStepId } from '../lib/appealHelpers';
 const STEP_EYEBROW: Partial<Record<AppealFlowStepId, string>> = {
   upload: 'one upload',
   analyze: 'live',
+  annotate: 'cross-check',
   evidence: 'transparency',
   draft: 'in your voice',
-  review: 'tone guardrail',
-  send: 'get started',
+  learn: 'carry it forward',
 };
 
 export default function AppealFlowShell({

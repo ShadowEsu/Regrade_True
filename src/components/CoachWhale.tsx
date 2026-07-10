@@ -1,7 +1,7 @@
 import { motion, useReducedMotion } from 'motion/react';
 import { COACH_WHALE_SRC } from '../branding';
 
-const ASPECT = 726 / 1024;
+const ASPECT = 1;
 
 export default function CoachWhale({
   size = 96,

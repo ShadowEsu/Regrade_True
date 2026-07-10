@@ -11,20 +11,12 @@ const EnvSchema = z
      * `/v1/gemini/*` then returns 503 until configured. Required in production.
      */
     GEMINI_API_KEY: z.string().default(""),
-  /**
-   * Anthropic API key for the hybrid Claude reasoning stage. Optional — when
-   * absent, every request falls back to the single-model Gemini path with a
-   * note in ai_notes.cross_check_summary. Never expose to the browser.
-   */
-  ANTHROPIC_API_KEY: z.string().optional(),
-  /**
-   * Kill switch for the hybrid pipeline. When false, the server forces every
-   * request through the single-model Gemini path regardless of user preference.
-   */
-  HYBRID_ENABLED: z
-    .union([z.literal("true"), z.literal("false"), z.boolean()])
-    .default("true")
-    .transform((v) => v === true || v === "true"),
+    /** Stripe Billing is optional in local preview and required before paid plans can activate. */
+    STRIPE_SECRET_KEY: z.string().optional(),
+    STRIPE_WEBHOOK_SECRET: z.string().optional(),
+    STRIPE_STUDENT_PRICE_ID: z.string().optional(),
+    STRIPE_PRO_PRICE_ID: z.string().optional(),
+    BILLING_RETURN_URL: z.string().url().default("http://localhost:3000/app"),
   /**
    * Optional: comma-separated API keys for simple auth.
    * Prefer a real auth system later; this is for “public endpoints” protection now.
@@ -95,4 +87,3 @@ export function loadEnv(input: Record<string, string | undefined> = process.env)
   }
   return parsed.data;
 }
-

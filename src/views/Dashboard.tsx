@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { ICONS } from '../constants';
 import { auth } from '../lib/firebase';
 import { isPreviewMode } from '../lib/previewMode';
 import { caseService, Case } from '../services/caseService';
+import { userService } from '../services/userService';
 import MarketingEyebrow from '../components/MarketingEyebrow';
 import AnimatedPrimaryButton from '../components/AnimatedPrimaryButton';
-import SupportedPlatforms from '../components/SupportedPlatforms';
 import CoachWhale from '../components/CoachWhale';
 import { COACH_CTA, COACH_GREETING } from '../branding';
 import {
@@ -55,27 +55,41 @@ export default function Dashboard({
   onOpenAppeal,
   onOpenSampleVerdict,
   onOpenPlatforms,
+  onOpenStudy,
 }: {
   onStartAppeal: () => void;
   onOpenChat: () => void;
   onOpenAppeal?: (caseId: string) => void;
   onOpenSampleVerdict?: () => void;
   onOpenPlatforms?: () => void;
+  onOpenStudy: () => void;
 }) {
   const user = auth.currentUser;
-  /** Real first name when we have one; null renders the nameless greeting. */
-  const firstName =
+  const authFirstName =
     user?.displayName?.split(' ')[0] ||
     (isPreviewMode() ? null : user?.email?.split('@')[0]) ||
     null;
+  const [profileFirstName, setProfileFirstName] = useState<string | null>(authFirstName);
+  const firstName = profileFirstName || authFirstName;
+  const hour = new Date().getHours();
+  const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const [latestCase, setLatestCase] = useState<Case | null>(null);
   const [loading, setLoading] = useState(true);
+  const [analysisAlerts, setAnalysisAlerts] = useState(true);
+  const notifiedCaseId = useRef<string | null>(null);
+  const pts = latestCase ? getPossiblePointsBack(latestCase) : 0;
 
   useEffect(() => {
     async function fetchCases() {
       try {
-        const cases = await caseService.getUserCases();
+        const [cases, profile] = await Promise.all([
+          caseService.getUserCases(),
+          user?.uid ? userService.getProfile(user.uid) : Promise.resolve(null),
+        ]);
         if (cases.length > 0) setLatestCase(cases[0]);
+        setAnalysisAlerts(profile?.analysisAlerts !== false);
+        const savedFirstName = profile?.name?.trim().split(/\s+/)[0];
+        if (savedFirstName) setProfileFirstName(savedFirstName);
       } catch (err) {
         console.error('Failed to load appeal records:', err);
       } finally {
@@ -83,41 +97,35 @@ export default function Dashboard({
       }
     }
     fetchCases();
-  }, []);
+  }, [user?.uid]);
 
-  const pts = latestCase ? getPossiblePointsBack(latestCase) : 0;
+  useEffect(() => {
+    if (!analysisAlerts || !latestCase?.analysis || !latestCase.id || pts <= 0) return;
+    if (notifiedCaseId.current === latestCase.id) return;
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    notifiedCaseId.current = latestCase.id;
+    new Notification('Regrade found something worth reviewing', {
+      body: `Mr Whale found up to +${pts} points to check before you decide what to do next.`,
+      icon: '/favicon.ico',
+    });
+  }, [analysisAlerts, latestCase, pts]);
 
   return (
     <div className="space-y-8 pb-6">
-      {/* Hero */}
-      <section className="relative overflow-hidden rounded-[24px] rg-glass-hero px-5 py-8 sm:px-8 sm:py-10">
-        <div className="absolute -top-24 right-0 w-64 h-64 rounded-full bg-primary/[0.09] blur-3xl pointer-events-none" aria-hidden />
-        <div className="absolute -bottom-20 -left-10 w-52 h-52 rounded-full bg-violet-400/10 blur-3xl pointer-events-none" aria-hidden />
-        <div className="absolute top-8 right-8 w-28 h-28 rounded-full bg-emerald-400/8 blur-2xl pointer-events-none" aria-hidden />
-
-        <div className="relative flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-8">
+      {/* Personal greeting and primary actions intentionally sit directly on the page. */}
+      <section className="pt-3 sm:pt-5">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-10">
           <div className="flex-1 space-y-6 min-w-0">
-            <div className="space-y-3">
-              <MarketingEyebrow>your dashboard</MarketingEyebrow>
+            <div className="space-y-2">
               <motion.h1
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                className="rg-serif text-[clamp(32px,8vw,44px)] text-ink font-bold leading-[1.05] tracking-tight"
+                className="rg-serif text-[clamp(32px,8vw,46px)] text-ink font-bold leading-[1.06] tracking-tight"
               >
-                {firstName ? (
-                  <>
-                    Welcome,{' '}
-                    <span className="text-primary font-bold">{firstName}</span>.
-                  </>
-                ) : (
-                  <>
-                    Let&apos;s win back{' '}
-                    <span className="text-primary font-bold">your points</span>.
-                  </>
-                )}
+                {timeGreeting}{firstName ? <>, <span className="text-primary">{firstName}</span>.</> : '.'}
               </motion.h1>
               <p className="text-[15px] text-ink-muted leading-relaxed max-w-md">
-                Upload graded work — we find rubric gaps and draft your appeal email.
+                What would you like to review today?
               </p>
             </div>
 
@@ -151,7 +159,7 @@ export default function Dashboard({
 
             <div className="flex flex-col gap-3 pt-1">
               <AnimatedPrimaryButton onClick={onStartAppeal} showPlus hero className="w-full">
-                Start a New Appeal
+                Review graded work
               </AnimatedPrimaryButton>
               <motion.button
                 type="button"
@@ -207,6 +215,25 @@ export default function Dashboard({
           </motion.div>
         ))}
       </div>
+
+      {!loading && analysisAlerts && latestCase?.analysis && pts > 0 && (
+        <motion.button
+          type="button"
+          onClick={() => latestCase.id && onOpenAppeal?.(latestCase.id)}
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="w-full text-left rounded-[18px] border border-primary/20 bg-primary/[0.07] px-4 py-4 flex items-start gap-3 hover:border-primary/35 transition-colors"
+        >
+          <span className="w-9 h-9 shrink-0 rounded-xl bg-primary text-white flex items-center justify-center shadow-md shadow-primary/20">
+            <ICONS.Bell className="w-4.5 h-4.5" strokeWidth={2.25} />
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-[14px] font-semibold text-ink">We found up to +{pts} points worth a second look.</span>
+            <span className="block text-[12px] text-ink-muted mt-0.5">Review the evidence before deciding whether to draft an appeal.</span>
+          </span>
+          <ICONS.ArrowRight className="w-4 h-4 text-primary mt-1 shrink-0" strokeWidth={2.25} />
+        </motion.button>
+      )}
 
       {loading ? (
         <div className="rg-glass-form-card p-6 space-y-3">
@@ -338,7 +365,34 @@ export default function Dashboard({
         </section>
       )}
 
-      <SupportedPlatforms compact onAddPlatform={onOpenPlatforms} />
+      <section className="rg-glass-form-card p-5 flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <MarketingEyebrow>your gradebook</MarketingEyebrow>
+          <p className="rg-serif text-lg text-ink font-semibold mt-1">Connect a platform when you need it.</p>
+          <p className="text-[13px] text-ink-muted leading-relaxed mt-1">
+            Search Canvas, Moodle, Classroom, and more, or upload a graded file directly.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onOpenPlatforms}
+          className="rg-btn-secondary shrink-0 px-3.5 py-2.5 text-[13px]"
+        >
+          Search
+        </button>
+      </section>
+
+      <section className="relative overflow-hidden rounded-[20px] border border-violet-500/15 bg-gradient-to-br from-violet-500/[0.08] via-canvas to-primary/[0.06] p-5 flex items-center justify-between gap-4">
+        <div className="absolute -bottom-10 -right-8 w-36 h-36 rounded-full bg-violet-400/15 blur-3xl" aria-hidden />
+        <div className="relative min-w-0">
+          <MarketingEyebrow>review room</MarketingEyebrow>
+          <p className="rg-serif text-lg text-ink font-semibold mt-1">Turn marked exams into your review checklist.</p>
+          <p className="text-[13px] text-ink-muted leading-relaxed mt-1">Find recurring patterns before your next exam.</p>
+        </div>
+        <button type="button" onClick={onOpenStudy} className="relative rg-btn-secondary shrink-0 px-3.5 py-2.5 text-[13px]">
+          Review
+        </button>
+      </section>
 
       {onOpenSampleVerdict && (
         <button type="button" onClick={onOpenSampleVerdict} className="rg-text-link text-sm w-full justify-center">

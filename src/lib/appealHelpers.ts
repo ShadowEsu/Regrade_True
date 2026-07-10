@@ -31,7 +31,7 @@ export function getNextStep(c: Case): string {
   if (!c.analysis) return 'Upload graded work';
   if (c.progress < 40) return 'Review AI analysis';
   if (c.progress < 70) return 'Review draft email';
-  if (c.status === 'Draft Ready') return 'Send to professor';
+  if (c.status === 'Draft Ready') return 'Finish draft and review study notes';
   if (c.status === 'Resolved') return 'View outcome';
   return 'Continue appeal';
 }
@@ -54,10 +54,10 @@ export const PLATFORMS = [
 export const APPEAL_FLOW_STEPS = [
   { id: 'upload', label: 'Upload' },
   { id: 'analyze', label: 'Analyze' },
+  { id: 'annotate', label: 'Annotate' },
   { id: 'evidence', label: 'Evidence' },
   { id: 'draft', label: 'Draft' },
-  { id: 'review', label: 'Review' },
-  { id: 'send', label: 'Send' },
+  { id: 'learn', label: 'Learn' },
 ] as const;
 
 export type AppealFlowStepId = (typeof APPEAL_FLOW_STEPS)[number]['id'];

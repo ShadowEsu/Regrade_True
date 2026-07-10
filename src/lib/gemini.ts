@@ -1,7 +1,7 @@
 import { apiFetch } from './api';
 import { isPreviewMode } from './previewMode';
 import { PREVIEW_ANALYSIS } from './previewFixtures';
-import type { AiEngine, AnalysisResult } from '../types';
+import type { AnalysisResult } from '../types';
 
 type InlineImagePart = { mimeType: string; data: string };
 
@@ -20,7 +20,7 @@ export async function performComprehensiveAnalysis(
   assignmentData: string,
   rubricData: string,
   feedbackData: string,
-  options?: { inlineImages?: InlineImagePart[]; aiEngine?: AiEngine },
+  options?: { inlineImages?: InlineImagePart[] },
 ) {
   if (isPreviewMode()) {
     await new Promise((r) => setTimeout(r, 900));
@@ -35,7 +35,6 @@ export async function performComprehensiveAnalysis(
         rubricData,
         feedbackData,
         inlineImages: options?.inlineImages ?? [],
-        aiEngine: options?.aiEngine ?? 'hybrid',
       }),
     });
     if (!res.ok) {

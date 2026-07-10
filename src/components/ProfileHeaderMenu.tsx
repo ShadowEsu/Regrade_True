@@ -6,10 +6,11 @@ import { isPreviewMode } from '../lib/previewMode';
 import type { ProfileSection } from '../views/Profile';
 
 const SECTIONS: { id: ProfileSection; label: string }[] = [
-  { id: 'you', label: 'Profile' },
-  { id: 'platform', label: 'Platforms & app' },
-  { id: 'ai', label: 'AI' },
-  { id: 'account', label: 'Account' },
+  { id: 'you', label: 'My profile' },
+  { id: 'platform', label: 'Connections' },
+  { id: 'subscription', label: 'Plan & usage' },
+  { id: 'ai', label: 'Mr Whale & alerts' },
+  { id: 'account', label: 'Settings & account' },
 ];
 
 export default function ProfileHeaderMenu({
@@ -58,14 +59,15 @@ export default function ProfileHeaderMenu({
         aria-expanded={open}
         aria-haspopup="menu"
         aria-label="Profile menu"
+        data-tour="profile"
       >
         <img
           src={user?.photoURL || DEFAULT_AVATAR_SRC}
           alt=""
-          className="w-11 h-11 rounded-full object-cover border-2 border-white/85"
+          className="w-8 h-8 rounded-full object-cover border border-white/85"
         />
         <motion.span animate={{ rotate: open ? 180 : 0 }} transition={{ duration: 0.2 }}>
-          <ICONS.ChevronDown className="w-4 h-4 text-ink-muted" strokeWidth={2.5} />
+          <ICONS.ChevronDown className="w-3.5 h-3.5 text-ink-muted" strokeWidth={2.5} />
         </motion.span>
       </motion.button>
 

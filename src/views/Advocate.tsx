@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion } from 'motion/react';
+import { motion, useReducedMotion } from 'motion/react';
 import { ICONS } from '../constants';
 import { chatWithAdvocate } from '../lib/gemini';
 import { buildCaseContextForAdvocate } from '../lib/appealDraft';
@@ -14,6 +14,7 @@ import ChatMarkdown from '../components/ChatMarkdown';
 import { COACH_HEADING, COACH_SUBHEADING } from '../branding';
 
 type ChatMessage = { role: 'ai' | 'user'; text: string; sentAt?: number };
+type AgentSession = { id: string; title: string; messages: ChatMessage[]; input: string };
 
 /** Server AdvocateSchema caps history at 80 entries — stay under it client-side. */
 const MAX_HISTORY_MESSAGES = 40;
@@ -24,18 +25,35 @@ function looksLikeInsight(text: string): boolean {
 
 function AiMessage({ text }: { text: string }) {
   const isInsight = looksLikeInsight(text);
+  const reduceMotion = useReducedMotion();
+  const [visibleText, setVisibleText] = useState(reduceMotion ? text : '');
+
+  useEffect(() => {
+    if (reduceMotion) {
+      setVisibleText(text);
+      return;
+    }
+    let cursor = 0;
+    const step = Math.max(2, Math.ceil(text.length / 90));
+    const timer = window.setInterval(() => {
+      cursor = Math.min(text.length, cursor + step);
+      setVisibleText(text.slice(0, cursor));
+      if (cursor >= text.length) window.clearInterval(timer);
+    }, 14);
+    return () => window.clearInterval(timer);
+  }, [text, reduceMotion]);
 
   if (isInsight) {
     return (
       <div className="flex gap-3 items-start">
         <SparkleAvatar size={38} />
         <div className="flex-1 min-w-0">
-          <div className="rounded-[var(--radius-card)] border border-primary/20 bg-gradient-to-br from-primary/[0.12] to-canvas px-4 py-3.5 shadow-sm">
+          <div className="rg-coach-ai-message rg-coach-ai-insight">
             <div className="flex items-center gap-2 mb-2">
-              <ICONS.Lightbulb className="w-4 h-4 text-primary" strokeWidth={2} />
-              <span className="text-sm font-semibold text-primary">Key Insight</span>
+              <ICONS.Lightbulb className="w-3.5 h-3.5 text-primary" strokeWidth={2} />
+              <span className="text-[12px] font-semibold text-primary">Key insight</span>
             </div>
-            <ChatMarkdown text={text} />
+            <ChatMarkdown text={visibleText} />
           </div>
         </div>
       </div>
@@ -46,8 +64,8 @@ function AiMessage({ text }: { text: string }) {
     <div className="flex gap-3 items-start">
       <SparkleAvatar size={38} />
       <div className="flex-1 min-w-0">
-        <div className="rounded-[var(--radius-card)] border border-primary/15 bg-canvas/90 px-4 py-3.5 border-l-[3px] border-l-primary shadow-sm">
-          <ChatMarkdown text={text} />
+        <div className="rg-coach-ai-message">
+          <ChatMarkdown text={visibleText} />
         </div>
       </div>
     </div>
@@ -62,20 +80,20 @@ function formatTimeAgo(ts?: number): string {
   return `${Math.floor(diff / 3_600_000)}h ago`;
 }
 
-function CoachEmptyState() {
+function CoachEmptyState({ sessionTitle }: { sessionTitle: string }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
-      className="flex flex-col items-center justify-center text-center px-6 py-10 sm:py-14 min-h-[min(48vh,380px)]"
+      className="flex flex-col items-center justify-center text-center px-6 py-8 sm:py-10 min-h-[min(42vh,320px)]"
     >
-      <CoachWhale size={156} className="sm:scale-105" />
-      <h1 className="rg-serif text-[clamp(28px,5.5vw,40px)] text-ink mt-8 sm:mt-10 tracking-tight leading-[1.1]">
-        {COACH_HEADING}
+      <CoachWhale size={104} />
+      <h1 className="rg-serif text-[clamp(24px,4vw,32px)] text-ink mt-5 tracking-tight leading-[1.1]">
+        {sessionTitle}
       </h1>
-      <p className="text-[15px] text-ink-muted mt-3 max-w-md leading-relaxed">
-        {COACH_SUBHEADING}
+      <p className="text-[13px] text-ink-muted mt-2 max-w-md leading-relaxed">
+        {COACH_HEADING} {COACH_SUBHEADING}
       </p>
     </motion.div>
   );
@@ -88,12 +106,63 @@ export default function Advocate({
   onBack?: () => void;
   caseId?: string | null;
 }) {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [input, setInput] = useState('');
+  const [sessions, setSessions] = useState<AgentSession[]>([{ id: 'whale-1', title: 'Mr Whale', messages: [], input: '' }]);
+  const [activeSessionId, setActiveSessionId] = useState('whale-1');
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [titleDraft, setTitleDraft] = useState('');
   const [loading, setLoading] = useState(false);
   const [caseContext, setCaseContext] = useState<string | undefined>();
   const chatEndRef = useRef<HTMLDivElement>(null);
+  const activeSession = sessions.find((session) => session.id === activeSessionId) ?? sessions[0];
+  const messages = activeSession.messages;
+  const input = activeSession.input;
   const isEmpty = messages.length === 0 && !loading;
+
+  const updateActiveSession = (update: (session: AgentSession) => AgentSession) => {
+    setSessions((previous) => previous.map((session) => session.id === activeSessionId ? update(session) : session));
+  };
+
+  const createAgent = () => {
+    if (sessions.length >= 8) return;
+    const number = sessions.length + 1;
+    const session = { id: `whale-${Date.now()}`, title: `Mr Whale ${number}`, messages: [], input: '' };
+    setSessions((previous) => [...previous, session]);
+    setActiveSessionId(session.id);
+    setEditingSessionId(session.id);
+    setTitleDraft(session.title);
+  };
+
+  const beginRename = (session: AgentSession) => {
+    setActiveSessionId(session.id);
+    setEditingSessionId(session.id);
+    setTitleDraft(session.title);
+  };
+
+  const finishRename = () => {
+    if (!editingSessionId) return;
+    const nextTitle = sanitizeUserText(titleDraft.trim(), 48);
+    if (nextTitle) {
+      setSessions((previous) => previous.map((session) =>
+        session.id === editingSessionId ? { ...session, title: nextTitle } : session,
+      ));
+    }
+    setEditingSessionId(null);
+    setTitleDraft('');
+  };
+
+  const removeAgent = (sessionId: string) => {
+    if (sessions.length === 1) return;
+    const index = sessions.findIndex((session) => session.id === sessionId);
+    const remaining = sessions.filter((session) => session.id !== sessionId);
+    setSessions(remaining);
+    if (sessionId === activeSessionId) {
+      setActiveSessionId(remaining[Math.max(0, index - 1)].id);
+    }
+    if (sessionId === editingSessionId) {
+      setEditingSessionId(null);
+      setTitleDraft('');
+    }
+  };
 
   useEffect(() => {
     if (!caseId) {
@@ -123,41 +192,44 @@ export default function Advocate({
     const userMessage = sanitizeUserText(raw.trim(), 32_000);
     if (!userMessage) return;
 
-    setMessages((prev) => [...prev, { role: 'user', text: userMessage, sentAt: Date.now() }]);
-    setInput('');
+    const sessionId = activeSession.id;
+    const history = activeSession.messages.slice(-MAX_HISTORY_MESSAGES).map((m) => ({
+      role: m.role === 'ai' ? ('model' as const) : ('user' as const),
+      text: m.text,
+    }));
+    setSessions((previous) => previous.map((session) => session.id === sessionId ? {
+      ...session,
+      messages: [...session.messages, { role: 'user', text: userMessage, sentAt: Date.now() }],
+      input: '',
+    } : session));
     setLoading(true);
 
     try {
       const scan = await scanContentForThreats(userMessage, 'chat');
       if (!scan.isSafe) {
-        setMessages((prev) => [
-          ...prev,
-          {
+        setSessions((previous) => previous.map((session) => session.id === sessionId ? {
+          ...session,
+          messages: [...session.messages, {
             role: 'ai',
             text:
               scan.recommendation ||
               'That message could not be sent. Please rephrase and try again.',
-          },
-        ]);
+          }],
+        } : session));
         setLoading(false);
         return;
       }
 
-      const history = messages.slice(-MAX_HISTORY_MESSAGES).map((m) => ({
-        role: m.role === 'ai' ? ('model' as const) : ('user' as const),
-        text: m.text,
-      }));
-
       const response = await chatWithAdvocate(userMessage, history, { caseContext });
-      setMessages((prev) => [
-        ...prev,
-        { role: 'ai', text: response || "I'm sorry, I couldn't process that request." },
-      ]);
+      setSessions((previous) => previous.map((session) => session.id === sessionId ? {
+        ...session,
+        messages: [...session.messages, { role: 'ai', text: response || "I'm sorry, I couldn't process that request." }],
+      } : session));
     } catch {
-      setMessages((prev) => [
-        ...prev,
-        { role: 'ai', text: 'Sorry, I ran into an error. Please try again.' },
-      ]);
+      setSessions((previous) => previous.map((session) => session.id === sessionId ? {
+        ...session,
+        messages: [...session.messages, { role: 'ai', text: 'Sorry, I ran into an error. Please try again.' }],
+      } : session));
     } finally {
       setLoading(false);
     }
@@ -174,37 +246,94 @@ export default function Advocate({
         </div>
       )}
 
+      <div className="rg-agent-workspace">
+        <div className="rg-agent-workspace-inner">
+          <div className="rg-agent-workspace-brand">
+            <CoachWhale size={22} animate={false} />
+            <div>
+              <p>MR. WHALE</p>
+              <span>Agent workspace</span>
+            </div>
+          </div>
+
+          <div className="rg-agent-tabs" role="tablist" aria-label="Mr Whale agent sessions">
+            {sessions.map((session) => {
+              const isActive = session.id === activeSessionId;
+              const isEditing = session.id === editingSessionId;
+              return (
+                <div key={session.id} className={`rg-agent-tab ${isActive ? 'rg-agent-tab-active' : ''}`}>
+                  {isEditing ? (
+                    <input
+                      autoFocus
+                      value={titleDraft}
+                      onChange={(event) => setTitleDraft(event.target.value)}
+                      onBlur={finishRename}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') finishRename();
+                        if (event.key === 'Escape') {
+                          setEditingSessionId(null);
+                          setTitleDraft('');
+                        }
+                      }}
+                      aria-label="Rename agent"
+                      className="rg-agent-tab-input"
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={isActive}
+                      onClick={() => setActiveSessionId(session.id)}
+                      onDoubleClick={() => beginRename(session)}
+                      className="rg-agent-tab-select"
+                      title="Open agent — double-click to rename"
+                    >
+                      {session.title}
+                    </button>
+                  )}
+                  {isActive && !isEditing && (
+                    <button type="button" onClick={() => beginRename(session)} className="rg-agent-tab-action" aria-label={`Rename ${session.title}`} title="Rename agent">
+                      <ICONS.Edit className="h-3 w-3" strokeWidth={2} />
+                    </button>
+                  )}
+                  {sessions.length > 1 && !isEditing && (
+                    <button type="button" onClick={() => removeAgent(session.id)} className="rg-agent-tab-action" aria-label={`Close ${session.title}`} title="Close agent">
+                      <ICONS.X className="h-3 w-3" strokeWidth={2} />
+                    </button>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          <button type="button" onClick={createAgent} disabled={sessions.length >= 8} className="rg-agent-new" title="Create a new Mr Whale agent">
+            <ICONS.Plus className="h-3.5 w-3.5" strokeWidth={2.25} />
+            <span>New agent</span>
+          </button>
+        </div>
+      </div>
+
       <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain">
         <div className="w-full max-w-3xl mx-auto px-4 sm:px-6">
           {isEmpty ? (
-            <CoachEmptyState />
+            <CoachEmptyState sessionTitle={activeSession.title} />
           ) : (
             <div className="py-5 space-y-5">
               {messages.map((m, i) =>
                 m.role === 'ai' ? (
-                  <motion.div
-                    key={i}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
-                  >
-                    <AiMessage text={m.text} />
-                  </motion.div>
+                  <div key={i}><AiMessage text={m.text} /></div>
                 ) : (
-                  <motion.div
+                  <div
                     key={i}
-                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ duration: 0.3 }}
                     className="flex flex-col items-end pl-10"
                   >
-                    <div className="max-w-[88%] rounded-[var(--radius-card)] rounded-br-sm bg-primary text-white px-4 py-3 shadow-md shadow-primary/20">
-                      <p className="text-[15px] leading-[1.6] whitespace-pre-wrap">{m.text}</p>
+                    <div className="max-w-[88%] rounded-[var(--radius-card)] rounded-br-sm bg-primary text-white px-3 py-2.5 shadow-sm shadow-primary/20">
+                      <p className="text-[13px] leading-[1.55] whitespace-pre-wrap">{m.text}</p>
                     </div>
                     <span className="text-[11px] text-muted mt-1.5 pr-1">
                       {formatTimeAgo(m.sentAt)}
                     </span>
-                  </motion.div>
+                  </div>
                 ),
               )}
 
@@ -219,7 +348,7 @@ export default function Advocate({
         <div className="w-full max-w-3xl mx-auto">
           <CoachComposer
             value={input}
-            onChange={setInput}
+            onChange={(value) => updateActiveSession((session) => ({ ...session, input: value }))}
             onSend={(text) => void sendMessage(text)}
             loading={loading}
             showQuickRow={isEmpty}

@@ -119,13 +119,13 @@ flowchart LR
 | Layer | Technology | Secrets |
 |-------|------------|---------|
 | Client | React 19, Vite, Tailwind | `VITE_FIREBASE_*` only (public web config) |
-| API | Express, Helmet, CORS, Zod | `GEMINI_API_KEY`, `ANTHROPIC_API_KEY`, Admin SDK |
+| API | Express, Helmet, CORS, Zod | `GEMINI_API_KEY`, Admin SDK |
 | Database | Firestore | Rules in `firestore.rules` |
 | Hosting | Firebase Hosting | `dist/` static build |
 
 ---
 
-## Hybrid AI pipeline (how data is dug out)
+## Mr. Whale AI pipeline
 
 Default **Hybrid** mode uses two stages. The Reader **does not** judge fairness; it only extracts what is visible. The Reasoner infers **teacher style** and appeal strength from that ledger.
 
@@ -296,7 +296,7 @@ npm --prefix server install
 
 # 2. configure
 cp .env.example .env                  # fill VITE_FIREBASE_* (see FIREBASE_SETUP.md)
-cp server/.env.example server/.env    # GEMINI_API_KEY + Firebase Admin (+ optional ANTHROPIC_API_KEY)
+cp server/.env.example server/.env    # GEMINI_API_KEY + Firebase Admin
 
 # 3. start (two terminals)
 npm run dev:api                       # terminal 1 — Express API on :8787
@@ -317,9 +317,7 @@ The Vite dev server proxies `/api/*` to the Express server on `127.0.0.1:8787`, 
 
 | Variable | Required | Role |
 |----------|----------|------|
-| `GEMINI_API_KEY` | Prod yes | Vision Reader + security scan + Gemini-only path |
-| `ANTHROPIC_API_KEY` | No | Hybrid / Claude-only reasoning |
-| `HYBRID_ENABLED` | No (default `true`) | Kill switch → force Gemini-only |
+| `GEMINI_API_KEY` | Prod yes | Mr. Whale analysis, chat, and security scan |
 | `FIREBASE_SERVICE_ACCOUNT_JSON` or `GOOGLE_APPLICATION_CREDENTIALS` | Yes for auth routes | Verify ID tokens |
 | `CORS_ORIGIN` | Prod: explicit URLs | Never `*` in production |
 | `API_KEYS` | Prod yes for feedback | Protects `POST /v1/feedback` |

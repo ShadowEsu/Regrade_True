@@ -7,7 +7,7 @@
     "name": "Preston Jay Susanto"
   },
   "license": "SEE LICENSE IN ../LICENSE",
-  "homepage": "https://regrade.app",
+  "homepage": "https://regradeapp.tech",
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -16,7 +16,6 @@
     "lint": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.32.1",
     "@google/genai": "^1.29.0",
     "cors": "^2.8.5",
     "dotenv": "^16.6.1",
@@ -24,6 +23,7 @@
     "express-rate-limit": "^7.5.1",
     "firebase-admin": "^13.6.0",
     "helmet": "^7.2.0",
+    "stripe": "^22.3.1",
     "zod": "^3.25.76"
   },
   "devDependencies": {

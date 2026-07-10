@@ -1,11 +1,13 @@
-import React from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { BRAND_ICON_SRC, COACH_NAME, COACH_NAV_LABEL } from '../branding';
 import Logo from './Logo';
 import { NAV_TAB_ICONS } from './BottomNavIcons';
 import ProfileHeaderMenu from './ProfileHeaderMenu';
 import ThemeQuickToggle from './ThemeQuickToggle';
+import NotificationQuickToggle from './NotificationQuickToggle';
 import type { ProfileSection } from '../views/Profile';
+import { caseService } from '../services/caseService';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -19,8 +21,8 @@ const tabs = [
   { id: 'dashboard', label: 'Home' },
   { id: 'upload', label: 'Appeal' },
   { id: 'chat', label: COACH_NAV_LABEL },
+  { id: 'study', label: 'Review' },
   { id: 'history', label: 'History' },
-  { id: 'profile', label: 'Profile' },
 ] as const;
 
 export default function Layout({
@@ -31,6 +33,35 @@ export default function Layout({
   onProfileSectionChange,
 }: LayoutProps) {
   const isChat = activeTab === 'chat';
+  const [unread, setUnread] = useState<Record<string, number>>({ chat: 0, study: 0, history: 0 });
+  const refreshUnread = useCallback(async () => {
+    try {
+      const cases = await caseService.getUserCases();
+      const valueOf = (raw: unknown) => {
+        if (raw && typeof (raw as { toDate?: () => Date }).toDate === 'function') return (raw as { toDate: () => Date }).toDate().getTime();
+        const parsed = new Date(raw as string).getTime();
+        return Number.isFinite(parsed) ? parsed : 0;
+      };
+      const historySeen = Number(localStorage.getItem('regrade.seen.history') ?? 0);
+      const reviewSeen = Number(localStorage.getItem('regrade.seen.review') ?? 0);
+      setUnread({
+        chat: Number(localStorage.getItem('regrade.unread.coach') ?? 0),
+        history: cases.filter((item) => valueOf(item.updatedAt) > historySeen).length,
+        study: cases.filter((item) => item.analysis?.assignment.assignment_type === 'exam' && valueOf(item.updatedAt) > reviewSeen).length,
+      });
+    } catch { setUnread((current) => current); }
+  }, []);
+
+  useEffect(() => { void refreshUnread(); }, [activeTab, refreshUnread]);
+
+  const selectTab = (tab: string) => {
+    const now = Date.now().toString();
+    if (tab === 'history') localStorage.setItem('regrade.seen.history', now);
+    if (tab === 'study') localStorage.setItem('regrade.seen.review', now);
+    if (tab === 'chat') localStorage.setItem('regrade.unread.coach', '0');
+    setUnread((current) => ({ ...current, [tab]: 0 }));
+    onTabChange(tab);
+  };
 
   return (
     <div className="rg-app-bg selection:bg-primary/15">
@@ -45,7 +76,7 @@ export default function Layout({
             <>
               <button
                 type="button"
-                onClick={() => onTabChange('dashboard')}
+                onClick={() => selectTab('dashboard')}
                 className="rg-header-icon-btn w-9 h-9 shrink-0"
                 aria-label="Home"
               >
@@ -60,6 +91,7 @@ export default function Layout({
                 <span className="rg-serif text-lg text-ink font-semibold">{COACH_NAME}</span>
               </div>
               <div className="flex items-center gap-1 shrink-0">
+                <NotificationQuickToggle />
                 <ThemeQuickToggle />
                 <ProfileHeaderMenu
                   activeSection={profileSection}
@@ -72,13 +104,14 @@ export default function Layout({
             <>
               <button
                 type="button"
-                onClick={() => onTabChange('dashboard')}
+                onClick={() => selectTab('dashboard')}
                 className="rg-header-logo-btn flex items-center min-w-0"
                 aria-label="Home"
               >
                 <Logo size="sm" compact className="!text-left !p-0" />
               </button>
               <div className="flex items-center gap-1 shrink-0">
+                <NotificationQuickToggle />
                 <ThemeQuickToggle />
                 <ProfileHeaderMenu
                   activeSection={profileSection}
@@ -100,6 +133,7 @@ export default function Layout({
           className={`flex flex-col flex-1 min-h-0 w-full ${
             isChat ? 'w-full' : 'rg-app-shell py-6 sm:py-8 md:py-10'
           }`}
+          data-tour="content"
         >
           {children}
         </motion.div>
@@ -122,19 +156,15 @@ export default function Layout({
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => onTabChange(tab.id)}
+                onClick={() => selectTab(tab.id)}
                 className="relative flex flex-col items-center gap-1 flex-1 min-w-0 py-0.5"
+                data-tour={tab.id === 'upload' ? 'appeal' : tab.id === 'chat' ? 'coach' : tab.id}
               >
-                <motion.div
-                  layout
-                  animate={{
-                    scale: active ? 1 : 0.92,
-                    y: active ? -2 : 0,
-                  }}
-                  whileTap={{ scale: 0.88 }}
-                  transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+                <div
                   className={`relative flex items-center justify-center ${
-                    isCoach ? 'w-11 h-11' : 'w-10 h-10'
+                    isCoach
+                      ? 'w-12 h-12 -mt-3 rounded-full bg-canvas shadow-lg shadow-primary/15 border border-primary/15'
+                      : 'w-10 h-10'
                   }`}
                 >
                   {active && !isCoach && (
@@ -151,27 +181,16 @@ export default function Layout({
                       transition={{ type: 'spring', stiffness: 420, damping: 28 }}
                     />
                   )}
-                  {active && (
-                    <motion.span
-                      className="absolute inset-0 rounded-2xl bg-primary/8"
-                      initial={{ opacity: 0, scale: 0.85 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ duration: 0.25 }}
-                    />
-                  )}
                   <span className="relative z-10 flex items-center justify-center">
                     <Icon active={active} className={isCoach ? 'w-7 h-7' : 'w-[22px] h-[22px]'} />
+                    {!active && (unread[tab.id] ?? 0) > 0 && <span className="absolute -right-2 -top-2 min-w-4 h-4 rounded-full bg-red-600 px-1 text-[9px] font-bold leading-4 text-white shadow-sm" aria-label={`${unread[tab.id]} unread`}>{Math.min(99, unread[tab.id])}</span>}
                   </span>
-                </motion.div>
-                <motion.span
-                  animate={{
-                    scale: active ? 1.04 : 1,
-                  }}
-                  transition={{ type: 'spring', stiffness: 400, damping: 28 }}
+                </div>
+                <span
                   className={`text-[10px] tracking-wide ${active ? 'font-semibold text-primary' : 'font-medium text-ink-muted'}`}
                 >
                   {tab.label}
-                </motion.span>
+                </span>
               </button>
             );
           })}

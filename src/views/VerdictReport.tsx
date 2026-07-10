@@ -111,12 +111,15 @@ const AppealFindingRow: React.FC<{ finding: AppealFinding }> = ({ finding }) => 
 export default function VerdictReport({
   caseId,
   onBack,
+  onFinish,
 }: {
   caseId: string | null;
   onBack?: () => void;
+  onFinish: () => void;
 }) {
   const [currentCase, setCurrentCase] = useState<Case | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
 
   useEffect(() => {
     if (!caseId) {
@@ -129,7 +132,10 @@ export default function VerdictReport({
       .getCaseById(caseId)
       .then((data) => {
         if (cancelled) return;
-        if (data) setCurrentCase(data);
+        if (data) {
+          setCurrentCase(data);
+          setDraftReady(Boolean(data.draftEmail?.trim()));
+        }
         else setLoadFailed(true);
       })
       .catch(() => {
@@ -181,6 +187,7 @@ export default function VerdictReport({
             analysis={analysis}
             initialDraft={currentCase?.draftEmail}
             autoGenerate
+            onDraftChange={(draft) => setDraftReady(Boolean(draft.trim()))}
           />
         ) : loadFailed ? (
           <div className="rg-card p-6 text-center space-y-2">
@@ -201,6 +208,22 @@ export default function VerdictReport({
                 <AppealFindingRow key={f.id} finding={f} />
               ))}
             </div>
+          </div>
+        )}
+
+        {analysis && (
+          <div className="pt-1 space-y-2">
+            <button
+              type="button"
+              onClick={onFinish}
+              disabled={!draftReady}
+              className="rg-btn-primary w-full py-3 text-[14px] disabled:cursor-not-allowed disabled:opacity-45"
+            >
+              <ICONS.Check className="h-4 w-4" strokeWidth={2.25} />
+              Finish draft
+              <ICONS.ArrowRight className="h-4 w-4" strokeWidth={2} />
+            </button>
+            <p className="text-center text-[12px] text-ink-muted">Next: keep the useful feedback for study. Regrade never sends this draft for you.</p>
           </div>
         )}
 

@@ -80,3 +80,5 @@ tmp/
 
 # --- Temp UI capture output ---
 tmp-ui-screenshots/
+deliverables/
+design-backups/

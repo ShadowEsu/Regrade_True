@@ -28,7 +28,31 @@ const PLATFORM_IDS = [
   "schoology",
   "powerschool",
   "turnitin",
-  "teams_assignments"
+  "teams_assignments",
+  "sakai",
+  "itslearning",
+  "managebac",
+  "open_edx",
+  "fedena",
+  "teachmint",
+  "dingtalk",
+  "lark",
+  "wecom",
+  "toddle",
+  "edunext",
+  "vidyalaya",
+  "classter",
+  "infinite_campus",
+  "skyward",
+  "alma",
+  "veracross",
+  "facts",
+  "clever",
+  "classlink",
+  "google_workspace",
+  "sharepoint",
+  "box",
+  "email_import"
 ] as const;
 
 const SaveSchema = z.object({
@@ -40,6 +64,10 @@ const SaveSchema = z.object({
 const CanvasVerifySchema = z.object({
   baseUrl: z.string().min(8).max(300),
   token: z.string().min(20).max(500)
+});
+
+const PlatformParamSchema = z.object({
+  platformId: z.enum(PLATFORM_IDS)
 });
 
 const PRIVATE_HOST_PATTERN =
@@ -146,15 +174,12 @@ export function createConnectionsRouter(env: Env): Router {
     })();
   });
 
-  r.put("/:platformId", validate(SaveSchema, "body"), (req, res, next) => {
+  r.put("/:platformId", validate(PlatformParamSchema, "params"), validate(SaveSchema, "body"), (req, res, next) => {
     void (async () => {
       try {
         const uid = uidOf(req);
         if (!uid) throw new ApiError({ status: 401, code: "UNAUTHORIZED", message: "Not signed in." });
-        const platformId = String(req.params.platformId);
-        if (!(PLATFORM_IDS as readonly string[]).includes(platformId)) {
-          throw new ApiError({ status: 400, code: "BAD_REQUEST", message: "Unknown platform." });
-        }
+        const platformId = (req.params as z.infer<typeof PlatformParamSchema>).platformId;
         const encKey = requireKey();
         const body = req.body as z.infer<typeof SaveSchema>;
         const sealed = encryptSecret(encKey, body.secret);
@@ -171,12 +196,13 @@ export function createConnectionsRouter(env: Env): Router {
     })();
   });
 
-  r.delete("/:platformId", (req, res, next) => {
+  r.delete("/:platformId", validate(PlatformParamSchema, "params"), (req, res, next) => {
     void (async () => {
       try {
         const uid = uidOf(req);
         if (!uid) throw new ApiError({ status: 401, code: "UNAUTHORIZED", message: "Not signed in." });
-        await docRef(uid, String(req.params.platformId)).delete();
+        const platformId = (req.params as z.infer<typeof PlatformParamSchema>).platformId;
+        await docRef(uid, platformId).delete();
         res.status(204).end();
       } catch (err) {
         next(err);

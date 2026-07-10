@@ -22,9 +22,11 @@ const STATUS_TINT: Record<string, string> = {
 export default function History({
   onStartAppeal,
   onOpenAppeal,
+  onViewPaper,
 }: {
   onStartAppeal: () => void;
   onOpenAppeal: (caseId: string) => void;
+  onViewPaper?: (caseId: string) => void;
 }) {
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
@@ -179,6 +181,26 @@ export default function History({
                   {appeal.draftEmail && (
                     <span className="rg-glass-chip px-3 py-1 text-[11px] text-emerald-700 border-emerald-500/20 bg-emerald-500/8">
                       Draft saved
+                    </span>
+                  )}
+                  {onViewPaper && (appeal.pageImages?.length || appeal.pageImageUrls?.length) && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        if (appeal.id) onViewPaper(appeal.id);
+                      }}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          event.stopPropagation();
+                          if (appeal.id) onViewPaper(appeal.id);
+                        }
+                      }}
+                      className="rg-glass-chip px-3 py-1 text-[11px] text-primary border-primary/25 bg-primary/8 cursor-pointer inline-flex items-center gap-1 ml-auto"
+                    >
+                      <ICONS.FileText className="w-3 h-3" strokeWidth={2} /> View paper
                     </span>
                   )}
                 </div>

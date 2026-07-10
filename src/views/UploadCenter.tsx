@@ -4,10 +4,10 @@ import { ICONS } from '../constants';
 import UploadGuidePanel from '../components/UploadGuidePanel';
 import UploadIngredientsPanel from '../components/UploadIngredientsPanel';
 import { PLATFORM_UPLOAD_GUIDES } from '../lib/platformUploadGuides';
-import AiEnginePicker from '../components/AiEnginePicker';
 import AppealFlowShell from '../components/AppealFlowShell';
 import AnimatedPrimaryButton from '../components/AnimatedPrimaryButton';
 import { caseService } from '../services/caseService';
+import { isPreviewMode } from '../lib/previewMode';
 import { scanContentForThreats } from '../lib/securityScanner';
 import { sanitizeUserText } from '../lib/sanitize';
 import {
@@ -21,7 +21,6 @@ import { auth } from '../lib/firebase';
 import { buildStudentProfileContext, isValidPlatformGuideId } from '../lib/profileContext';
 import type { PlatformGuideId } from '../lib/platformUploadGuides';
 import { AI_SERVICES_CONSENT, AI_TRADEMARK_FOOTER } from '../version';
-import type { AiEngine } from '../types';
 import { COACH_CTA } from '../branding';
 
 type PdfStatus = 'idle' | 'loading' | 'done' | 'error';
@@ -36,8 +35,8 @@ type StagedUpload = {
   pdfError?: string;
 };
 
-/** Must match server AnalyzeSchema inlineImages max (12). */
-const MAX_INLINE_IMAGES = 12;
+/** Must match server AnalyzeSchema inlineImages max (8). */
+const MAX_INLINE_IMAGES = 8;
 
 function isPdfFile(file: File): boolean {
   return file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
@@ -66,15 +65,8 @@ export default function UploadCenter({
   const previewUrlsRef = useRef<Set<string>>(new Set());
 
 
-  /**
-   * AI engine choice. `null` means we haven't loaded the user's stored choice
-   * yet (or they've never made one). Apple's third-party AI rule requires an
-   * explicit in-app consent before sending uploads to Gemini/Claude — we gate
-   * the Analyze button on this being set, and show a consent modal on the
-   * first run.
-   */
-  const [aiEngine, setAiEngine] = useState<AiEngine | null>(null);
-  const [selectedEngine, setSelectedEngine] = useState<AiEngine>('hybrid');
+  /** Consent is required before the first document reaches Mr. Whale. */
+  const [hasAiConsent, setHasAiConsent] = useState(false);
   const [showAiConsent, setShowAiConsent] = useState(false);
   const pendingAnalyzeRef = useRef(false);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -102,10 +94,7 @@ export default function UploadCenter({
             setAppealPlatform(prof.preferredPlatform);
             profilePlatformLoadedRef.current = true;
           }
-          if (prof.aiEngine && prof.aiConsentAt) {
-            setAiEngine(prof.aiEngine);
-            setSelectedEngine(prof.aiEngine);
-          }
+          setHasAiConsent(Boolean(prof.aiConsentAt));
         }
       } catch (err) {
         console.error('Failed to load AI preference:', err);
@@ -116,37 +105,23 @@ export default function UploadCenter({
     };
   }, []);
 
-  const acceptAiConsent = async (choice: AiEngine) => {
+  const acceptAiConsent = async () => {
     const u = auth.currentUser;
-    setAiEngine(choice);
-    setSelectedEngine(choice);
+    setHasAiConsent(true);
     setShowAiConsent(false);
     if (u) {
       try {
-        await userService.setAiPreference(u.uid, choice);
+        await userService.acceptAiConsent(u.uid);
       } catch (err) {
         console.error('Failed to persist AI preference:', err);
       }
     }
     if (pendingAnalyzeRef.current) {
       pendingAnalyzeRef.current = false;
-      setTimeout(() => void handleSubmit(choice), 0);
+      setTimeout(() => void handleSubmit(), 0);
     }
   };
 
-  const handleEngineSelect = async (engine: AiEngine) => {
-    setSelectedEngine(engine);
-    if (!aiEngine) return;
-    setAiEngine(engine);
-    const u = auth.currentUser;
-    if (u) {
-      try {
-        await userService.setAiPreference(u.uid, engine);
-      } catch (err) {
-        console.error('Failed to persist AI preference:', err);
-      }
-    }
-  };
 
   const handleFiles = (files: FileList | null) => {
     if (!files?.length) return;
@@ -259,13 +234,12 @@ export default function UploadCenter({
     });
   };
 
-  const handleSubmit = async (engineOverride?: AiEngine) => {
-    const engine = engineOverride ?? aiEngine ?? selectedEngine;
+  const handleSubmit = async () => {
 
     // Apple's third-party AI rule: explicit consent must precede sending
-    // uploads to Gemini/Claude. If the user hasn't consented yet, open the
+    // uploads to Mr. Whale. If the user hasn't consented yet, open the
     // consent modal (pre-filled with their picker choice) instead of analyzing.
-    if (!aiEngine && !engineOverride) {
+    if (!hasAiConsent) {
       pendingAnalyzeRef.current = true;
       setShowAiConsent(true);
       return;
@@ -398,7 +372,6 @@ export default function UploadCenter({
         feedbackBlock,
         {
           ...(inlineImages.length ? { inlineImages } : {}),
-          aiEngine: engine,
         },
       );
 
@@ -416,6 +389,9 @@ export default function UploadCenter({
           rubric: rubricPaste,
           feedback: '',
         },
+        // Preview mode keeps the page images inline so History can show the
+        // graded copy back later. Real mode strips them until Storage is wired.
+        ...(isPreviewMode() && inlineImages.length ? { pageImages: inlineImages } : {}),
       });
       onSubmit(docRef.id);
     } catch (err: unknown) {
@@ -457,20 +433,18 @@ export default function UploadCenter({
                 </div>
                 <div className="flex-1 min-w-0">
                   <h2 id="ai-consent-title" className="text-xl text-primary font-semibold leading-tight">
-                    AI reader
+                    Meet Mr. Whale
                   </h2>
-                  <p className="text-[10px] uppercase tracking-[0.18em] text-primary/45 mt-1">One-time · change in Profile</p>
+                  <p className="text-[10px] uppercase tracking-[0.18em] text-primary/45 mt-1">One-time consent</p>
                 </div>
               </div>
 
               <p className="text-[12px] text-on-surface-variant leading-relaxed">{AI_SERVICES_CONSENT}</p>
 
-              <AiEnginePicker value={selectedEngine} onChange={setSelectedEngine} />
-
               <div className="space-y-2 pt-2">
                 <button
                   type="button"
-                  onClick={() => acceptAiConsent(selectedEngine)}
+                  onClick={() => acceptAiConsent()}
                   className="w-full flex items-center justify-center gap-2 bg-primary text-white px-5 py-3.5 rounded-2xl text-[13px] font-semibold hover:shadow-lg hover:shadow-primary/20 transition-all"
                 >
                   Continue
@@ -683,12 +657,6 @@ export default function UploadCenter({
             </div>
           </motion.div>
         )}
-
-        <AiEnginePicker
-          value={selectedEngine}
-          onChange={handleEngineSelect}
-          disabled={loading}
-        />
 
         <div className="space-y-3 pt-2">
           <AnimatedPrimaryButton

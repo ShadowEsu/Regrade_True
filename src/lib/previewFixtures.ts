@@ -142,9 +142,15 @@ export function buildPreviewSeedCase(): Case {
     updatedAt: now,
     analysis: PREVIEW_ANALYSIS,
     rawInput: {
-      assignment: 'Problem Set 3 — sample upload',
+      assignment: 'Problem Set 3, sample upload',
       rubric: 'Rubric embedded in Gradescope export',
       feedback: 'Gradescope graded PDF with comment bubbles',
     },
+    // The paper viewer uses the pageImageUrls path when data is not inlined,
+    // so the demo case can point at bundled sample screenshots.
+    pageImageUrls: [
+      '/gradescope/examples/03-assignment-view-with-toolbar.png',
+      '/gradescope/examples/04-score-summary-example.png',
+    ],
   };
 }

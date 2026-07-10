@@ -50,7 +50,7 @@ export async function loginWithApple(): Promise<UserCredential | null> {
   if (Capacitor.getPlatform() === 'ios') {
     const result = await SignInWithApple.authorize({
       clientId: BUNDLE_ID,
-      redirectURI: 'https://regrade.app/app',
+      redirectURI: 'https://app.regradeapp.tech/app',
       scopes: 'email name',
     });
     const idToken = result.response?.identityToken;

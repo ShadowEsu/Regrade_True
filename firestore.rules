@@ -55,6 +55,10 @@ service cloud.firestore {
       return value is list && value.size() <= 8 && value.join(',').size() <= 240;
     }
 
+    function isValidStudyChecklist(value) {
+      return value is list && value.size() <= 12 && value.join(',').size() <= 480;
+    }
+
     function isValidUserProfileFields(data) {
       return optionalBoundedString(data.major, 128) &&
              optionalBoundedString(data.school, 256) &&
@@ -66,6 +70,11 @@ service cloud.firestore {
              (!('studentId' in data) || (data.studentId is string && data.studentId.size() <= 64)) &&
              (!('preferredPlatform' in data) || isValidPlatformId(data.preferredPlatform)) &&
              (!('aiEngine' in data) || (data.aiEngine is string && data.aiEngine in ['hybrid', 'gemini', 'claude'])) &&
+             (!('onboardingComplete' in data) || data.onboardingComplete is bool) &&
+             (!('analysisAlerts' in data) || data.analysisAlerts is bool) &&
+             (!('autoMode' in data) || data.autoMode is bool) &&
+             (!('accountRole' in data) || (data.accountRole is string && data.accountRole in ['student', 'supervisor'])) &&
+             (!('studyChecklist' in data) || isValidStudyChecklist(data.studyChecklist)) &&
              (!('appealTone' in data) || isValidChipList(data.appealTone)) &&
              (!('appealFocus' in data) || isValidChipList(data.appealFocus)) &&
              (!('theme' in data) || (data.theme is string && data.theme in ['light', 'dark', 'system']));
@@ -77,7 +86,7 @@ service cloud.firestore {
                                    'university', 'gradeLevel', 'gpa', 'appealGoal',
                                    'appealTone', 'appealFocus', 'theme',
                                    'preferredPlatform', 'avatarUrl',
-                                   'aiEngine', 'aiConsentAt',
+                                   'aiEngine', 'aiConsentAt', 'onboardingComplete', 'analysisAlerts', 'autoMode', 'studyChecklist', 'accountRole',
                                    'createdAt', 'updatedAt']) &&
              boundedString(data.name, 256) &&
              boundedString(data.email, 320) &&
@@ -157,7 +166,7 @@ service cloud.firestore {
                         'name', 'major', 'school', 'university', 'gradeLevel', 'gpa',
                         'appealGoal', 'appealTone', 'appealFocus', 'theme',
                         'preferredPlatform', 'avatarUrl', 'aiEngine',
-                        'aiConsentAt', 'updatedAt'
+                        'aiConsentAt', 'onboardingComplete', 'analysisAlerts', 'autoMode', 'studyChecklist', 'accountRole', 'updatedAt'
                       ]) &&
                       optionalBoundedString(incoming().name, 256) &&
                       isValidUserProfileFields(incoming());

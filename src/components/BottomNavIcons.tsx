@@ -1,4 +1,4 @@
-import { BRAND_ICON_SRC } from '../branding';
+import { COACH_WHALE_SRC } from '../branding';
 
 type IconProps = { active?: boolean; className?: string };
 
@@ -51,9 +51,9 @@ export function NavChatIcon({ active, className = 'w-6 h-6' }: IconProps) {
       aria-hidden
     >
       <img
-        src={BRAND_ICON_SRC}
+        src={COACH_WHALE_SRC}
         alt=""
-        className="w-full h-full object-cover"
+        className="w-full h-full object-contain rg-pixel-mascot"
         draggable={false}
       />
       {active && (
@@ -97,6 +97,23 @@ export function NavHistoryIcon({ active, className = 'w-5 h-5' }: IconProps) {
   );
 }
 
+export function NavStudyIcon({ active, className = 'w-5 h-5' }: IconProps) {
+  const stroke = active ? activeColor : inactive;
+  return (
+    <svg viewBox="0 0 24 24" className={className} aria-hidden fill="none">
+      <path
+        d="M5 5.75A2.75 2.75 0 0 1 7.75 3H12v16.5H7.75A2.75 2.75 0 0 0 5 22V5.75Z"
+        fill={active ? `${activeColor}12` : 'transparent'}
+        stroke={stroke}
+        strokeWidth="1.75"
+        strokeLinejoin="round"
+      />
+      <path d="M19 5.75A2.75 2.75 0 0 0 16.25 3H12v16.5h4.25A2.75 2.75 0 0 1 19 22V5.75Z" fill={active ? `${activeColor}12` : 'transparent'} stroke={stroke} strokeWidth="1.75" strokeLinejoin="round" />
+      <path d="m8.5 11 1.5 1.5 2.8-3" stroke={stroke} strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function NavProfileIcon({ active, className = 'w-5 h-5' }: IconProps) {
   const stroke = active ? activeColor : inactive;
   return (
@@ -123,6 +140,7 @@ export const NAV_TAB_ICONS = {
   dashboard: NavHomeIcon,
   upload: NavAppealIcon,
   chat: NavChatIcon,
+  study: NavStudyIcon,
   history: NavHistoryIcon,
   profile: NavProfileIcon,
 } as const;

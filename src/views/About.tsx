@@ -132,8 +132,7 @@ export default function About({ onBack }: AboutProps) {
           with, endorsed by, or sponsored by any of these companies.
         </p>
         <p className="text-sm text-on-surface-variant leading-relaxed">
-          {APP_NAME} integrates with Gemini and supports Claude models via Google and Anthropic services. &ldquo;Gemini&rdquo;
-          is a trademark of Google LLC. &ldquo;Claude&rdquo; and &ldquo;Anthropic&rdquo; are trademarks of Anthropic PBC.
+          Mr. Whale is Regrade&apos;s AI assistant. It helps organize the evidence you provide, but never replaces your original graded work or your school&apos;s process.
           {' '}{APP_NAME} is not affiliated with, endorsed by, or sponsored by either company. Change which reader runs
           from Profile → AI.
         </p>

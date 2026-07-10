@@ -32,7 +32,7 @@ export default function CoachComposer({
     const el = textareaRef.current;
     if (!el) return;
     el.style.height = 'auto';
-    el.style.height = `${Math.min(el.scrollHeight, 160)}px`;
+    el.style.height = `${Math.min(el.scrollHeight, 112)}px`;
   }, [value]);
 
   useEffect(() => {
@@ -58,22 +58,20 @@ export default function CoachComposer({
   };
 
   return (
-    <div ref={rootRef} className="space-y-3">
+    <div ref={rootRef} className="space-y-2">
       {showQuickRow && (
-        <div className="flex gap-2 overflow-x-auto pb-0.5 scrollbar-none -mx-1 px-1">
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none -mx-1 px-1">
           {QUICK_PROMPTS.slice(0, 3).map((p) => (
-            <motion.button
+            <button
               key={p.label}
               type="button"
               disabled={loading}
               onClick={() => pickPrompt(p.label)}
-              whileHover={{ y: -2 }}
-              whileTap={{ scale: 0.97 }}
-              className="shrink-0 rg-glass-chip px-4 py-2.5 text-left min-w-[140px] disabled:opacity-50"
+              className="shrink-0 rg-glass-chip px-3 py-2 text-left min-w-[118px] disabled:opacity-50"
             >
-              <p className="text-[14px] font-medium text-ink leading-tight">{p.label}</p>
-              <p className="text-[12px] text-ink-muted mt-0.5">{p.hint}</p>
-            </motion.button>
+              <p className="text-[12px] font-semibold text-ink leading-tight">{p.label}</p>
+              <p className="text-[10px] text-ink-muted mt-0.5">{p.hint}</p>
+            </button>
           ))}
         </div>
       )}
@@ -96,7 +94,7 @@ export default function CoachComposer({
                 submit();
               }
             }}
-            placeholder="Ask about your appeal, rubric, or draft email…"
+            placeholder="Message Mr Whale…"
             rows={1}
             disabled={loading}
             className="rg-coach-composer-input"
@@ -115,9 +113,7 @@ export default function CoachComposer({
                 <ICONS.Plus className="w-[18px] h-[18px]" strokeWidth={1.75} />
               </motion.button>
 
-              <div className="mx-0.5 shrink-0" aria-hidden>
-                <CoachWhale size={40} animate={false} />
-              </div>
+              <div className="mx-0.5 shrink-0" aria-hidden><CoachWhale size={28} animate={false} /></div>
 
               <motion.button
                 type="button"

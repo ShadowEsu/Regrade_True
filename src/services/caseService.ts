@@ -35,6 +35,14 @@ export interface Case {
     rubric: string;
     feedback: string;
   };
+  /**
+   * The pages of the student's paper (photos or rendered PDF pages), so History
+   * can show the actual graded copy back to them. Stored inline in preview mode
+   * (localStorage). Real-mode uploads land in Firebase Storage and only URLs
+   * appear here in `pageImageUrls`; that path arrives with the storage rules.
+   */
+  pageImages?: { mimeType: string; data: string }[];
+  pageImageUrls?: string[];
 }
 
 const previewCaseStore = new Map<string, Case>();

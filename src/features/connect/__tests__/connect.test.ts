@@ -27,8 +27,8 @@ function deps(overrides: Partial<ConnectorDeps> = {}): ConnectorDeps {
 }
 
 describe('platform registry', () => {
-  it('lists exactly the fourteen platforms in priority order', () => {
-    expect(PLATFORMS.map((p) => p.platformId)).toEqual([
+  it('keeps the core platforms first and catalogs at least thirty global sources', () => {
+    expect(PLATFORMS.slice(0, 14).map((p) => p.platformId)).toEqual([
       'gradescope',
       'canvas',
       'google_classroom',
@@ -44,6 +44,9 @@ describe('platform registry', () => {
       'turnitin',
       'teams_assignments',
     ]);
+    expect(PLATFORMS.length).toBeGreaterThanOrEqual(30);
+    expect(PLATFORMS.some((p) => p.region?.includes('India'))).toBe(true);
+    expect(PLATFORMS.some((p) => p.region?.includes('China'))).toBe(true);
   });
 
   it('declares each auth method honestly', () => {
@@ -66,6 +69,11 @@ describe('platform registry', () => {
     ]) {
       expect(methods[gated]).toBe('institution_gated');
     }
+    for (const platform of PLATFORMS) {
+      if (platform.apiStatus === 'public_api' || platform.apiStatus === 'partner_api') {
+        expect(platform.authMethod).toBe('institution_gated');
+      }
+    }
   });
 });
 
@@ -79,7 +87,7 @@ describe('connectors', () => {
   it('institution gated connectors are unavailable and say so without faking', async () => {
     const connectors = createConnectors(deps());
     const gated = connectors.filter((c) => c.authMethod === 'institution_gated');
-    expect(gated).toHaveLength(7);
+    expect(gated.length).toBeGreaterThanOrEqual(25);
     for (const c of gated) {
       expect(c.isAvailable()).toBe(false);
       const result = await c.connect();

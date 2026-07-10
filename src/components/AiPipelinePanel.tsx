@@ -32,7 +32,6 @@ const STAGES = [
   {
     id: 'STG_01',
     title: 'Reader',
-    model: 'Gemini 2.5 Flash',
     label: 'Reading the worksheet',
     icon: 'Eye',
     accent: 'from-blue-600/15 via-sky-500/10 to-transparent',
@@ -40,7 +39,6 @@ const STAGES = [
   {
     id: 'STG_02',
     title: 'Reasoner',
-    model: 'Opus 4.7',
     label: 'Judging the marking',
     icon: 'Calculator',
     accent: 'from-emerald-600/15 via-green-500/10 to-transparent',
@@ -48,7 +46,6 @@ const STAGES = [
   {
     id: 'STG_03',
     title: 'Audit',
-    model: 'Completeness check',
     label: 'Verification',
     icon: 'ShieldCheck',
     accent: 'from-violet-600/15 via-purple-500/10 to-transparent',
@@ -78,9 +75,6 @@ export default function AiPipelinePanel({
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const inView = useInView(wrapperRef, { amount: 0.25, once: true });
 
-  const engines =
-    aiNotes.engines_used.length > 1 ? 'Two readers reviewed your worksheet' : 'One reader reviewed your worksheet';
-
   const icons = [iconFor('Eye'), iconFor('Calculator'), iconFor('ShieldCheck')];
 
   return (
@@ -94,21 +88,18 @@ export default function AiPipelinePanel({
       <div className="relative p-6 sm:p-10 md:p-16 space-y-8 sm:space-y-10">
         <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-10">
           <div className="space-y-3">
-            <p className="text-[11px] font-bold uppercase tracking-[0.42em] text-primary/40">How the AI reviewed your paper</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.42em] text-primary/40">Mr. Whale’s review</p>
             <h3 className="font-serif text-4xl sm:text-5xl text-primary font-semibold tracking-tight leading-[1.02]">
-              {engines}
+              Your evidence, clearly mapped.
             </h3>
             <p className="text-[14px] sm:text-[15px] font-medium text-on-surface-variant/85 leading-relaxed max-w-3xl">
-              Scroll through the stages below. Each stage shows what the AI did and what it could not read clearly.
+              Mr. Whale checks what was visible, what was uncertain, and which parts deserve a human review.
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2 text-[11px]">
             <span className="px-3 py-1 rounded-full bg-primary/5 border border-primary/10 font-semibold text-primary/65">
-              {aiNotes.engines_used.includes('gemini') ? 'Integrates with Gemini' : 'Gemini (off)'}
-            </span>
-            <span className="px-3 py-1 rounded-full bg-primary/5 border border-primary/10 font-semibold text-primary/65">
-              {aiNotes.engines_used.includes('claude') ? 'Supports Claude models' : 'Claude (off)'}
+              Evidence-focused review
             </span>
             {aiNotes.fallback_used && (
               <span className="px-3 py-1 rounded-full bg-amber-50 border border-amber-200/70 font-semibold text-amber-800">
@@ -175,7 +166,7 @@ export default function AiPipelinePanel({
                       <div className="min-w-0">
                         <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-primary/50">{s.id}</p>
                         <p className="font-serif text-lg text-primary font-semibold leading-tight">{s.title}</p>
-                        <p className="text-[12px] text-on-surface-variant/80 font-medium">{s.model}</p>
+                        <p className="text-[12px] text-on-surface-variant/80 font-medium">Mr. Whale</p>
                       </div>
                     </div>
                   );
@@ -202,8 +193,8 @@ export default function AiPipelinePanel({
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[11px] font-semibold text-primary/60">Model</p>
-                  <p className="font-serif text-lg text-primary font-semibold">{STAGES[0].model}</p>
+                  <p className="text-[11px] font-semibold text-primary/60">Assistant</p>
+                  <p className="font-serif text-lg text-primary font-semibold">Mr. Whale</p>
                 </div>
               </div>
 
@@ -248,12 +239,12 @@ export default function AiPipelinePanel({
                     {STAGES[1].id} · {STAGES[1].label}
                   </p>
                   <p className="font-serif text-2xl sm:text-3xl text-primary font-semibold tracking-tight">
-                    It infers teacher style from rubric + comment patterns
+                    It compares the visible grading to the rubric and comments
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-[11px] font-semibold text-primary/60">Model</p>
-                  <p className="font-serif text-lg text-primary font-semibold">{STAGES[1].model}</p>
+                  <p className="text-[11px] font-semibold text-primary/60">Assistant</p>
+                  <p className="font-serif text-lg text-primary font-semibold">Mr. Whale</p>
                 </div>
               </div>
 
@@ -283,34 +274,22 @@ export default function AiPipelinePanel({
                 </div>
                 <div className="text-right">
                   <p className="text-[11px] font-semibold text-primary/60">Method</p>
-                  <p className="font-serif text-lg text-primary font-semibold">{STAGES[2].model}</p>
+                  <p className="font-serif text-lg text-primary font-semibold">Evidence checks</p>
                 </div>
               </div>
 
               <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="rounded-2xl rg-glass-field p-6">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/45 mb-2">Cross-check note</p>
+                  <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/45 mb-2">Review note</p>
                   <p className="text-[14px] sm:text-[15px] italic text-ink/85 leading-relaxed">
                     {aiNotes.cross_check_summary}
                   </p>
                 </div>
                 <div className="rounded-2xl rg-glass-field p-6">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/45 mb-2">Disagreements</p>
-                  {aiNotes.disagreements.length > 0 ? (
-                    <ul className="space-y-2 text-[13px] text-on-surface-variant/85">
-                      {aiNotes.disagreements.slice(0, 6).map((d, i) => (
-                        <li key={i} className="leading-snug">
-                          <span className="font-mono text-[11px] text-primary/70">{d.field}</span> — Gemini:{' '}
-                          <span className="font-medium text-primary/85">{d.gemini_said}</span> · Claude:{' '}
-                          <span className="font-medium text-primary/85">{d.claude_said}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-[13px] text-on-surface-variant/80 leading-relaxed">
-                      No disagreements were reported.
-                    </p>
-                  )}
+                  <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-primary/45 mb-2">Your next check</p>
+                  <p className="text-[13px] text-on-surface-variant/80 leading-relaxed">
+                    Open the original marked work alongside this report. If a score or comment is unclear, ask for clarification instead of assuming an error.
+                  </p>
                 </div>
               </div>
             </motion.div>
@@ -326,4 +305,3 @@ export default function AiPipelinePanel({
     </section>
   );
 }
-

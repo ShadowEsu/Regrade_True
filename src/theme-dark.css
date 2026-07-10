@@ -5,8 +5,8 @@
 
 [data-theme="dark"] {
   color-scheme: dark;
-  --color-primary: #38bdf8;
-  --color-primary-focus: #22d3ee;
+  --color-primary: #3b82f6;
+  --color-primary-focus: #2563eb;
   --color-ink: #e6edf3;
   --color-ink-muted: #8b949e;
   --color-canvas: #161b22;
@@ -153,6 +153,64 @@
 
 [data-theme="dark"] .rg-app-bg::after {
   background: radial-gradient(circle, rgba(34, 211, 238, 0.08) 0%, transparent 70%);
+}
+
+/* Coach is one quiet workspace in dark mode, not a stack of pale cards. */
+[data-theme="dark"] .rg-chat-surface {
+  background:
+    radial-gradient(ellipse 72% 42% at 50% 0%, rgba(59, 130, 246, 0.12), transparent 72%),
+    linear-gradient(180deg, #101722 0%, #0d141d 50%, #0b1119 100%);
+}
+
+[data-theme="dark"] .rg-agent-workspace,
+[data-theme="dark"] .rg-agent-tab-active,
+[data-theme="dark"] .rg-coach-composer,
+[data-theme="dark"] .rg-coach-prompt-menu,
+[data-theme="dark"] .rg-chat-surface .rg-glass-chip {
+  background: color-mix(in srgb, var(--color-primary) 7%, var(--color-canvas)) !important;
+  border-color: color-mix(in srgb, var(--color-primary) 20%, var(--color-hairline)) !important;
+}
+
+[data-theme="dark"] .rg-coach-ai-message {
+  border-left-color: rgba(96, 165, 250, 0.62);
+}
+
+[data-theme="dark"] .rg-coach-ai-insight {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.12), transparent 72%);
+}
+
+[data-theme="dark"] .rg-agent-new {
+  background: rgba(59, 130, 246, 0.10);
+  border-color: rgba(96, 165, 250, 0.36);
+  color: #93c5fd;
+}
+
+[data-theme="dark"] .rg-agent-new:hover:not(:disabled),
+[data-theme="dark"] .rg-agent-tab-action:hover,
+[data-theme="dark"] .rg-coach-composer-icon-btn:hover,
+[data-theme="dark"] .rg-coach-prompt-item:hover {
+  background: rgba(59, 130, 246, 0.14);
+}
+
+[data-theme="dark"] .rg-coach-prompt-menu {
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.34);
+}
+
+[data-theme="dark"] .rg-paper-view,
+[data-theme="dark"] .rg-annotation-panel,
+[data-theme="dark"] .rg-annotation-notice {
+  background: color-mix(in srgb, var(--color-primary) 6%, var(--color-canvas));
+  border-color: color-mix(in srgb, var(--color-primary) 20%, var(--color-hairline));
+}
+
+[data-theme="dark"] .rg-survey-role-card {
+  background: color-mix(in srgb, var(--color-primary) 4%, var(--color-canvas));
+  border-color: color-mix(in srgb, var(--color-primary) 16%, var(--color-hairline));
+}
+
+[data-theme="dark"] .rg-survey-role-card-active {
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-canvas));
+  border-color: rgba(96, 165, 250, 0.56);
 }
 
 [data-theme="dark"] .rg-card {
@@ -349,10 +407,10 @@
 }
 
 [data-theme="dark"] .rg-btn-cta {
-  background: linear-gradient(135deg, rgba(56, 189, 248, 0.95) 0%, rgba(34, 211, 238, 0.85) 50%, rgba(14, 165, 233, 0.9) 100%);
-  border-color: rgba(56, 189, 248, 0.35);
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 52%, #1e40af 100%);
+  border-color: rgba(96, 165, 250, 0.34);
   box-shadow:
-    0 10px 36px rgba(56, 189, 248, 0.25),
+    0 10px 36px rgba(37, 99, 235, 0.28),
     inset 0 1px 0 rgba(255, 255, 255, 0.15);
 }
 
@@ -666,8 +724,8 @@
 
 [data-theme="dark"] .rg-nav-active-glow {
   box-shadow:
-    0 0 0 1px rgba(56, 189, 248, 0.22),
-    0 6px 18px rgba(56, 189, 248, 0.15);
+    0 0 0 1px rgba(59, 130, 246, 0.28),
+    0 6px 18px rgba(37, 99, 235, 0.18);
 }
 
 [data-theme="dark"] .rg-header-logo-btn:hover,
@@ -714,11 +772,7 @@
 }
 
 [data-theme="dark"] .rg-coach-whale-wrap {
-  background: linear-gradient(180deg, #f4f8ff 0%, #e3edff 100%);
-  border-color: rgba(56, 189, 248, 0.28);
-  box-shadow:
-    0 10px 32px rgba(0, 0, 0, 0.45),
-    0 0 0 1px rgba(56, 189, 248, 0.12);
+  background: transparent;
 }
 
 [data-theme="dark"] .rg-brand-wordmark {

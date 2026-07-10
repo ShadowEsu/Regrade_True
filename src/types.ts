@@ -76,9 +76,6 @@ export interface CaseAnalysis {
   recommended_appeal_angle: 'calculation_error' | 'unexplained_deduction' | 'rubric_misapplication' | 'inconsistent_standard' | 'clarification_only' | 'none';
 }
 
-/** User-facing AI engine preference. Stored on the user doc. */
-export type AiEngine = 'hybrid' | 'gemini' | 'claude';
-
 /**
  * Per-stage clarifications shown to the user in VerdictReport.
  * Populated by the server pipeline. Optional so old saved cases still render.
@@ -107,6 +104,7 @@ export type SourcePlatform =
   | 'blackboard'
   | 'brightspace'
   | 'google_classroom'
+  | 'google_workspace'
   | 'turnitin'
   | 'paper'
   | 'schoology'
@@ -117,6 +115,30 @@ export type SourcePlatform =
   | 'akindi'
   | 'managebac'
   | 'itslearning'
+  | 'open_edx'
+  | 'fedena'
+  | 'teachmint'
+  | 'dingtalk'
+  | 'lark'
+  | 'wecom'
+  | 'toddle'
+  | 'edunext'
+  | 'vidyalaya'
+  | 'classter'
+  | 'infinite_campus'
+  | 'skyward'
+  | 'alma'
+  | 'veracross'
+  | 'facts'
+  | 'clever'
+  | 'classlink'
+  | 'sharepoint'
+  | 'box'
+  | 'google_drive'
+  | 'onedrive'
+  | 'dropbox'
+  | 'apple_files'
+  | 'email_import'
   | 'satchel_one'
   | 'edmodo'
   | 'openlms'
@@ -141,6 +163,17 @@ export interface AnalysisResult {
   overall_professor_comments: string | null;
   teacher_profile: TeacherProfile;
   case_analysis: CaseAnalysis;
+  study_insights?: {
+    eligible_exam_evidence: boolean;
+    exclusion_reason: string | null;
+    focus_areas: Array<{
+      skill: string;
+      question_ids: string[];
+      evidence: string;
+      practice_next: string;
+      confidence: number;
+    }>;
+  };
   confidence: {
     overall_confidence: number;
     low_confidence_items: string[];

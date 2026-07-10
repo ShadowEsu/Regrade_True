@@ -6,9 +6,6 @@ import { auth, loginWithGoogle, signOut } from '../lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { userService, UserProfile } from '../services/userService';
 import { scanContentForThreats } from '../lib/securityScanner';
-import { getPlatformGuideName } from '../lib/profileContext';
-import type { PlatformGuideId } from '../lib/platformUploadGuides';
-import type { AiEngine } from '../types';
 import {
   AI_TRADEMARK_FOOTER,
   APP_EULA_URL,
@@ -22,14 +19,13 @@ import { isPreviewMode } from '../lib/previewMode';
 import { accountService } from '../services/accountService';
 import BrandSpinner from '../components/BrandSpinner';
 import ContinueWithGoogleButton from '../components/ContinueWithGoogleButton';
-import AiEnginePicker from '../components/AiEnginePicker';
-import PreferredPlatformPicker from '../components/PreferredPlatformPicker';
 import { ConnectScreen } from '../features/connect';
 import DeleteAccountDialog from '../components/DeleteAccountDialog';
 import MarketingEyebrow from '../components/MarketingEyebrow';
 import ThemePicker from '../components/ThemePicker';
 import { useTheme } from '../context/ThemeContext';
 import type { ThemePreference } from '../lib/theme';
+import { PLAN_CATALOG, subscriptionService, type SubscriptionSnapshot } from '../services/subscriptionService';
 
 interface ProfileProps {
   onShowAbout?: () => void;
@@ -46,7 +42,6 @@ type ProfileForm = {
   appealGoal: string;
   appealTone: string[];
   appealFocus: string[];
-  preferredPlatform: PlatformGuideId | null;
 };
 
 /** How Regrade should sound — stored as lowercase ids, shown as labels. */
@@ -74,7 +69,7 @@ function toggleChip(list: string[], id: string): string[] {
   return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
 }
 
-export type ProfileSection = 'you' | 'platform' | 'ai' | 'account';
+export type ProfileSection = 'you' | 'platform' | 'subscription' | 'ai' | 'account';
 
 const EMPTY_FORM: ProfileForm = {
   name: '',
@@ -87,14 +82,14 @@ const EMPTY_FORM: ProfileForm = {
   appealGoal: '',
   appealTone: [],
   appealFocus: [],
-  preferredPlatform: null,
 };
 
 const SECTION_LABELS: Record<ProfileSection, string> = {
-  you: 'Appeal Profile',
-  platform: 'Platforms & app',
-  ai: 'AI',
-  account: 'Account',
+  you: 'My Profile',
+  platform: 'Connections',
+  subscription: 'Plan & usage',
+  ai: 'Mr Whale & Alerts',
+  account: 'Settings & Account',
 };
 
 function profileToForm(data: UserProfile, user: User): ProfileForm {
@@ -109,20 +104,27 @@ function profileToForm(data: UserProfile, user: User): ProfileForm {
     appealGoal: data.appealGoal || '',
     appealTone: Array.isArray(data.appealTone) ? data.appealTone : [],
     appealFocus: Array.isArray(data.appealFocus) ? data.appealFocus : [],
-    preferredPlatform: data.preferredPlatform ?? null,
   };
 }
 
-const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChange?: (s: ProfileSection) => void; onStartUpload?: () => void }> = ({
+const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChange?: (s: ProfileSection) => void; onStartUpload?: () => void; onReplayTutorial?: () => void }> = ({
   onShowAbout,
   section: sectionProp,
   onSectionChange,
   onStartUpload,
+  onReplayTutorial,
 }) => {
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
-  const [aiEngine, setAiEngine] = useState<AiEngine | null>(null);
-  const [aiSaving, setAiSaving] = useState(false);
+  const [analysisAlerts, setAnalysisAlerts] = useState(true);
+  const [autoMode, setAutoMode] = useState(false);
+  const [subscription, setSubscription] = useState<SubscriptionSnapshot | null>(null);
+  const [billingError, setBillingError] = useState<string | null>(null);
+  const [billingBusy, setBillingBusy] = useState(false);
+  const [alertsSaving, setAlertsSaving] = useState(false);
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>(() => (
+    typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
+  ));
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [showSavedToast, setShowSavedToast] = useState(false);
@@ -148,7 +150,8 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
           const data = await userService.getProfile(u.uid);
           if (data) {
             setForm(profileToForm(data, u));
-            setAiEngine((data.aiEngine as AiEngine | undefined) ?? null);
+            setAnalysisAlerts(data.analysisAlerts !== false);
+            setAutoMode(data.autoMode === true);
           } else {
             setForm({
               ...EMPTY_FORM,
@@ -165,17 +168,62 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
     return unsub;
   }, []);
 
-  const handleAiEngineChange = async (next: AiEngine) => {
-    if (!user || next === aiEngine || aiSaving) return;
-    setAiSaving(true);
-    setAiEngine(next);
-    try {
-      await userService.setAiPreference(user.uid, next);
-    } catch (err) {
-      console.error('Failed to save AI engine preference:', err);
-    } finally {
-      setAiSaving(false);
+  useEffect(() => {
+    if (!user) return;
+    void subscriptionService.getStatus().then(setSubscription).catch(() => setSubscription(null));
+  }, [user]);
+
+  const updateAutoMode = async () => {
+    if (!user || !subscription?.limits.autoMode) {
+      setActiveTab('subscription');
+      return;
     }
+    const next = !autoMode;
+    setAutoMode(next);
+    try {
+      await userService.setAutoMode(user.uid, next);
+      if (next && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+        const permission = await Notification.requestPermission();
+        setNotificationPermission(permission);
+      }
+    } catch {
+      setAutoMode(!next);
+    }
+  };
+
+  const startPlan = async (plan: 'student' | 'pro') => {
+    setBillingBusy(true);
+    setBillingError(null);
+    try { await subscriptionService.startCheckout(plan); }
+    catch (error) { setBillingError(error instanceof Error ? error.message : 'Checkout is unavailable.'); }
+    finally { setBillingBusy(false); }
+  };
+
+  const handleAnalysisAlertsChange = async () => {
+    if (!user || alertsSaving) return;
+    const next = !analysisAlerts;
+    if (next && typeof Notification !== 'undefined' && Notification.permission === 'default') {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+    }
+    setAlertsSaving(true);
+    setAnalysisAlerts(next);
+    try {
+      await userService.setAnalysisAlerts(user.uid, next);
+    } catch (err) {
+      console.error('Failed to save recovery alert preference:', err);
+      setAnalysisAlerts(!next);
+    } finally {
+      setAlertsSaving(false);
+    }
+  };
+
+  const sendTestNotification = () => {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    new Notification('Regrade alerts are on', {
+      body: 'Mr Whale will alert you when a completed review finds evidence worth checking.',
+      icon: '/favicon.ico',
+    });
   };
 
   const handleThemeChange = async (next: ThemePreference) => {
@@ -234,7 +282,6 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
       appealTone: form.appealTone.filter((id) => knownTone.has(id)),
       appealFocus: form.appealFocus.filter((id) => knownFocus.has(id)),
       email: form.email,
-      preferredPlatform: form.preferredPlatform ?? undefined,
     };
 
     try {
@@ -268,7 +315,6 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
       await accountService.deleteAccount();
       setShowDeleteDialog(false);
       setForm(EMPTY_FORM);
-      setAiEngine(null);
       if (isPreviewMode()) {
         setToastMessage('Account deleted (preview simulation)');
         setShowSavedToast(true);
@@ -305,8 +351,6 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
     );
   }
 
-  const platformLabel = getPlatformGuideName(form.preferredPlatform ?? undefined);
-
   /** Appeal-profile readiness: each unit makes drafts measurably better. */
   const completionUnits: boolean[] = [
     Boolean(form.name),
@@ -317,8 +361,6 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
     form.appealTone.length > 0,
     form.appealFocus.length > 0,
     Boolean(form.appealGoal),
-    Boolean(form.preferredPlatform),
-    Boolean(aiEngine),
   ];
   const completionPct = Math.round(
     (completionUnits.filter(Boolean).length / completionUnits.length) * 100,
@@ -365,16 +407,6 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
           </motion.div>
 
           <div className="flex flex-wrap items-center justify-center gap-2">
-            {platformLabel && (
-              <span className="rg-glass-chip px-3 py-1.5 text-[11px] font-semibold text-primary">
-                {platformLabel}
-              </span>
-            )}
-            {aiEngine && (
-              <span className="rg-glass-chip px-3 py-1.5 text-[11px] font-medium text-violet-700 capitalize">
-                {aiEngine} reader
-              </span>
-            )}
             <button
               type="button"
               onClick={() => setActiveTab('platform')}
@@ -409,7 +441,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               <div className="rg-glass-form-card p-5 space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-[15px] font-semibold text-ink">
-                    Your appeal profile is{' '}
+                  Your profile is{' '}
                     <span className="text-primary">{completionPct}% ready</span>
                   </p>
                   <span className="text-[11px] font-mono text-primary/60">{completionUnits.filter(Boolean).length}/{completionUnits.length}</span>
@@ -621,15 +653,44 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
                 />
               </div>
 
-              <div className="border-t border-hairline pt-5 space-y-4">
-                <p className="text-[13px] text-ink-muted leading-relaxed">
-                  Your default grading app — new appeals start with the right export steps for that platform.
-                </p>
-                <PreferredPlatformPicker
-                  value={form.preferredPlatform}
-                  onChange={(id) => setForm({ ...form, preferredPlatform: id })}
-                />
+            </motion.div>
+          )}
+
+          {activeTab === 'subscription' && (
+            <motion.div key="subscription" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} className="space-y-4">
+              <div className="rg-glass-form-card p-5 sm:p-6 space-y-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <MarketingEyebrow>current plan</MarketingEyebrow>
+                    <h2 className="rg-serif text-2xl text-ink font-semibold mt-1">{subscription ? PLAN_CATALOG[subscription.plan].name : 'Free'}</h2>
+                    <p className="text-[12px] text-ink-muted mt-1">
+                      {subscription ? `Renews or resets ${new Date(subscription.periodEnd).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' })}` : 'Loading usage…'}
+                    </p>
+                  </div>
+                  <span className="rounded-lg bg-primary/10 px-3 py-1.5 text-[12px] font-semibold text-primary">
+                    {subscription ? `$${PLAN_CATALOG[subscription.plan].price.toFixed(2)}/month` : '$0.00/month'}
+                  </span>
+                </div>
+                {subscription && <div className="grid grid-cols-2 gap-3">
+                  {[{ label: 'Exam reviews', used: subscription.usage.exams, limit: subscription.limits.exams }, { label: 'Mr. Whale messages', used: subscription.usage.messages, limit: subscription.limits.messages }].map((item) => <div key={item.label} className="rounded-xl border border-hairline bg-parchment p-3">
+                    <p className="text-[11px] text-ink-muted">{item.label}</p><p className="mt-1 text-lg font-semibold text-ink">{item.used} <span className="text-[12px] font-normal text-ink-muted">of {item.limit}</span></p>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-primary/10"><div className="h-full rounded-full bg-primary" style={{ width: `${Math.min(100, (item.used / item.limit) * 100)}%` }} /></div>
+                  </div>)}
+                </div>}
+                {subscription?.cancelAtPeriodEnd && <p className="text-[12px] text-amber-700">Your plan ends at the close of this billing period.</p>}
+                {subscription?.hasBillingAccount && <button type="button" onClick={() => void subscriptionService.openPortal()} className="rg-btn-secondary w-full">Manage billing</button>}
               </div>
+
+              <div className="grid gap-3 sm:grid-cols-3">
+                {(Object.entries(PLAN_CATALOG) as Array<[keyof typeof PLAN_CATALOG, (typeof PLAN_CATALOG)[keyof typeof PLAN_CATALOG]]>).map(([id, plan]) => <div key={id} className={`rg-glass-card p-4 space-y-3 ${subscription?.plan === id ? 'border-primary/40' : ''}`}>
+                  <div><p className="text-[15px] font-semibold text-ink">{plan.name}</p><p className="text-xl font-semibold text-primary mt-1">${plan.price.toFixed(2)}<span className="text-[11px] font-normal text-ink-muted"> / month</span></p></div>
+                  <ul className="space-y-1 text-[11px] text-ink-muted"><li>{plan.exams} exam reviews</li><li>{plan.messages} Mr. Whale messages</li><li>{plan.autoMode ? 'Auto Mode included' : 'Manual reviews'}</li></ul>
+                  {id !== 'free' && subscription?.plan !== id && <button type="button" disabled={billingBusy} onClick={() => void startPlan(id)} className="rg-btn-primary w-full text-[12px]">Choose {plan.name}</button>}
+                  {subscription?.plan === id && <span className="text-[11px] font-semibold text-primary">Current plan</span>}
+                </div>)}
+              </div>
+              {billingError && <p className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-[12px] text-red-700">{billingError}</p>}
+              <p className="text-[11px] text-ink-muted">Usage resets at the displayed billing-period end. Paid access is activated only after Stripe confirms the subscription.</p>
             </motion.div>
           )}
 
@@ -641,16 +702,52 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               exit={{ opacity: 0, y: -4 }}
               className="rg-glass-form-card p-5 sm:p-6 space-y-4"
             >
-              <AiEnginePicker
-                value={aiEngine}
-                onChange={(e) => void handleAiEngineChange(e)}
-                disabled={aiSaving}
-              />
-              {!aiEngine && (
-                <p className="text-[11px] text-amber-800 bg-amber-50 border border-amber-200/70 rounded-xl px-3 py-2.5">
-                  Pick a reader before your first analyze — consent is asked once on Appeal.
+              <div className="rounded-2xl rg-glass-chip p-4">
+                <p className="text-[14px] font-semibold text-ink">Mr. Whale</p>
+                <p className="mt-1 text-[12px] leading-relaxed text-ink-muted">
+                  Your AI assistant reads the graded work you choose to analyze and helps you prepare a respectful, evidence-based next step.
                 </p>
-              )}
+              </div>
+              <div className="border-t border-hairline pt-4">
+                <button type="button" role="switch" aria-checked={autoMode} onClick={() => void updateAutoMode()} className="mb-3 w-full text-left flex items-start justify-between gap-4 rounded-2xl rg-glass-chip p-4">
+                  <span className="min-w-0"><span className="block text-[14px] font-semibold text-ink">Auto Mode</span><span className="block mt-1 text-[12px] leading-relaxed text-ink-muted">Automatically analyze newly imported marked exams, prepare the draft, then add the result to Review and History. Student or Pro plan required.</span></span>
+                  <span className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${autoMode && subscription?.limits.autoMode ? 'bg-primary' : 'bg-ink/20'}`} aria-hidden><span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${autoMode && subscription?.limits.autoMode ? 'translate-x-6' : 'translate-x-1'}`} /></span>
+                </button>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={analysisAlerts}
+                  disabled={alertsSaving}
+                  onClick={() => void handleAnalysisAlertsChange()}
+                  className="w-full text-left flex items-start justify-between gap-4 rounded-2xl rg-glass-chip p-4 disabled:opacity-55"
+                >
+                  <span className="min-w-0">
+                    <span className="block text-[14px] font-semibold text-ink">Review alerts</span>
+                    <span className="block mt-1 text-[12px] leading-relaxed text-ink-muted">
+                      Choose whether Regrade should surface completed reviews with evidence worth checking.
+                    </span>
+                  </span>
+                  <span
+                    className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
+                      analysisAlerts ? 'bg-primary' : 'bg-ink/20'
+                    }`}
+                    aria-hidden
+                  >
+                    <span
+                      className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${
+                        analysisAlerts ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </span>
+                </button>
+                <div className="mt-2 flex items-center justify-between gap-3 px-1 text-[11px] leading-relaxed text-ink-muted">
+                  <span>{notificationPermission === 'granted' ? 'Browser alerts are enabled on this device.' : notificationPermission === 'denied' ? 'Browser alerts are blocked for this site; in-app alerts still work.' : notificationPermission === 'unsupported' ? 'This device supports in-app alerts only.' : 'Turn alerts on to allow browser notifications on this device.'}</span>
+                  {notificationPermission === 'granted' && analysisAlerts && <button type="button" onClick={sendTestNotification} className="shrink-0 font-semibold text-primary hover:underline">Send test</button>}
+                </div>
+              </div>
+              {onReplayTutorial && <div className="border-t border-hairline pt-4">
+                <button type="button" onClick={onReplayTutorial} className="text-[12px] font-semibold text-primary hover:underline">Replay the guided tour</button>
+              </div>}
               <p className="text-[10px] text-muted leading-relaxed">{AI_TRADEMARK_FOOTER}</p>
             </motion.div>
           )}
@@ -719,7 +816,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               {/* Regrade-style account actions — not GitHub row layout */}
               <div className="rg-glass-card p-5 space-y-4">
                 <div className="text-center space-y-1">
-                  <p className="text-[10px] font-mono uppercase tracking-wider text-muted">Account</p>
+                  <p className="text-[10px] font-mono uppercase tracking-wider text-muted">Settings & account</p>
                   <p className="text-[13px] text-muted leading-relaxed max-w-xs mx-auto">
                     Sign out on this device or permanently delete your data.
                   </p>
@@ -767,7 +864,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
           </p>
         )}
 
-        {activeTab !== 'ai' && activeTab !== 'account' && (
+        {activeTab === 'you' && (
           <div className="sticky bottom-[84px] z-30 -mx-1 px-1 pointer-events-none">
             <button
               type="submit"
