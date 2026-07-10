@@ -30,6 +30,12 @@ const EnvSchema = z
    * Prefer a real auth system later; this is for “public endpoints” protection now.
    */
   API_KEYS: z.string().optional(),
+  /**
+   * Base64 of 32 random bytes. Encrypts stored platform credentials
+   * (AES-256-GCM). When absent, /v1/connections returns 503 and nothing is
+   * stored. Generate with: openssl rand -base64 32
+   */
+  CONNECTIONS_ENC_KEY: z.string().optional(),
   /** Firebase Admin SDK — paste single-line JSON (production: required). */
   FIREBASE_SERVICE_ACCOUNT_JSON: z.string().optional(),
   /** Firebase Admin SDK — path to service account .json (alternative to JSON env var). */

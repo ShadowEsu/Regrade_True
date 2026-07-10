@@ -14,6 +14,7 @@ import { validate } from "./middleware/validate.js";
 import { requireFirebaseUser } from "./middleware/firebaseAuth.js";
 import { requireAiConsent } from "./middleware/requireAiConsent.js";
 import { createRegradeGeminiRouter } from "./regradeGemini.js";
+import { createConnectionsRouter } from "./connections.js";
 import { deleteUserAccountCompletely } from "./accountDeletion.js";
 import { ensureFirebaseAdmin } from "./firebaseAdmin.js";
 
@@ -70,6 +71,9 @@ app.use(
 );
 
 app.use(express.json({ limit: "64kb", type: ["application/json", "application/*+json"] }));
+
+// Platform connections: encrypted credential store + Canvas token verify.
+app.use("/v1/connections", requireFirebaseUser, createConnectionsRouter(env));
 
 // Example “public endpoint” with strict validation/sanitization.
 // (Keeps the API useful even before you wire the mobile app to it.)

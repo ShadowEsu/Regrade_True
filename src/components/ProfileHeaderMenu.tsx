@@ -7,7 +7,7 @@ import type { ProfileSection } from '../views/Profile';
 
 const SECTIONS: { id: ProfileSection; label: string }[] = [
   { id: 'you', label: 'Profile' },
-  { id: 'platform', label: 'Theme & app' },
+  { id: 'platform', label: 'Platforms & app' },
   { id: 'ai', label: 'AI' },
   { id: 'account', label: 'Account' },
 ];

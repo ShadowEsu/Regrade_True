@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Connecting</title>
+    <meta name="robots" content="noindex" />
+  </head>
+  <body>
+    <p style="font-family: system-ui, sans-serif; padding: 24px; color: #1d1d1f">
+      One moment, finishing the connection.
+    </p>
+    <script>
+      (function () {
+        var params = new URLSearchParams(window.location.search);
+        var payload = {
+          source: 'regrade-oauth',
+          code: params.get('code'),
+          state: params.get('state'),
+          error: params.get('error'),
+        };
+        // Strip the authorization code from the address bar immediately.
+        window.history.replaceState(null, '', window.location.pathname);
+        if (window.opener) {
+          window.opener.postMessage(payload, window.location.origin);
+        }
+        window.close();
+      })();
+    </script>
+  </body>
+</html>

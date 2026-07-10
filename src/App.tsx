@@ -101,6 +101,7 @@ export default function App() {
           section={profileSection}
           onSectionChange={setProfileSection}
           onShowAbout={() => setShowAbout(true)}
+          onStartUpload={handleStartAppeal}
         />
       );
     }

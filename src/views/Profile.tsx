@@ -24,6 +24,7 @@ import BrandSpinner from '../components/BrandSpinner';
 import ContinueWithGoogleButton from '../components/ContinueWithGoogleButton';
 import AiEnginePicker from '../components/AiEnginePicker';
 import PreferredPlatformPicker from '../components/PreferredPlatformPicker';
+import { ConnectScreen } from '../features/connect';
 import DeleteAccountDialog from '../components/DeleteAccountDialog';
 import MarketingEyebrow from '../components/MarketingEyebrow';
 import ThemePicker from '../components/ThemePicker';
@@ -91,7 +92,7 @@ const EMPTY_FORM: ProfileForm = {
 
 const SECTION_LABELS: Record<ProfileSection, string> = {
   you: 'Appeal Profile',
-  platform: 'Theme & app',
+  platform: 'Platforms & app',
   ai: 'AI',
   account: 'Account',
 };
@@ -112,10 +113,11 @@ function profileToForm(data: UserProfile, user: User): ProfileForm {
   };
 }
 
-const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChange?: (s: ProfileSection) => void }> = ({
+const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChange?: (s: ProfileSection) => void; onStartUpload?: () => void }> = ({
   onShowAbout,
   section: sectionProp,
   onSectionChange,
+  onStartUpload,
 }) => {
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
@@ -609,11 +611,15 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               exit={{ opacity: 0, y: -4 }}
               className="rg-glass-form-card p-5 sm:p-6 space-y-6"
             >
-              <ThemePicker
-                value={themePreference}
-                onChange={(next) => void handleThemeChange(next)}
-                disabled={themeSaving}
-              />
+              <ConnectScreen onManualUpload={onStartUpload ?? (() => undefined)} />
+
+              <div className="border-t border-hairline pt-5">
+                <ThemePicker
+                  value={themePreference}
+                  onChange={(next) => void handleThemeChange(next)}
+                  disabled={themeSaving}
+                />
+              </div>
 
               <div className="border-t border-hairline pt-5 space-y-4">
                 <p className="text-[13px] text-ink-muted leading-relaxed">
