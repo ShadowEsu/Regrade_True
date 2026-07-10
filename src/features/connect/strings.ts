@@ -36,9 +36,16 @@ export const CONNECT_STRINGS = {
   saveFailed:
     "We couldn't save this connection securely, so we didn't save it at all. Manual upload still works.",
 
+  signInWithGoogle: 'Sign in with Google',
+  googlePortalBlurb:
+    'Sign in with your Google account, the same one you use for school. Regrade only gets read-only access to your graded work.',
+
   canvasDialogTitle: 'Connect Canvas',
   canvasIntro:
-    'Canvas lets you create a personal access token in your own account. Regrade uses it to read your grades and feedback, nothing else.',
+    'Canvas gives you a personal key called an access token. It lets Regrade read your grades and feedback, nothing else, and you can delete it any time.',
+  canvasNeverPassword:
+    'Regrade never asks for your school password. The token is a safer key you create yourself.',
+  canvasOpenSettings: 'Open my Canvas settings',
   canvasStep1: 'Open Canvas in your browser and sign in.',
   canvasStep2: 'Go to Account, then Settings.',
   canvasStep3: 'Scroll to Approved Integrations and choose New Access Token.',

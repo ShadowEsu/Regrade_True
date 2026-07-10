@@ -44,6 +44,7 @@ export default function CanvasTokenDialog({
       <div className="rg-glass-form-card w-full max-w-md p-5 sm:p-6 space-y-4 max-h-[85vh] overflow-y-auto">
         <h2 className="text-[17px] font-semibold text-ink">{S.canvasDialogTitle}</h2>
         <p className="text-[13px] text-ink-muted leading-relaxed">{S.canvasIntro}</p>
+        <p className="text-[12px] text-primary font-medium leading-relaxed">{S.canvasNeverPassword}</p>
 
         <ol className="space-y-2">
           {steps.map((step, i) => (
@@ -71,6 +72,18 @@ export default function CanvasTokenDialog({
             className="w-full h-11 px-3 rounded-xl border border-hairline bg-surface text-[14px] text-ink focus:outline-none focus:ring-2 focus:ring-primary/60"
           />
           {urlError && <p className="text-[12px] text-red-600">{urlError}</p>}
+          {normalizeCanvasBaseUrl(urlValue) && (
+            <button
+              type="button"
+              onClick={() => {
+                const base = normalizeCanvasBaseUrl(urlValue);
+                if (base) window.open(`${base}/profile/settings`, '_blank', 'noopener');
+              }}
+              className="rg-btn-ghost text-[13px]"
+            >
+              {S.canvasOpenSettings}
+            </button>
+          )}
         </div>
 
         <div className="space-y-1.5">

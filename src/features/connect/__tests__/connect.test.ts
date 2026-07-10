@@ -97,11 +97,24 @@ describe('connectors', () => {
     expect(result?.ok).toBe(false);
   });
 
+  it('google connects through the existing sign-in with no extra setup', () => {
+    const connectors = createConnectors(deps());
+    for (const id of ['google_classroom', 'google_drive', 'canvas'] as const) {
+      expect(connectors.find((x) => x.platformId === id)?.isAvailable()).toBe(true);
+    }
+  });
+
   it('oauth connectors without configured client ids are honestly unavailable', () => {
     const connectors = createConnectors(deps());
-    for (const id of ['google_classroom', 'google_drive', 'onedrive', 'dropbox'] as const) {
-      const c = connectors.find((x) => x.platformId === id);
-      expect(c?.isAvailable()).toBe(false);
+    for (const id of ['onedrive', 'dropbox'] as const) {
+      expect(connectors.find((x) => x.platformId === id)?.isAvailable()).toBe(false);
+    }
+  });
+
+  it('nothing is live-connectable when credentials cannot be stored encrypted', () => {
+    const connectors = createConnectors(deps({ serverAvailable: false }));
+    for (const id of ['google_classroom', 'google_drive', 'canvas', 'onedrive', 'dropbox'] as const) {
+      expect(connectors.find((x) => x.platformId === id)?.isAvailable()).toBe(false);
     }
   });
 

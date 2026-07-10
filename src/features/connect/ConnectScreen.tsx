@@ -179,7 +179,7 @@ const PlatformCard: React.FC<PlatformCardProps> = ({
             className="rg-btn-primary text-[13px]"
             aria-busy={busy}
           >
-            {busy ? 'One moment' : S.connectAction}
+            {busy ? 'One moment' : (meta.connectLabel ?? S.connectAction)}
           </button>
         ) : meta.authMethod === 'institution_gated' ? (
           <span className="inline-flex items-center h-9 px-3 rounded-full bg-parchment border border-hairline text-[12px] text-ink-muted">

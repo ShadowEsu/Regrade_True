@@ -23,6 +23,8 @@ export interface PlatformMeta {
   blurb: string;
   /** Shown instead of a connect button when the flow cannot complete. */
   unavailableLabel?: string;
+  /** Connect button label; defaults to the generic connect action. */
+  connectLabel?: string;
 }
 
 export const PLATFORMS: readonly PlatformMeta[] = [
@@ -49,13 +51,15 @@ export const PLATFORMS: readonly PlatformMeta[] = [
     authMethod: 'oauth',
     logo: '/platforms/google-classroom.png',
     guideId: 'google_classroom',
-    blurb: 'Sign in with Google and grant read-only access to your Classroom work.',
+    blurb: CONNECT_STRINGS.googlePortalBlurb,
+    connectLabel: CONNECT_STRINGS.signInWithGoogle,
   },
   {
     platformId: 'google_drive',
     displayName: 'Google Drive',
     authMethod: 'oauth',
-    blurb: 'Read-only access to files you choose. Also the home for work you save from other platforms.',
+    blurb: CONNECT_STRINGS.googlePortalBlurb,
+    connectLabel: CONNECT_STRINGS.signInWithGoogle,
   },
   {
     platformId: 'onedrive',

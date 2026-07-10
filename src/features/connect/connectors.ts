@@ -12,8 +12,16 @@ import type {
   Connector,
   ConnectorDeps,
 } from './types';
-import { requestGoogleAccessToken, GOOGLE_SCOPES } from './flows/googleTokenClient';
 import { DROPBOX_CONFIG, MICROSOFT_CONFIG, runPkceFlow } from './flows/pkce';
+
+const GOOGLE_SCOPES = {
+  classroom: [
+    'https://www.googleapis.com/auth/classroom.courses.readonly',
+    'https://www.googleapis.com/auth/classroom.coursework.me.readonly',
+    'https://www.googleapis.com/auth/classroom.student-submissions.me.readonly',
+  ],
+  drive: ['https://www.googleapis.com/auth/drive.readonly'],
+} as const;
 import { saveConnection, verifyCanvasToken } from './store';
 
 function envString(key: string): string {
@@ -59,7 +67,6 @@ async function storeGrant(
 }
 
 export function createConnectors(deps: ConnectorDeps): Connector[] {
-  const googleClientId = envString('VITE_GOOGLE_OAUTH_CLIENT_ID');
   const dropboxAppKey = envString('VITE_DROPBOX_APP_KEY');
   const msClientId = envString('VITE_MS_CLIENT_ID');
 
@@ -69,8 +76,10 @@ export function createConnectors(deps: ConnectorDeps): Connector[] {
     deps.isPreview || (configured && deps.serverAvailable);
 
   const oauthAvailability: Partial<Record<ConnectPlatformId, boolean>> = {
-    google_classroom: canRunLive(Boolean(googleClientId)),
-    google_drive: canRunLive(Boolean(googleClientId)),
+    // Google rides on the app's existing Firebase sign-in, so it needs no
+    // extra configuration; the student just sees the familiar Google popup.
+    google_classroom: canRunLive(true),
+    google_drive: canRunLive(true),
     dropbox: canRunLive(Boolean(dropboxAppKey)),
     onedrive: canRunLive(Boolean(msClientId)),
     canvas: canRunLive(true),
@@ -78,12 +87,15 @@ export function createConnectors(deps: ConnectorDeps): Connector[] {
 
   const connectGoogle = async (
     platformId: ConnectPlatformId,
-    scope: string
+    scopes: readonly string[]
   ): Promise<ConnectionResult> => {
     if (deps.isPreview) return simulatedSuccess(platformId);
     try {
-      const token = await requestGoogleAccessToken(googleClientId, scope);
-      return await storeGrant(platformId, token, null);
+      // Lazy import keeps Firebase out of module scope for tests and for
+      // screens that never touch Google.
+      const { googlePortalLogin } = await import('./flows/googleFirebase');
+      const grant = await googlePortalLogin([...scopes]);
+      return await storeGrant(platformId, grant.accessToken, grant.accountLabel);
     } catch (err) {
       return mapFlowError(platformId, err);
     }
