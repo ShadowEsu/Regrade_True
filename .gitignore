@@ -1,7 +1,6 @@
 # --- Node / build output ---
 node_modules
 dist
-dist-capacitor
 .DS_Store
 *.local
 

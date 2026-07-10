@@ -3,8 +3,7 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'app.regrade.client',
   appName: 'Regrade',
-  /** Populated by `scripts/prepare-capacitor.mjs` — not raw `dist/`. */
-  webDir: 'dist-capacitor',
+  webDir: 'dist',
   server: {
     // https://localhost is required for Firebase Auth redirects in the WebView.
     androidScheme: 'https',

@@ -1,39 +1,20 @@
 /**
- * Capacitor loads index.html from webDir — our React app lives in app.html.
- * Copy dist → dist-capacitor and promote app.html to index.html for native shells.
+ * Sanity check before `npx cap sync` and a friendly warning when the native
+ * shell would boot without a reachable API. The old script also copied
+ * dist → dist-capacitor and promoted app.html to index.html; that renaming is
+ * gone now that the SPA lives at dist/index.html directly.
  */
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
-const dist = path.join(root, 'dist');
-const capDir = path.join(root, 'dist-capacitor');
+const indexHtml = path.join(root, 'dist', 'index.html');
 
-function copyDir(src, dest) {
-  fs.mkdirSync(dest, { recursive: true });
-  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
-    const from = path.join(src, entry.name);
-    const to = path.join(dest, entry.name);
-    if (entry.isDirectory()) copyDir(from, to);
-    else fs.copyFileSync(from, to);
-  }
-}
-
-if (!fs.existsSync(dist)) {
-  console.error('prepare-capacitor: run `npm run build` first (dist/ missing).');
+if (!fs.existsSync(indexHtml)) {
+  console.error('prepare-capacitor: dist/index.html missing — run `npm run build` first.');
   process.exit(1);
 }
-
-const appHtml = path.join(dist, 'app.html');
-if (!fs.existsSync(appHtml)) {
-  console.error('prepare-capacitor: dist/app.html missing — Vite app entry not built.');
-  process.exit(1);
-}
-
-fs.rmSync(capDir, { recursive: true, force: true });
-copyDir(dist, capDir);
-fs.copyFileSync(appHtml, path.join(capDir, 'index.html'));
 
 if (!process.env.VITE_API_BASE_URL?.trim()) {
   console.warn(
@@ -43,4 +24,4 @@ if (!process.env.VITE_API_BASE_URL?.trim()) {
   );
 }
 
-console.log('prepare-capacitor: dist-capacitor ready (app.html → index.html).');
+console.log('prepare-capacitor: dist/ ready for Capacitor.');
