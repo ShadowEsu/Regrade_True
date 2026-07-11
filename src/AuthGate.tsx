@@ -5,6 +5,7 @@ import { isPreviewMode, isPreviewSignInView } from './lib/previewMode';
 import PreviewBanner from './components/PreviewBanner';
 import Auth from './views/Auth';
 import BrandSpinner from './components/BrandSpinner';
+import BootSplash from './components/BootSplash';
 import { userService } from './services/userService';
 import { needsEmailVerification } from './lib/authVerification';
 import VerifyEmailPrompt from './components/VerifyEmailPrompt';
@@ -95,7 +96,7 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
       );
     }
     if (onboardingLoading) {
-      return <BrandSpinner size={48} />;
+      return <BootSplash />;
     }
     if (needsOnboarding) {
       return (
@@ -114,14 +115,7 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   }
 
   if (loading || (user && onboardingLoading)) {
-    return (
-      <div className="min-h-screen bg-surface flex items-center justify-center p-6 paper-texture">
-        <div className="text-center space-y-4">
-          <BrandSpinner size={48} />
-          <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-primary/40">Verifying Identity Integrity...</p>
-        </div>
-      </div>
-    );
+    return <BootSplash label="Signing you in" />;
   }
 
   if (!user) {

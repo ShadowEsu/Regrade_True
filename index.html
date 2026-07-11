@@ -29,10 +29,68 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <title>Regrade App</title>
+    <style>
+      :root { --rg-boot-bg: #f5f5f7; --rg-boot-ink: #0f172a; --rg-boot-brand: #0066cc; }
+      :root[data-theme="dark"] { --rg-boot-bg: #070b12; --rg-boot-ink: #e6ecf5; --rg-boot-brand: #4d9dff; }
+      .rg-boot {
+        position: fixed; inset: 0;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        gap: 22px;
+        background: var(--rg-boot-bg);
+        color: var(--rg-boot-ink);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        animation: rg-boot-in 320ms ease-out both;
+      }
+      .rg-boot-mark {
+        position: relative;
+        width: 76px; height: 76px;
+        border-radius: 20px;
+        background: var(--rg-boot-brand);
+        display: flex; align-items: center; justify-content: center;
+        box-shadow: 0 18px 44px -20px rgba(0, 102, 204, 0.55);
+        animation: rg-boot-pulse 1.6s ease-in-out infinite;
+      }
+      .rg-boot-mark-inner {
+        color: #fff; font-weight: 700; font-size: 38px; line-height: 1;
+        letter-spacing: -0.02em; font-family: "Plus Jakarta Sans", system-ui, sans-serif;
+        transform: translateY(-1px);
+      }
+      .rg-boot-dot {
+        position: absolute; right: -6px; bottom: -6px;
+        width: 18px; height: 18px; border-radius: 999px;
+        background: #7dd3fc;
+        box-shadow: 0 0 0 4px var(--rg-boot-bg);
+        animation: rg-boot-blink 1.6s ease-in-out infinite;
+      }
+      .rg-boot-name {
+        margin: 0; font-size: 15px; font-weight: 600; letter-spacing: 0.02em;
+        opacity: 0; animation: rg-boot-name 900ms ease-out 220ms forwards;
+      }
+      @keyframes rg-boot-pulse {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.055); }
+      }
+      @keyframes rg-boot-blink {
+        0%, 100% { opacity: 0.85; transform: scale(1); }
+        50% { opacity: 1; transform: scale(1.15); }
+      }
+      @keyframes rg-boot-in { from { opacity: 0; } to { opacity: 1; } }
+      @keyframes rg-boot-name { to { opacity: 0.75; } }
+      @media (prefers-reduced-motion: reduce) {
+        .rg-boot-mark, .rg-boot-dot, .rg-boot-name, .rg-boot { animation: none !important; }
+        .rg-boot-name { opacity: 0.75; }
+      }
+    </style>
   </head>
   <body>
     <div id="root">
-      <p class="rg-boot-loading">Loading Regrade…</p>
+      <div class="rg-boot" role="status" aria-label="Loading Regrade">
+        <div class="rg-boot-mark" aria-hidden="true">
+          <span class="rg-boot-mark-inner">R</span>
+          <span class="rg-boot-dot"></span>
+        </div>
+        <p class="rg-boot-name">Regrade</p>
+      </div>
     </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

@@ -1266,3 +1266,271 @@
     padding: 0 2px;
   }
 }
+
+/* ============================================================================
+ * Auth screen (sign in / sign up / reset)
+ * Calm, single-color background, generous whitespace, one clear primary action.
+ * ============================================================================ */
+@layer components {
+  .rg-auth-screen {
+    position: relative;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 32px 20px;
+    background: var(--color-parchment);
+    color: var(--color-ink);
+    overflow: hidden;
+  }
+  .rg-auth-bg {
+    position: absolute; inset: -20% -20% auto -20%;
+    height: 60%;
+    background:
+      radial-gradient(60% 55% at 50% 0%, rgba(0, 102, 204, 0.14), transparent 70%),
+      radial-gradient(35% 40% at 15% 85%, rgba(125, 211, 252, 0.18), transparent 65%);
+    pointer-events: none;
+    filter: blur(0.5px);
+  }
+  [data-theme="dark"] .rg-auth-bg {
+    background:
+      radial-gradient(60% 55% at 50% 0%, rgba(77, 157, 255, 0.22), transparent 70%),
+      radial-gradient(35% 40% at 15% 85%, rgba(125, 211, 252, 0.12), transparent 65%);
+  }
+  .rg-auth-shell {
+    position: relative;
+    width: 100%;
+    max-width: 420px;
+    display: flex; flex-direction: column;
+    gap: 24px;
+  }
+  .rg-auth-brand {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .rg-auth-mark {
+    position: relative;
+    width: 56px; height: 56px;
+    border-radius: 16px;
+    background: var(--color-primary);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-weight: 700; font-size: 26px; line-height: 1;
+    box-shadow: 0 12px 32px -14px rgba(0, 102, 204, 0.55);
+  }
+  .rg-auth-mark span { transform: translateY(-1px); letter-spacing: -0.02em; }
+  .rg-auth-mark i {
+    position: absolute; right: -4px; bottom: -4px;
+    width: 14px; height: 14px; border-radius: 999px;
+    background: #7dd3fc;
+    box-shadow: 0 0 0 3px var(--color-parchment);
+  }
+  [data-theme="dark"] .rg-auth-mark i { box-shadow: 0 0 0 3px #070b12; }
+  .rg-auth-wordmark {
+    margin: 0; font-size: 15px; font-weight: 600;
+    letter-spacing: 0.02em; color: var(--color-ink);
+    opacity: 0.65;
+  }
+  .rg-auth-heading {
+    text-align: center;
+    display: flex; flex-direction: column; gap: 6px;
+    margin-bottom: 4px;
+  }
+  .rg-auth-title {
+    margin: 0;
+    font-size: clamp(26px, 6vw, 32px);
+    line-height: 1.12; letter-spacing: -0.02em;
+    font-weight: 700;
+    color: var(--color-ink);
+  }
+  .rg-auth-subtitle {
+    margin: 0;
+    font-size: 14.5px; line-height: 1.55;
+    color: var(--color-ink-muted);
+    max-width: 340px; margin-left: auto; margin-right: auto;
+  }
+  .rg-auth-alert {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.18);
+    color: rgb(153, 27, 27);
+    font-size: 13.5px; line-height: 1.5;
+    overflow: hidden;
+  }
+  .rg-auth-alert-good {
+    background: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.22);
+    color: rgb(6, 95, 70);
+  }
+  [data-theme="dark"] .rg-auth-alert { background: rgba(239, 68, 68, 0.14); color: #fecaca; }
+  [data-theme="dark"] .rg-auth-alert-good { background: rgba(16, 185, 129, 0.14); color: #a7f3d0; }
+  .rg-auth-providers {
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .rg-auth-divider {
+    display: flex; align-items: center; gap: 12px;
+    color: var(--color-ink-muted);
+    font-size: 11.5px; font-weight: 500; letter-spacing: 0.02em;
+  }
+  .rg-auth-divider span {
+    flex: 1; height: 1px;
+    background: var(--color-hairline);
+  }
+  .rg-auth-divider em { font-style: normal; opacity: 0.75; }
+  .rg-auth-form { display: flex; flex-direction: column; gap: 14px; }
+  .rg-auth-field { display: flex; flex-direction: column; gap: 6px; }
+  .rg-auth-field > span {
+    font-size: 12px; font-weight: 600;
+    color: var(--color-ink); opacity: 0.75;
+    letter-spacing: 0.01em;
+  }
+  .rg-auth-field-input {
+    position: relative;
+    display: flex; align-items: center; gap: 10px;
+    padding: 0 14px;
+    height: 52px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-hairline);
+    border-radius: 14px;
+    transition: border-color 160ms ease, box-shadow 160ms ease;
+  }
+  .rg-auth-field-input:focus-within {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 4px rgba(0, 102, 204, 0.12);
+  }
+  .rg-auth-field-input svg { color: var(--color-ink-muted); flex-shrink: 0; }
+  .rg-auth-field-input input {
+    flex: 1; background: transparent; border: 0; outline: 0;
+    color: var(--color-ink);
+    font-size: 15px; line-height: 1.4;
+    min-width: 0;
+  }
+  .rg-auth-field-input input::placeholder { color: var(--color-ink-muted); opacity: 0.7; }
+  .rg-auth-linkish {
+    font-size: 12px; font-weight: 600; letter-spacing: 0;
+    color: var(--color-primary); opacity: 0.75;
+    background: transparent; border: 0; padding: 0; cursor: pointer;
+  }
+  .rg-auth-linkish:hover { opacity: 1; }
+  .rg-auth-cta {
+    height: 52px;
+    border-radius: 14px;
+    background: var(--color-primary);
+    color: #fff;
+    font-size: 15px; font-weight: 600; letter-spacing: 0.01em;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    border: 0; cursor: pointer;
+    box-shadow: 0 10px 30px -14px rgba(0, 102, 204, 0.55);
+    transition: transform 120ms ease, background-color 160ms ease, box-shadow 160ms ease;
+    margin-top: 4px;
+  }
+  .rg-auth-cta:hover:not(:disabled) { background: var(--color-primary-focus); }
+  .rg-auth-cta:active:not(:disabled) { transform: scale(0.985); }
+  .rg-auth-cta:disabled { opacity: 0.55; cursor: not-allowed; }
+  .rg-auth-switch { text-align: center; padding-top: 4px; }
+  .rg-auth-switch button {
+    font-size: 13.5px; font-weight: 600;
+    color: var(--color-ink-muted);
+    background: transparent; border: 0; padding: 6px 10px; cursor: pointer;
+    transition: color 160ms ease;
+  }
+  .rg-auth-switch button:hover { color: var(--color-primary); }
+  .rg-auth-fineprint {
+    margin: 0;
+    text-align: center;
+    font-size: 11.5px; line-height: 1.55;
+    color: var(--color-ink-muted); opacity: 0.85;
+    max-width: 360px; margin-left: auto; margin-right: auto;
+  }
+  .rg-auth-fineprint a {
+    color: var(--color-ink-muted);
+    text-decoration: underline; text-decoration-color: rgba(0,0,0,0.15);
+    text-underline-offset: 2px;
+  }
+  .rg-auth-fineprint a:hover { color: var(--color-primary); }
+  .rg-auth-fineprint-tiny {
+    display: flex; align-items: center; justify-content: center; gap: 6px;
+    font-size: 10.5px; letter-spacing: 0.01em;
+    opacity: 0.65;
+    margin-top: -8px;
+  }
+}
+
+/* ============================================================================
+ * Welcome survey polish
+ * Bigger typography, dot step indicator, more breathing room.
+ * ============================================================================ */
+@layer components {
+  .rg-welcome-dots {
+    display: flex; align-items: center; gap: 8px;
+  }
+  .rg-welcome-dots span {
+    width: 24px; height: 4px; border-radius: 999px;
+    background: var(--color-hairline);
+    transition: background-color 220ms ease, width 220ms ease;
+  }
+  .rg-welcome-dots span[data-state="done"] { background: var(--color-primary); opacity: 0.55; }
+  .rg-welcome-dots span[data-state="active"] { background: var(--color-primary); width: 32px; }
+  .rg-welcome-shell {
+    position: relative;
+    min-height: 100vh;
+    min-height: 100dvh;
+    display: flex; align-items: center; justify-content: center;
+    padding: 32px 20px;
+    background: var(--color-parchment);
+  }
+  .rg-welcome-shell::before {
+    content: "";
+    position: absolute; inset: -20% -20% auto -20%;
+    height: 55%;
+    background:
+      radial-gradient(55% 55% at 50% 0%, rgba(0, 102, 204, 0.10), transparent 70%);
+    pointer-events: none;
+  }
+  .rg-welcome-card {
+    position: relative;
+    width: 100%; max-width: 480px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-hairline);
+    border-radius: 24px;
+    padding: 28px 26px 26px;
+    box-shadow: 0 40px 80px -60px rgba(15, 23, 42, 0.35);
+  }
+  .rg-welcome-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 22px;
+  }
+  .rg-welcome-brand {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 14px; font-weight: 600; color: var(--color-ink); opacity: 0.75;
+  }
+  .rg-welcome-brand i {
+    display: flex; align-items: center; justify-content: center;
+    width: 28px; height: 28px; border-radius: 9px;
+    background: var(--color-primary);
+    color: #fff; font-size: 14px; font-weight: 700; letter-spacing: -0.02em;
+    box-shadow: 0 6px 16px -8px rgba(0, 102, 204, 0.6);
+  }
+  .rg-welcome-step-count {
+    font-size: 11.5px; font-weight: 600; color: var(--color-ink-muted); letter-spacing: 0.02em;
+  }
+  .rg-welcome-eyebrow {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-primary); opacity: 0.75;
+    margin: 0 0 8px;
+  }
+  .rg-welcome-title {
+    margin: 0;
+    font-size: clamp(24px, 5.5vw, 30px);
+    line-height: 1.16; letter-spacing: -0.02em;
+    font-weight: 700; color: var(--color-ink);
+  }
+  .rg-welcome-hint {
+    margin: 6px 0 0;
+    font-size: 13.5px; line-height: 1.55; color: var(--color-ink-muted);
+  }
+  .rg-welcome-body { padding-top: 22px; }
+}
+
