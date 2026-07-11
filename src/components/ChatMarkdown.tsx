@@ -23,7 +23,7 @@ function MathFormula({ source, display = false }: { source: string; display?: bo
 
 function renderInline(text: string, keyBase: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = [];
-  const regex = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(\\\([^\n]+?\\\))|(\$(?!\s)[^$\n]+?(?<!\s)\$)/g;
+  const regex = /(`[^`\n]+`)|(\*\*[^*\n]+\*\*)|(\\\([^\n]+?\\\))|(\$(?!\$|\s)[^$\n]+?(?<!\s)\$)/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   let i = 0;
@@ -129,12 +129,17 @@ function parseBlocks(text: string): Block[] {
       continue;
     }
     if (mathLines) {
-      if (/^\s*\$\$\s*$/.test(line)) { blocks.push({ kind: 'math', source: mathLines.join('\n') }); mathLines = null; }
+      if (/^\s*(?:\$\$|\\\]|```)\s*$/.test(line)) { blocks.push({ kind: 'math', source: mathLines.join('\n') }); mathLines = null; }
       else mathLines.push(rawLine);
       continue;
     }
     if (/^```chart\s*$/i.test(line)) { flushParagraph(); flushList(); chartLines = []; continue; }
-    if (/^\s*\$\$\s*$/.test(line)) { flushParagraph(); flushList(); mathLines = []; continue; }
+    const fencedMath = /^```(?:math|latex|katex)\s*$/i.test(line);
+    if (fencedMath) { flushParagraph(); flushList(); mathLines = []; continue; }
+    const singleLineMath = /^\s*(?:\$\$)(.+)(?:\$\$)\s*$/.exec(line)
+      ?? /^\s*\\\[(.+)\\\]\s*$/.exec(line);
+    if (singleLineMath) { flushParagraph(); flushList(); blocks.push({ kind: 'math', source: singleLineMath[1].trim() }); continue; }
+    if (/^\s*(?:\$\$|\\\[)\s*$/.test(line)) { flushParagraph(); flushList(); mathLines = []; continue; }
     const bullet = /^\s*[-*•]\s+(.*)$/.exec(line);
     const numbered = /^\s*\d+[.)]\s+(.*)$/.exec(line);
     const heading = /^\s*#{1,4}\s+(.*)$/.exec(line);

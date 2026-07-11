@@ -16,7 +16,8 @@
     "dev": "tsx watch src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
-    "lint": "tsc -p tsconfig.json --noEmit"
+    "lint": "tsc -p tsconfig.json --noEmit",
+    "test:agent": "tsx scripts/test-agent-pdfs.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

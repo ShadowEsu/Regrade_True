@@ -10,7 +10,7 @@ The repository is release-buildable and the eight production workstreams are imp
 
 - TypeScript client lint: passed.
 - Server TypeScript build on Firebase Admin 14: passed.
-- Vitest: 42 tests across 6 files passed.
+- Vitest: 44 tests across 6 files passed.
 - Vite production build: passed; `dist` is 6.1 MB.
 - Capacitor sync: passed with Apple Sign-In, RevenueCat, App, and Local Notifications plugins.
 - Android Release APK compile: passed; unsigned APK is 9.2 MB.
@@ -31,6 +31,18 @@ The repository is release-buildable and the eight production workstreams are imp
 6. Login/logout/delete, Apple login alternative, public legal/deletion resources, unified support contact, AI response reporting, privacy disclosures, and store checklist.
 7. HMAC-protected 10-minute learner codes, supervisor redemption, learner-device approval, unlinking, server-only shared-case access, and idempotent supervisor suggestions.
 8. Canvas/Classroom graded-record imports, Drive/Dropbox/OneDrive manual browsing, seven-day server filter, unlimited-age manual selection, deterministic History records, upstream failure states, scheduler endpoint, and web/native alerts.
+9. Landing/SPA cleanup, retained-paper History previews, polished authentication/onboarding, and the current professional navigation structure.
+10. Review and History search/filter scalability, grouped History dates, expandable quick previews, quieter cross-theme surfaces, simplified Appeal entry, original-paper annotation preview, stronger KaTeX/mhchem delimiter coverage, academic response rendering inside Review, and vendor chunk splitting.
+
+## July 10 task 10 verification
+
+- Review sample library: search, course filter, status filter, exam cards, review-studio entry, and empty-result state verified in the live app.
+- History: search/status controls, month grouping, accessible card expansion, paper preview action, and appeal continuation are implemented without nested interactive controls.
+- Appeal: one primary start action; duplicate upload/feature panels removed while preserving the existing upload-analysis-annotation-evidence-draft flow.
+- Academic rendering: inline math, multiline display math, single-line `$$…$$`, `\\[…\\]`, fenced `math`/`latex`/`katex`, matrices, mhchem reactions, and bounded charts are covered. Mr Whale's Review responses now use the same renderer as Coach.
+- Document review: retained original pages are shown beside the annotation rail when present. Without verified page coordinates, Regrade keeps annotations in the rail and does not fabricate overlays.
+- Responsive/theme check: 375px mobile layout had no horizontal overflow; dark Review surfaces rendered `#161b22` with light text rather than white containers.
+- Bundle split: the former ~924 KB main entry is now ~99 KB; Firebase, React, Motion, icons, and academic rendering are cached separately. The largest application vendor chunk is Firebase at ~472 KB.
 
 ## Required owner actions before submission
 

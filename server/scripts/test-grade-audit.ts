@@ -107,6 +107,20 @@ console.log('\n=== Arithmetic mismatch from applied rubric ===');
   );
 }
 
+console.log('\n=== Partial positive-scoring rubric is not a complete equation ===');
+{
+  const audit = auditGradingCompleteness({
+    scoring_method: 'positive',
+    questions: [{
+      question_id: 'Q5', points_possible: 5, points_earned: 4.25,
+      scoring_direction: 'added_from_zero',
+      rubric_items_applied: [{ description: 'Main method', point_value: 3.5, was_applied_to_student: true }],
+      professor_comments: [{ comment_text: 'Additional partial credit explained in comment.' }],
+    }],
+  });
+  assert(audit.potential_calculation_errors.length === 0, 'does not invent an arithmetic error from partial positive rows');
+}
+
 console.log('\n=== Student pasted rubric ===');
 {
   const rubricData = `Q1: Full credit requires correct derivative and simplified form.

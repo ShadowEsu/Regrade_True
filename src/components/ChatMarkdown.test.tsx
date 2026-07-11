@@ -13,6 +13,16 @@ describe('ChatMarkdown academic content', () => {
     expect(container.querySelector('.katex')).not.toBeNull();
   });
 
+  it('renders common Gemini display-math formats and matrices', () => {
+    const { container } = render(<ChatMarkdown text={'$$\\begin{bmatrix}1 & 2 \\\\ 3 & 4\\end{bmatrix}$$\n\n\\[E = mc^2\\]'} />);
+    expect(container.querySelectorAll('.katex-display').length).toBe(2);
+  });
+
+  it('renders fenced academic math blocks', () => {
+    const { container } = render(<ChatMarkdown text={'```math\n\\int_0^1 x^2\\,dx = \\frac{1}{3}\n```'} />);
+    expect(container.querySelector('.katex-display')).not.toBeNull();
+  });
+
   it('renders a bounded chart block', () => {
     render(<ChatMarkdown text={'```chart\n{"type":"bar","title":"Score by question","labels":["Q1","Q2"],"values":[8,6]}\n```'} />);
     expect(screen.getByRole('img')).toBeTruthy();

@@ -1,6 +1,6 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
 import { PREVIEW_CASE_ID } from './lib/previewFixtures';
-import { isPreviewMode } from './lib/previewMode';
+import { isPreviewMode, isPreviewSupervisorView } from './lib/previewMode';
 import { caseService } from './services/caseService';
 import { auth } from './lib/firebase';
 import { userService } from './services/userService';
@@ -29,7 +29,7 @@ function ScreenLoader() {
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => isPreviewSupervisorView() ? 'study' : 'dashboard');
   const [flowStep, setFlowStep] = useState('none');
   const [currentCaseId, setCurrentCaseId] = useState<string | null>(null);
   const [appealFlowActive, setAppealFlowActive] = useState(false);

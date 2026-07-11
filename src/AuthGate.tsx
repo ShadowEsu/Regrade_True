@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, completeAuthRedirectIfNeeded } from './lib/firebase';
-import { isPreviewMode, isPreviewSignInView } from './lib/previewMode';
+import { isPreviewMode, isPreviewOnboardingView, isPreviewSignInView } from './lib/previewMode';
 import PreviewBanner from './components/PreviewBanner';
 import Auth from './views/Auth';
 import BrandSpinner from './components/BrandSpinner';
@@ -97,6 +97,18 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
     }
     if (onboardingLoading) {
       return <BootSplash />;
+    }
+    if (isPreviewOnboardingView()) {
+      return (
+        <>
+          <PreviewBanner />
+          <WelcomeSurvey onComplete={() => {
+            const url = new URL(window.location.href);
+            url.searchParams.delete('onboarding');
+            window.location.assign(url.toString());
+          }} />
+        </>
+      );
     }
     if (needsOnboarding) {
       return (

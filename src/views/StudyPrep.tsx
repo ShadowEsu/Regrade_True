@@ -6,7 +6,7 @@ import { caseService, type Case } from '../services/caseService';
 import { userService } from '../services/userService';
 import MarketingEyebrow from '../components/MarketingEyebrow';
 import AnimatedPrimaryButton from '../components/AnimatedPrimaryButton';
-import { isPreviewMode } from '../lib/previewMode';
+import { isPreviewMode, isPreviewSupervisorView } from '../lib/previewMode';
 import { PREVIEW_ANALYSIS } from '../lib/previewFixtures';
 import SupervisorHub from './SupervisorHub';
 import StudyReviewStudio from './StudyReviewStudio';
@@ -123,6 +123,9 @@ export default function StudyPrep({
   const [usingPreviewPlan, setUsingPreviewPlan] = useState(false);
   const [accountRole, setAccountRole] = useState<'student' | 'supervisor'>('student');
   const [reviewExam, setReviewExam] = useState<Case | null>(null);
+  const [examSearch, setExamSearch] = useState('');
+  const [courseFilter, setCourseFilter] = useState('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'reviewed' | 'pending'>('all');
 
   useEffect(() => {
     const user = auth.currentUser;
@@ -132,7 +135,7 @@ export default function StudyPrep({
       try {
         const [cases, profile] = await Promise.all([caseService.getUserCases(), userService.getProfile(user.uid)]);
         if (cancelled) return;
-        setAccountRole(profile?.accountRole === 'supervisor' ? 'supervisor' : 'student');
+        setAccountRole(isPreviewSupervisorView() || profile?.accountRole === 'supervisor' ? 'supervisor' : 'student');
         setExamCases(cases.filter((item) => item.analysis?.assignment.assignment_type === 'exam'));
         setChecked(profile?.studyChecklist ?? []);
       } finally { if (!cancelled) setLoading(false); }
@@ -141,6 +144,18 @@ export default function StudyPrep({
   }, []);
 
   const patterns = useMemo(() => derivePatterns(examCases), [examCases]);
+  const courses = useMemo(() => [...new Set(examCases.map((exam) => exam.analysis?.assignment.subject?.trim()).filter((value): value is string => Boolean(value)))].sort(), [examCases]);
+  const filteredExams = useMemo(() => {
+    const query = examSearch.trim().toLowerCase();
+    return examCases.filter((exam) => {
+      const assignment = exam.analysis?.assignment;
+      const matchesQuery = !query || [assignment?.title, assignment?.subject, exam.title, exam.status].some((value) => value?.toLowerCase().includes(query));
+      const matchesCourse = courseFilter === 'all' || assignment?.subject === courseFilter;
+      const reviewed = exam.progress >= 100 || exam.status === 'Resolved' || Boolean(exam.draftEmail);
+      const matchesStatus = statusFilter === 'all' || (statusFilter === 'reviewed' ? reviewed : !reviewed);
+      return matchesQuery && matchesCourse && matchesStatus;
+    });
+  }, [courseFilter, examCases, examSearch, statusFilter]);
   const markedPoints = patterns.reduce((sum, pattern) => sum + pattern.points, 0);
   const complete = patterns.filter((pattern) => checked.includes(pattern.id)).length;
   const progress = patterns.length ? Math.round((complete / patterns.length) * 100) : 0;
@@ -166,8 +181,8 @@ export default function StudyPrep({
         <div className="absolute -top-14 -right-10 w-48 h-48 rounded-full bg-violet-400/15 blur-3xl" aria-hidden />
         <div className="relative space-y-3 max-w-2xl">
           <MarketingEyebrow>review · exam evidence only</MarketingEyebrow>
-          <h1 className="rg-serif text-[clamp(30px,7vw,42px)] text-ink font-semibold leading-[1.05]">Review past marked exams and prepare for what comes next.</h1>
-          <p className="text-[14px] sm:text-[15px] leading-relaxed text-ink-muted">Mr. Whale only groups deductions, rubric rows, and feedback that are visible in analyzed exams. It does not diagnose you, guess at missing marks, or use homework here.</p>
+          <h1 className="rg-serif text-[clamp(32px,7vw,44px)] text-ink font-semibold leading-[1.05]">Exam review.</h1>
+          <p className="text-[14px] sm:text-[15px] leading-relaxed text-ink-muted">See patterns in your marked exams and decide what to practise next.</p>
         </div>
       </section>
 
@@ -206,39 +221,58 @@ export default function StudyPrep({
           {!patterns.length && <div className="rg-glass-form-card p-5 text-[13px] text-ink-muted">These exams do not contain question-level deductions yet. Upload a marked export with questions or rubric rows for a stronger study plan.</div>}
         </section>
 
-        <section className="space-y-3"><button type="button" onClick={() => setShowEvidence((value) => !value)} className="w-full rg-glass-card rounded-[18px] p-4 flex items-center justify-between text-left"><span><MarketingEyebrow>exam library</MarketingEyebrow><span className="block rg-serif text-lg text-ink font-semibold mt-1">See the exams that informed this plan</span></span><ICONS.ChevronDown className={`w-5 h-5 text-primary transition-transform ${showEvidence ? 'rotate-180' : ''}`} /></button>
+        <section className="space-y-3"><button type="button" onClick={() => setShowEvidence((value) => !value)} className="w-full rg-glass-card rounded-xl p-4 flex items-center justify-between text-left"><span><MarketingEyebrow>exam library</MarketingEyebrow><span className="block rg-serif text-lg text-ink font-semibold mt-1">Browse the exams behind this plan</span></span><span className="flex items-center gap-2 text-[12px] font-semibold text-primary">{examCases.length} exams<ICONS.ChevronDown className={`w-5 h-5 transition-transform ${showEvidence ? 'rotate-180' : ''}`} /></span></button>
           {showEvidence && (
-            <div className="space-y-2">
-              {examCases.map((exam) => {
+            <div className="space-y-4">
+              <div className="grid gap-2 rounded-xl border border-hairline bg-canvas p-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
+                <label className="relative block">
+                  <span className="sr-only">Search exams</span>
+                  <ICONS.Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" />
+                  <input value={examSearch} onChange={(event) => setExamSearch(event.target.value)} placeholder="Search exam or subject" className="h-10 w-full rounded-lg border border-hairline bg-parchment pl-9 pr-3 text-[13px] text-ink outline-none focus:border-primary" />
+                </label>
+                <select aria-label="Filter by course" value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="h-10 rounded-lg border border-hairline bg-canvas px-3 text-[13px] text-ink outline-none focus:border-primary">
+                  <option value="all">All courses</option>
+                  {courses.map((course) => <option key={course} value={course}>{course}</option>)}
+                </select>
+                <select aria-label="Filter by review status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as 'all' | 'reviewed' | 'pending')} className="h-10 rounded-lg border border-hairline bg-canvas px-3 text-[13px] text-ink outline-none focus:border-primary">
+                  <option value="all">All statuses</option><option value="reviewed">Reviewed</option><option value="pending">Pending</option>
+                </select>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+              {filteredExams.map((exam) => {
                 const hasPages = Boolean(exam.pageImages?.length || exam.pageImageUrls?.length);
                 return (
-                  <div key={exam.id} className="rg-glass-chip rounded-2xl p-4 flex flex-col gap-2">
+                  <article key={exam.id} className="rounded-xl border border-hairline bg-canvas p-4 flex min-h-[156px] flex-col gap-3 transition-colors hover:border-primary/30">
                     <button
                       type="button"
                       onClick={() => setReviewExam(exam)}
-                      className="w-full flex items-center justify-between gap-3 text-left"
+                      className="w-full flex flex-1 items-start justify-between gap-3 text-left"
                     >
                       <div className="min-w-0">
-                        <p className="font-semibold text-ink truncate">{exam.analysis?.assignment.title || exam.title}</p>
-                        <p className="text-[12px] text-ink-muted mt-1">
-                          {exam.analysis?.assignment.subject || 'Course not detected'} · {exam.analysis?.questions.length ?? 0} marked question{exam.analysis?.questions.length === 1 ? '' : 's'} · Open review studio
-                        </p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted">{exam.analysis?.assignment.subject || 'Course not detected'}</p>
+                        <p className="mt-1 font-semibold text-ink line-clamp-2">{exam.analysis?.assignment.title || exam.title}</p>
+                        <p className="mt-2 text-[12px] text-ink-muted">{exam.analysis?.questions.length ?? 0} marked question{exam.analysis?.questions.length === 1 ? '' : 's'} · {exam.status}</p>
                       </div>
                       <span className="shrink-0 text-[12px] font-mono text-primary">{examScore(exam)}</span>
                     </button>
-                    {onViewPaper && hasPages && exam.id && (
+                    <div className="flex items-center justify-between gap-3 border-t border-hairline pt-3">
+                      <button type="button" onClick={() => setReviewExam(exam)} className="text-[12px] font-semibold text-primary">Open review</button>
+                    {onViewPaper && hasPages && exam.id ? (
                       <button
                         type="button"
                         onClick={() => onViewPaper(exam.id!)}
-                        className="self-start text-[12px] font-semibold text-primary hover:underline inline-flex items-center gap-1"
+                        className="text-[12px] font-semibold text-ink-muted hover:text-primary inline-flex items-center gap-1"
                       >
                         <ICONS.FileText className="w-3.5 h-3.5" strokeWidth={2} />
-                        View the graded paper with AI notes
+                        View paper
                       </button>
-                    )}
-                  </div>
+                    ) : <span className="text-[11px] text-ink-muted">Text evidence</span>}
+                    </div>
+                  </article>
                 );
               })}
+              </div>
+              {!filteredExams.length && <div className="rounded-xl border border-dashed border-hairline p-8 text-center text-[13px] text-ink-muted">No exams match those filters.</div>}
             </div>
           )}
         </section>

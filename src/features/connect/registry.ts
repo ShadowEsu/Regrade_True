@@ -56,7 +56,7 @@ export const POPULAR_PLATFORMS: readonly ConnectPlatformId[] = [
   'google_drive',
 ];
 
-export const PLATFORMS: readonly PlatformMeta[] = [
+export const PLATFORM_LIBRARY: readonly PlatformMeta[] = [
   {
     platformId: 'gradescope',
     displayName: 'Gradescope',
@@ -74,7 +74,7 @@ export const PLATFORMS: readonly PlatformMeta[] = [
     keywords: ['instructure', 'speedgrader'],
     authMethod: 'personal_access_token',
     region: 'Global', apiStatus: 'live',
-    logo: '/platforms/canvas.png',
+    logo: '/platforms/canvas-new.png',
     guideId: 'canvas',
     blurb:
       'Generate a personal access token in your own Canvas settings and Regrade reads your grades and feedback for you.',
@@ -373,6 +373,9 @@ export const PLATFORMS: readonly PlatformMeta[] = [
     unavailableLabel: CONNECT_STRINGS.manualUploadAction,
   },
 ] as const;
+
+/** Backward-compatible name used by connector construction. */
+export const PLATFORMS = PLATFORM_LIBRARY;
 
 export function getPlatformMeta(id: ConnectPlatformId): PlatformMeta {
   const meta = PLATFORMS.find((p) => p.platformId === id);

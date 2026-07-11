@@ -129,7 +129,11 @@ function expectedEarnedFromRubric(
   const sumApplied = applied.reduce((acc, r) => acc + (r.point_value ?? 0), 0);
 
   if (direction === 'added_from_zero' || (sumApplied >= 0 && scoringMethod === 'positive')) {
-    return roundScore(Math.min(possible, Math.max(0, sumApplied)));
+    // Positive-scoring exports often include only selected rubric rows while
+    // base credit, comment-awarded partial credit, or bonus credit is shown
+    // elsewhere. A partial list is not a complete arithmetic equation, so a
+    // deterministic mismatch here would create false instructor-error flags.
+    return null;
   }
 
   // Negative / deduction scoring: rubric values are usually negative deltas.

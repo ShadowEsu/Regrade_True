@@ -4,6 +4,12 @@ export default function PreviewBanner() {
   if (!isPreviewMode()) return null;
 
   const onSignInPage = isPreviewSignInView();
+  const openPreview = (mode: 'signin' | 'onboarding' | 'supervisor') => {
+    const url = new URL(window.location.href);
+    url.search = '';
+    url.searchParams.set(mode, '1');
+    window.location.assign(url.toString());
+  };
 
   return (
     <div
@@ -23,15 +29,7 @@ export default function PreviewBanner() {
         >
           Back to app
         </button>
-      ) : (
-        <button
-          type="button"
-          onClick={openPreviewSignInView}
-          className="underline font-semibold text-amber-900 hover:text-amber-950"
-        >
-          View sign-in page
-        </button>
-      )}
+      ) : <span className="inline-flex flex-wrap justify-center gap-x-3 gap-y-1"><button type="button" onClick={openPreviewSignInView} className="underline font-semibold text-amber-900 hover:text-amber-950">Sign-in</button><button type="button" onClick={() => openPreview('onboarding')} className="underline font-semibold text-amber-900 hover:text-amber-950">Onboarding</button><button type="button" onClick={() => openPreview('supervisor')} className="underline font-semibold text-amber-900 hover:text-amber-950">Supervisor</button></span>}
     </div>
   );
 }

@@ -10,7 +10,7 @@ vi.mock('../store', () => ({
   canStoreSecurely: vi.fn().mockReturnValue(true),
 }));
 
-import { PLATFORMS } from '../registry';
+import { filterPlatforms, PLATFORM_LIBRARY, PLATFORMS } from '../registry';
 import { createConnectors } from '../connectors';
 import { buildAuthorizeUrl, DROPBOX_CONFIG, MICROSOFT_CONFIG } from '../flows/pkce';
 import { looksLikeCanvasToken, normalizeCanvasBaseUrl } from '../flows/urlGuards';
@@ -74,6 +74,15 @@ describe('platform registry', () => {
         expect(platform.authMethod).toBe('institution_gated');
       }
     }
+  });
+
+  it('keeps every platform in one unique searchable library', () => {
+    expect(PLATFORMS).toBe(PLATFORM_LIBRARY);
+    expect(new Set(PLATFORM_LIBRARY.map((platform) => platform.platformId)).size).toBe(PLATFORM_LIBRARY.length);
+    for (const platform of PLATFORM_LIBRARY) {
+      expect(filterPlatforms(platform.displayName).some((match) => match.platformId === platform.platformId)).toBe(true);
+    }
+    expect(PLATFORM_LIBRARY.find((platform) => platform.platformId === 'canvas')?.logo).toBe('/platforms/canvas-new.png');
   });
 });
 

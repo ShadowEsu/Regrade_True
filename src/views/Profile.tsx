@@ -149,7 +149,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const { preference: themePreference, resolved: themeResolved, setPreference: setThemePreference } = useTheme();
+  const { preference: themePreference, setPreference: setThemePreference } = useTheme();
   const [themeSaving, setThemeSaving] = useState(false);
 
   useEffect(() => {
@@ -449,12 +449,8 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               onClick={() => setActiveTab('platform')}
               className="rg-glass-chip px-3 py-1.5 text-[11px] font-semibold text-primary inline-flex items-center gap-1.5"
             >
-              {themeResolved === 'dark' ? (
-                <ICONS.Moon className="w-3.5 h-3.5" strokeWidth={2} />
-              ) : (
-                <ICONS.Sun className="w-3.5 h-3.5" strokeWidth={2} />
-              )}
-              {themePreference === 'system' ? 'Theme: System' : themeResolved === 'dark' ? 'Dark mode' : 'Light mode'}
+              <ICONS.Library className="w-3.5 h-3.5" strokeWidth={2} />
+              Connections
             </button>
           </div>
         </div>
@@ -680,6 +676,11 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               exit={{ opacity: 0, y: -4 }}
               className="rg-glass-form-card p-5 sm:p-6 space-y-6"
             >
+              <div>
+                <MarketingEyebrow>connections</MarketingEyebrow>
+                <h2 className="rg-serif mt-2 text-xl font-semibold text-ink">Connect your school platforms.</h2>
+                <p className="mt-1 text-[12px] leading-relaxed text-ink-muted">Search for a platform, connect it securely, or manage an existing connection here in Profile.</p>
+              </div>
               <ConnectScreen onManualUpload={onStartUpload ?? (() => undefined)} />
 
               <div className="border-t border-hairline pt-5">

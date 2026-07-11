@@ -9,6 +9,14 @@ export function isPreviewSignInView(): boolean {
   return new URLSearchParams(window.location.search).has('signin');
 }
 
+export function isPreviewOnboardingView(): boolean {
+  return isPreviewMode() && typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('onboarding');
+}
+
+export function isPreviewSupervisorView(): boolean {
+  return isPreviewMode() && typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('supervisor');
+}
+
 export function openPreviewSignInView(): void {
   const url = new URL(window.location.href);
   url.searchParams.set('signin', '1');

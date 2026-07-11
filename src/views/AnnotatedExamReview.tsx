@@ -98,6 +98,12 @@ export default function AnnotatedExamReview({
     [currentCase],
   );
   const selected = annotations.find((annotation) => annotation.questionId === selectedId) ?? annotations[0];
+  const originalPages = useMemo(() => {
+    if (currentCase?.pageImages?.length) {
+      return currentCase.pageImages.map((image) => `data:${image.mimeType};base64,${image.data}`);
+    }
+    return currentCase?.pageImageUrls ?? [];
+  }, [currentCase]);
 
   return (
     <AppealFlowShell
@@ -117,27 +123,38 @@ export default function AnnotatedExamReview({
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1.35fr)_minmax(260px,0.65fr)]">
-            <article className="rg-paper-view" aria-label="Paper reconstruction">
+            <article className="rg-paper-view" aria-label={originalPages.length ? 'Original marked paper' : 'Paper reconstruction'}>
               <header className="flex items-start justify-between gap-3 border-b border-ink/10 pb-4">
                 <div>
-                  <p className="rg-meta-k">Paper view · extracted question</p>
+                  <p className="rg-meta-k">{originalPages.length ? 'Original marked paper' : 'Paper view · extracted question'}</p>
                   <h2 className="mt-1 text-[17px] font-semibold text-ink">{selected.questionId}: {selected.heading}</h2>
                 </div>
                 <span className="rounded border border-red-500/25 bg-red-500/8 px-2 py-1 text-[11px] font-semibold text-red-700">{selected.deduction}</span>
               </header>
 
               <div className="py-5">
-                <p className="rg-meta-k">Student response region</p>
-                <p className="mt-2 max-w-2xl text-[14px] leading-7 text-ink/85">
-                  This reconstructed reading view anchors the feedback to the extracted question. When the upload includes a renderable PDF or image, this same review surface can be attached to the original page region.
-                </p>
+                {originalPages.length ? (
+                  <figure className="overflow-hidden rounded-lg border border-hairline bg-canvas">
+                    <img src={originalPages[0]} alt="First page of the original marked exam" className="h-auto w-full" />
+                    <figcaption className="border-t border-hairline px-3 py-2 text-[11px] leading-relaxed text-ink-muted">
+                      Showing the retained original page. Notes stay in the evidence rail unless the analysis provides verified page coordinates; Regrade never invents a highlight position.
+                    </figcaption>
+                  </figure>
+                ) : (
+                  <>
+                    <p className="rg-meta-k">Student response region</p>
+                    <p className="mt-2 max-w-2xl text-[14px] leading-7 text-ink/85">
+                      This reading view anchors the feedback to the extracted question. Re-upload the graded PDF or photo to review the original page beside these notes.
+                    </p>
+                  </>
+                )}
                 <div className="mt-5 border-l-2 border-red-500/70 bg-red-500/[0.045] px-4 py-3">
                   <p className="text-[12px] font-semibold text-red-700">Original teacher comment</p>
                   <p className="mt-1 text-[14px] leading-relaxed text-ink">{selected.teacherComment}</p>
                 </div>
                 <div className="mt-4 border-l-2 border-primary/70 bg-primary/[0.055] px-4 py-3">
                   <p className="text-[12px] font-semibold text-primary">AI annotation · evidence check</p>
-                  <p className="mt-1 text-[14px] leading-relaxed text-ink">{selected.aiFinding}</p>
+                  <div className="mt-1"><ChatMarkdown text={selected.aiFinding} /></div>
                 </div>
               </div>
             </article>

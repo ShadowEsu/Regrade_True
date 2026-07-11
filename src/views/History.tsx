@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { ICONS } from '../constants';
 import BrandSpinner from '../components/BrandSpinner';
@@ -31,6 +31,9 @@ export default function History({
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
+  const [status, setStatus] = useState('all');
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const loadHistory = useCallback(async () => {
     setLoading(true);
@@ -51,6 +54,24 @@ export default function History({
   }, [loadHistory]);
 
   const totalRecoverable = cases.reduce((sum, c) => sum + getPossiblePointsBack(c), 0);
+  const filteredCases = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return cases.filter((item) => {
+      const matchesSearch = !query || [item.title, getClassName(item), item.status, item.analysis?.assignment.subject].some((value) => value?.toLowerCase().includes(query));
+      const matchesStatus = status === 'all' || item.status?.toLowerCase() === status;
+      return matchesSearch && matchesStatus;
+    });
+  }, [cases, search, status]);
+  const groupedCases = useMemo(() => {
+    const groups = new Map<string, Case[]>();
+    for (const item of filteredCases) {
+      const raw = item.createdAt as unknown;
+      const date = raw && typeof (raw as { toDate?: () => Date }).toDate === 'function' ? (raw as { toDate: () => Date }).toDate() : new Date(raw as string | number | Date);
+      const key = Number.isFinite(date.getTime()) ? date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : 'Earlier';
+      groups.set(key, [...(groups.get(key) ?? []), item]);
+    }
+    return [...groups.entries()];
+  }, [filteredCases]);
 
   return (
     <div className="space-y-8 pb-4">
@@ -59,7 +80,7 @@ export default function History({
         <div className="absolute -bottom-14 -left-8 w-40 h-40 rounded-full bg-violet-400/10 blur-3xl pointer-events-none" aria-hidden />
         <div className="relative space-y-3">
           <MarketingEyebrow>your record</MarketingEyebrow>
-          <h1 className="rg-serif text-[clamp(28px,6vw,38px)] text-ink font-semibold">Appeal history</h1>
+          <h1 className="rg-serif text-[clamp(30px,6vw,42px)] text-ink font-semibold">Appeal history.</h1>
           <p className="rg-lead text-[15px] max-w-sm mx-auto">
             Points recovered, drafts saved, and outcomes — all in one place.
           </p>
@@ -127,27 +148,27 @@ export default function History({
           </AnimatedPrimaryButton>
         </motion.div>
       ) : (
-        <div className="space-y-3">
-          <p className="text-sm text-ink-muted px-1">Tap any appeal to pick up where you left off.</p>
-          {cases.map((appeal, idx) => {
+        <div className="space-y-5">
+          <div className="grid gap-2 rounded-xl border border-hairline bg-canvas p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
+            <label className="relative block"><span className="sr-only">Search appeal history</span><ICONS.Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search appeal, course, or subject" className="h-10 w-full rounded-lg border border-hairline bg-parchment pl-9 pr-3 text-[13px] text-ink outline-none focus:border-primary" /></label>
+            <select aria-label="Filter history by status" value={status} onChange={(event) => setStatus(event.target.value)} className="h-10 rounded-lg border border-hairline bg-canvas px-3 text-[13px] text-ink outline-none focus:border-primary"><option value="all">All statuses</option><option value="draft ready">Draft ready</option><option value="under review">Under review</option><option value="resolved">Resolved</option></select>
+          </div>
+          {groupedCases.map(([group, groupCases]) => <section key={group} className="space-y-3"><div className="flex items-center gap-3"><h2 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-ink-muted">{group}</h2><span className="h-px flex-1 bg-hairline" /></div>{groupCases.map((appeal, idx) => {
             const pts = getPossiblePointsBack(appeal);
             const date = formatCaseDate(appeal.createdAt);
             const statusKey = appeal.status?.toLowerCase() ?? 'under review';
             const statusTint = STATUS_TINT[statusKey] ?? 'text-ink-muted bg-parchment border-hairline';
+            const expanded = expandedId === appeal.id;
 
             return (
-              <motion.button
+              <motion.article
                 key={appeal.id}
-                type="button"
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.05, type: 'spring', stiffness: 300, damping: 26 }}
-                whileHover={{ y: -2 }}
-                whileTap={{ scale: 0.99 }}
-                onClick={() => appeal.id && onOpenAppeal(appeal.id)}
-                className="w-full text-left rg-glass-card p-4 border-l-[3px] border-l-primary/50"
+                transition={{ delay: Math.min(idx * 0.04, 0.2) }}
+                className="w-full rounded-xl border border-hairline bg-canvas p-4 text-left"
               >
-                <div className="flex items-start justify-between gap-3">
+                <button type="button" onClick={() => setExpandedId(expanded ? null : appeal.id ?? null)} aria-expanded={expanded} className="flex w-full items-start justify-between gap-3 text-left">
                   <div className="min-w-0 flex-1">
                     <h3 className="rg-serif text-lg text-ink font-semibold truncate">{appeal.title}</h3>
                     <p className="text-sm text-ink-muted mt-0.5">{getClassName(appeal)}</p>
@@ -167,9 +188,9 @@ export default function History({
                         {date}
                       </span>
                     )}
-                    <ICONS.ArrowRight className="w-4 h-4 text-primary" strokeWidth={2} />
+                    <ICONS.ChevronDown className={`w-4 h-4 text-primary transition-transform ${expanded ? 'rotate-180' : ''}`} strokeWidth={2} />
                   </div>
-                </div>
+                </button>
 
                 <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-hairline">
                   <span className={`rg-glass-chip px-3 py-1 text-[11px] capitalize font-medium border ${statusTint}`}>
@@ -183,30 +204,12 @@ export default function History({
                       Draft saved
                     </span>
                   )}
-                  {onViewPaper && (appeal.pageImages?.length || appeal.pageImageUrls?.length) && (
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        if (appeal.id) onViewPaper(appeal.id);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          if (appeal.id) onViewPaper(appeal.id);
-                        }
-                      }}
-                      className="rg-glass-chip px-3 py-1 text-[11px] text-primary border-primary/25 bg-primary/8 cursor-pointer inline-flex items-center gap-1 ml-auto"
-                    >
-                      <ICONS.FileText className="w-3 h-3" strokeWidth={2} /> View paper
-                    </span>
-                  )}
                 </div>
-              </motion.button>
+                {expanded && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-4 flex flex-wrap items-center gap-2 border-t border-hairline pt-4"><p className="mr-auto max-w-md text-[12px] leading-relaxed text-ink-muted">{appeal.analysis?.case_analysis.case_strength_reason || appeal.description || 'Open the appeal to review the evidence and saved draft.'}</p>{onViewPaper && (appeal.pageImages?.length || appeal.pageImageUrls?.length) && appeal.id && <button type="button" onClick={() => onViewPaper(appeal.id!)} className="rg-btn-secondary px-3 py-2 text-[12px]"><ICONS.FileText className="h-3.5 w-3.5" />View paper</button>}<button type="button" onClick={() => appeal.id && onOpenAppeal(appeal.id)} className="rg-btn-primary px-3 py-2 text-[12px]">Open appeal<ICONS.ArrowRight className="h-3.5 w-3.5" /></button></motion.div>}
+              </motion.article>
             );
-          })}
+          })}</section>)}
+          {!filteredCases.length && <div className="rounded-xl border border-dashed border-hairline p-8 text-center text-[13px] text-ink-muted">No appeals match those filters.</div>}
         </div>
       )}
     </div>
