@@ -12,7 +12,7 @@ export default function PlatformRow() {
             className="w-2 h-2 rounded-full shrink-0"
             style={{ backgroundColor: p.color }}
           />
-          <span className="text-[13px] font-medium text-[#374151]">{p.label}</span>
+          <span className="text-[13px] font-medium text-ink">{p.label}</span>
         </div>
       ))}
     </div>

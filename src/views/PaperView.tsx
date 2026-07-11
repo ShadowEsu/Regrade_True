@@ -4,6 +4,7 @@ import { motion } from 'motion/react';
 import { ICONS } from '../constants';
 import BrandSpinner from '../components/BrandSpinner';
 import AppealFlowShell from '../components/AppealFlowShell';
+import ChatMarkdown from '../components/ChatMarkdown';
 import { caseService, type Case } from '../services/caseService';
 import type { AnalysisResult, Question } from '../types';
 
@@ -208,12 +209,12 @@ const AnnotationRow: React.FC<{ annotation: Annotation; mode: 'review' | 'learn'
           {annotation.teacherQuote}
         </p>
       )}
-      <p className="text-[13px] text-ink leading-relaxed">{annotation.aiExplanation}</p>
+      <div className="text-[13px] text-ink leading-relaxed"><ChatMarkdown text={annotation.aiExplanation} /></div>
       {mode === 'learn' && annotation.studyTip && (
-        <p className="text-[12px] leading-relaxed text-emerald-800 bg-emerald-500/8 border border-emerald-500/20 rounded-lg px-3 py-2">
+        <div className="text-[12px] leading-relaxed text-emerald-800 bg-emerald-500/8 border border-emerald-500/20 rounded-lg px-3 py-2">
           <ICONS.Lightbulb className="inline w-3.5 h-3.5 mr-1" strokeWidth={2} />
-          {annotation.studyTip}
-        </p>
+          <ChatMarkdown text={annotation.studyTip} />
+        </div>
       )}
     </li>
   );

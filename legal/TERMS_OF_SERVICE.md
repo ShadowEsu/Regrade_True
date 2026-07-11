@@ -1,7 +1,7 @@
 # Regrade — Terms of Service
 
 **Effective date:** May 13, 2026
-**Last updated:** May 13, 2026
+**Last updated:** July 10, 2026
 
 These Terms of Service ("Terms") are a binding contract between you and
 Preston Jay Susanto ("Regrade", "we", "us"). They govern your access to and
@@ -240,7 +240,7 @@ may assign them.
 
 ## 19. Contact
 
-Email: pretonjs2024@gmail.com
+Email: regradeteam@gmail.com
 Mailing address: available on request.
 
 — End of Terms —

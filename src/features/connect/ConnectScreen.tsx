@@ -7,6 +7,7 @@ import { filterPlatforms, getPlatformMeta, type PlatformMeta } from './registry'
 import { canStoreSecurely, listConnections, revokeConnection } from './store';
 import { CONNECT_STRINGS as S } from './strings';
 import { isConnectFailure, type ConnectPlatformId, type Connector, type StoredConnection } from './types';
+import { connectorImportService, IMPORTABLE_PLATFORMS, type ImportItem } from '../../services/connectorImportService';
 
 /**
  * The unified Connect screen. Every platform gets one card in one list.
@@ -194,7 +195,14 @@ const PlatformCard: React.FC<PlatformCardProps> = ({
   onRevoke,
   onManualUpload,
 }) => {
+  const [importItems, setImportItems] = useState<ImportItem[] | null>(null);
+  const [importBusy, setImportBusy] = useState(false);
+  const [importNote, setImportNote] = useState<string | null>(null);
   const connectable = connector.isAvailable() && !connection;
+  const canImport = Boolean(connection && IMPORTABLE_PLATFORMS.has(meta.platformId));
+  const browse = async () => { setImportBusy(true); setImportNote(null); try { const items = await connectorImportService.list(meta.platformId); setImportItems(items); if (!items.length) setImportNote('No graded records or files were returned.'); } catch (e) { setImportNote(e instanceof Error ? e.message : 'The platform did not respond.'); } finally { setImportBusy(false); } };
+  const importOne = async (item: ImportItem) => { setImportBusy(true); setImportNote(null); try { await connectorImportService.importManual(meta.platformId, item.externalId); setImportNote(`${item.title} is ready in Regrade. Manual imports can be any age.`); } catch (e) { setImportNote(e instanceof Error ? e.message : 'Import failed.'); } finally { setImportBusy(false); } };
+  const checkRecent = async () => { setImportBusy(true); setImportNote(null); try { const result = await connectorImportService.runAutomatic(meta.platformId); setImportNote(result.imported ? `${result.imported} recent graded item${result.imported === 1 ? '' : 's'} imported. ${result.ignoredOlderCount} older item${result.ignoredOlderCount === 1 ? '' : 's'} ignored.` : `No new grades in the last seven days. ${result.ignoredOlderCount} older item${result.ignoredOlderCount === 1 ? '' : 's'} left untouched.`); } catch (e) { setImportNote(e instanceof Error ? e.message : 'Automatic check failed.'); } finally { setImportBusy(false); } };
 
   return (
     <div className="rg-glass-form-card p-4 space-y-3" data-platform={meta.platformId}>
@@ -276,9 +284,13 @@ const PlatformCard: React.FC<PlatformCardProps> = ({
         <button type="button" onClick={onManualUpload} className="rg-btn-ghost text-[13px]">
           {S.manualUploadAction}
         </button>
+        {canImport && <button type="button" disabled={importBusy} onClick={() => void browse()} className="rg-btn-ghost text-[13px]">Browse connected work</button>}
+        {canImport && (meta.platformId === 'canvas' || meta.platformId === 'google_classroom') && <button type="button" disabled={importBusy} onClick={() => void checkRecent()} className="rg-btn-ghost text-[13px]">Check last 7 days</button>}
       </div>
 
       {note && <p className="text-[12px] text-ink-muted leading-relaxed">{note}</p>}
+      {importNote && <p className="text-[12px] text-ink-muted leading-relaxed" role="status">{importNote}</p>}
+      {importItems && importItems.length > 0 && <div className="space-y-2 border-t border-hairline pt-3">{importItems.slice(0, 20).map((item) => <div key={item.externalId} className="flex items-center justify-between gap-3 rounded-lg bg-parchment p-2.5"><div className="min-w-0"><p className="truncate text-[12px] font-semibold text-ink">{item.title}</p><p className="text-[10px] text-ink-muted">{item.course || (item.kind === 'file' ? 'Selected file' : 'Graded work')}{item.gradedAt ? ` · ${new Date(item.gradedAt).toLocaleDateString()}` : ''}</p></div><button type="button" disabled={importBusy} onClick={() => void importOne(item)} className="shrink-0 text-[11px] font-semibold text-primary">Import</button></div>)}</div>}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import type { NextFunction, Request, Response } from "express";
-import admin from "firebase-admin";
+import admin from "../admin.js";
 import { ApiError } from "../http/errors.js";
 import { ensureFirebaseAdmin } from "../firebaseAdmin.js";
 

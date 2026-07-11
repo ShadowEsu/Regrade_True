@@ -12,6 +12,10 @@ import CoachComposer from '../components/CoachComposer';
 import CoachWhale from '../components/CoachWhale';
 import ChatMarkdown from '../components/ChatMarkdown';
 import { COACH_HEADING, COACH_SUBHEADING } from '../branding';
+import { auth } from '../lib/firebase';
+import { userService } from '../services/userService';
+import { buildStudentProfileContext } from '../lib/profileContext';
+import { reportAiResponse } from '../services/aiFeedbackService';
 
 type ChatMessage = { role: 'ai' | 'user'; text: string; sentAt?: number };
 type AgentSession = { id: string; title: string; messages: ChatMessage[]; input: string };
@@ -27,6 +31,14 @@ function AiMessage({ text }: { text: string }) {
   const isInsight = looksLikeInsight(text);
   const reduceMotion = useReducedMotion();
   const [visibleText, setVisibleText] = useState(reduceMotion ? text : '');
+  const [reportState, setReportState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const report = async () => {
+    if (reportState === 'sending' || reportState === 'sent') return;
+    setReportState('sending');
+    try { await reportAiResponse(text); setReportState('sent'); }
+    catch { setReportState('error'); }
+  };
+  const reportControl = <button type="button" onClick={() => void report()} disabled={reportState === 'sending' || reportState === 'sent'} className="mt-2 text-[10px] font-medium text-ink-muted hover:text-primary disabled:opacity-60">{reportState === 'sending' ? 'Reporting…' : reportState === 'sent' ? 'Reported — thank you' : reportState === 'error' ? 'Retry report' : 'Report response'}</button>;
 
   useEffect(() => {
     if (reduceMotion) {
@@ -54,6 +66,7 @@ function AiMessage({ text }: { text: string }) {
               <span className="text-[12px] font-semibold text-primary">Key insight</span>
             </div>
             <ChatMarkdown text={visibleText} />
+            {reportControl}
           </div>
         </div>
       </div>
@@ -66,6 +79,7 @@ function AiMessage({ text }: { text: string }) {
       <div className="flex-1 min-w-0">
         <div className="rg-coach-ai-message">
           <ChatMarkdown text={visibleText} />
+          {reportControl}
         </div>
       </div>
     </div>
@@ -165,16 +179,29 @@ export default function Advocate({
   };
 
   useEffect(() => {
-    if (!caseId) {
-      setCaseContext(undefined);
-      return;
-    }
     let cancelled = false;
-    caseService.getCaseById(caseId).then((c) => {
-      if (!cancelled && c?.analysis) {
-        setCaseContext(buildCaseContextForAdvocate(c.analysis));
+    void (async () => {
+      if (caseId) {
+        const c = await caseService.getCaseById(caseId);
+        if (!cancelled) setCaseContext(c?.analysis ? buildCaseContextForAdvocate(c.analysis) : undefined);
+        return;
       }
-    });
+      const user = auth.currentUser;
+      if (!user) return;
+      const [profile, cases] = await Promise.all([
+        userService.getProfile(user.uid),
+        caseService.getUserCases(),
+      ]);
+      const recent = cases.filter((item) => item.analysis).slice(0, 5);
+      const parts = [buildStudentProfileContext(profile)];
+      if (recent.length) {
+        parts.push('--- Recent analyzed work (newest first) ---');
+        recent.forEach((item, index) => {
+          parts.push(`Assessment ${index + 1}:\n${buildCaseContextForAdvocate(item.analysis!).slice(0, 4_000)}`);
+        });
+      }
+      if (!cancelled) setCaseContext(parts.filter(Boolean).join('\n\n').slice(0, 24_000) || undefined);
+    })().catch(() => { if (!cancelled) setCaseContext(undefined); });
     return () => {
       cancelled = true;
     };

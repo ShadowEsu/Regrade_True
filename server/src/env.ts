@@ -11,12 +11,18 @@ const EnvSchema = z
      * `/v1/gemini/*` then returns 503 until configured. Required in production.
      */
     GEMINI_API_KEY: z.string().default(""),
+    GEMINI_MODEL: z.string().min(3).default("gemini-3.5-flash"),
     /** Stripe Billing is optional in local preview and required before paid plans can activate. */
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
     STRIPE_STUDENT_PRICE_ID: z.string().optional(),
     STRIPE_PRO_PRICE_ID: z.string().optional(),
     BILLING_RETURN_URL: z.string().url().default("http://localhost:3000/app"),
+    REVENUECAT_SECRET_API_KEY: z.string().optional(),
+    REVENUECAT_WEBHOOK_AUTH: z.string().optional(),
+    REVENUECAT_STUDENT_ENTITLEMENT: z.string().default("student"),
+    REVENUECAT_PRO_ENTITLEMENT: z.string().default("pro"),
+    ENFORCE_APP_CHECK: z.enum(["true", "false"]).default("false").transform((value) => value === "true"),
   /**
    * Optional: comma-separated API keys for simple auth.
    * Prefer a real auth system later; this is for “public endpoints” protection now.
@@ -28,10 +34,14 @@ const EnvSchema = z
    * stored. Generate with: openssl rand -base64 32
    */
   CONNECTIONS_ENC_KEY: z.string().optional(),
+  /** Server-only HMAC pepper for short-lived family pairing codes. */
+  FAMILY_PAIRING_PEPPER: z.string().min(32).optional(),
+  CRON_SECRET: z.string().min(32).optional(),
   /** Firebase Admin SDK — paste single-line JSON (production: required). */
   FIREBASE_SERVICE_ACCOUNT_JSON: z.string().optional(),
   /** Firebase Admin SDK — path to service account .json (alternative to JSON env var). */
   GOOGLE_APPLICATION_CREDENTIALS: z.string().optional(),
+  FIREBASE_STORAGE_BUCKET: z.string().optional(),
   /**
    * Rate limiting defaults (per-IP and per-user key).
    */
@@ -62,6 +72,21 @@ const EnvSchema = z
         path: ["API_KEYS"]
       });
     }
+    if (data.NODE_ENV === "production" && !data.ENFORCE_APP_CHECK) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "ENFORCE_APP_CHECK must be true in production", path: ["ENFORCE_APP_CHECK"] });
+    }
+    if (data.NODE_ENV === "production") {
+      const key = Buffer.from((data.CONNECTIONS_ENC_KEY ?? "").trim(), "base64");
+      if (key.length !== 32) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "CONNECTIONS_ENC_KEY must be base64 for exactly 32 bytes", path: ["CONNECTIONS_ENC_KEY"] });
+      }
+      if ((data.FAMILY_PAIRING_PEPPER ?? "").length < 32) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "FAMILY_PAIRING_PEPPER must be at least 32 characters", path: ["FAMILY_PAIRING_PEPPER"] });
+      }
+      if ((data.CRON_SECRET ?? "").length < 32) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "CRON_SECRET must be at least 32 characters", path: ["CRON_SECRET"] });
+      }
+    }
     if (data.NODE_ENV === "production") {
       const hasAdmin =
         Boolean((data.FIREBASE_SERVICE_ACCOUNT_JSON ?? "").trim()) ||
@@ -73,6 +98,9 @@ const EnvSchema = z
             "FIREBASE_SERVICE_ACCOUNT_JSON or GOOGLE_APPLICATION_CREDENTIALS is required in production",
           path: ["FIREBASE_SERVICE_ACCOUNT_JSON"]
         });
+      }
+      if (!(data.FIREBASE_STORAGE_BUCKET ?? "").trim()) {
+        ctx.addIssue({ code: z.ZodIssueCode.custom, message: "FIREBASE_STORAGE_BUCKET is required in production", path: ["FIREBASE_STORAGE_BUCKET"] });
       }
     }
   });

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ICONS } from '../constants';
 import AppealFlowShell from '../components/AppealFlowShell';
+import ChatMarkdown from '../components/ChatMarkdown';
 import { caseService, type Case } from '../services/caseService';
 
 type Annotation = {
@@ -57,11 +58,11 @@ function PaperAnnotation({ annotation }: { annotation: Annotation }) {
         </div>
         <div>
           <p className="rg-meta-k text-primary">Mr Whale cross-check</p>
-          <p className="mt-1 text-[13px] leading-relaxed text-ink">{annotation.aiFinding}</p>
+          <div className="mt-1 text-[13px] leading-relaxed text-ink"><ChatMarkdown text={annotation.aiFinding} /></div>
         </div>
         <div>
           <p className="rg-meta-k text-emerald-700">Best next step</p>
-          <p className="mt-1 text-[13px] leading-relaxed text-ink">{annotation.nextStep}</p>
+          <div className="mt-1 text-[13px] leading-relaxed text-ink"><ChatMarkdown text={annotation.nextStep} /></div>
         </div>
       </div>
     </div>

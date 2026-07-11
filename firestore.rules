@@ -44,8 +44,14 @@ service cloud.firestore {
 
     function isValidPlatformId(value) {
       return value is string && value in [
-        'gradescope', 'canvas', 'google_classroom', 'brightspace', 'moodle',
-        'blackboard', 'turnitin', 'schoology', 'powerschool', 'sakai', 'paper'
+        'gradescope', 'canvas', 'google_classroom', 'google_drive', 'onedrive',
+        'dropbox', 'apple_files', 'brightspace', 'moodle', 'blackboard',
+        'turnitin', 'schoology', 'powerschool', 'teams_assignments', 'sakai',
+        'itslearning', 'managebac', 'open_edx', 'fedena', 'teachmint',
+        'dingtalk', 'lark', 'wecom', 'toddle', 'edunext', 'vidyalaya',
+        'classter', 'infinite_campus', 'skyward', 'alma', 'veracross',
+        'facts', 'clever', 'classlink', 'google_workspace', 'sharepoint',
+        'box', 'email_import', 'paper'
       ];
     }
 
@@ -71,8 +77,10 @@ service cloud.firestore {
              (!('preferredPlatform' in data) || isValidPlatformId(data.preferredPlatform)) &&
              (!('aiEngine' in data) || (data.aiEngine is string && data.aiEngine in ['hybrid', 'gemini', 'claude'])) &&
              (!('onboardingComplete' in data) || data.onboardingComplete is bool) &&
+             (!('tutorialComplete' in data) || data.tutorialComplete is bool) &&
              (!('analysisAlerts' in data) || data.analysisAlerts is bool) &&
              (!('autoMode' in data) || data.autoMode is bool) &&
+             (!('automaticGradeDetection' in data) || data.automaticGradeDetection is bool) &&
              (!('accountRole' in data) || (data.accountRole is string && data.accountRole in ['student', 'supervisor'])) &&
              (!('studyChecklist' in data) || isValidStudyChecklist(data.studyChecklist)) &&
              (!('appealTone' in data) || isValidChipList(data.appealTone)) &&
@@ -86,7 +94,7 @@ service cloud.firestore {
                                    'university', 'gradeLevel', 'gpa', 'appealGoal',
                                    'appealTone', 'appealFocus', 'theme',
                                    'preferredPlatform', 'avatarUrl',
-                                   'aiEngine', 'aiConsentAt', 'onboardingComplete', 'analysisAlerts', 'autoMode', 'studyChecklist', 'accountRole',
+                                   'aiEngine', 'aiConsentAt', 'onboardingComplete', 'tutorialComplete', 'analysisAlerts', 'autoMode', 'automaticGradeDetection', 'studyChecklist', 'accountRole',
                                    'createdAt', 'updatedAt']) &&
              boundedString(data.name, 256) &&
              boundedString(data.email, 320) &&
@@ -166,7 +174,7 @@ service cloud.firestore {
                         'name', 'major', 'school', 'university', 'gradeLevel', 'gpa',
                         'appealGoal', 'appealTone', 'appealFocus', 'theme',
                         'preferredPlatform', 'avatarUrl', 'aiEngine',
-                        'aiConsentAt', 'onboardingComplete', 'analysisAlerts', 'autoMode', 'studyChecklist', 'accountRole', 'updatedAt'
+                        'aiConsentAt', 'onboardingComplete', 'tutorialComplete', 'analysisAlerts', 'autoMode', 'automaticGradeDetection', 'studyChecklist', 'accountRole', 'updatedAt'
                       ]) &&
                       optionalBoundedString(incoming().name, 256) &&
                       isValidUserProfileFields(incoming());

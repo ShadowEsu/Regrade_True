@@ -36,6 +36,7 @@ export const APP_SUPPORT_EMAIL = 'regradeteam@gmail.com';
 export const APP_PRIVACY_URL = 'https://regradeapp.tech/privacy.html';
 export const APP_TERMS_URL = 'https://regradeapp.tech/terms.html';
 export const APP_EULA_URL = 'https://regradeapp.tech/eula.html';
+export const APP_DELETE_ACCOUNT_URL = 'https://regradeapp.tech/legal/delete-account.html';
 export const APP_WEBSITE_URL = 'https://regradeapp.tech';
 
 /** Minimum age shown on sign-in (App Store / Play Families & COPPA). */

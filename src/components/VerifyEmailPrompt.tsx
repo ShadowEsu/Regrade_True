@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { User } from 'firebase/auth';
-import { sendEmailVerification, signOut, auth } from '../lib/firebase';
+import { sendEmailVerification } from '../lib/firebase';
+import { secureSignOut } from '../services/sessionService';
 import BrandSpinner from './BrandSpinner';
 import Logo from './Logo';
 
@@ -28,7 +29,7 @@ const VerifyEmailPrompt: React.FC<VerifyEmailPromptProps> = ({ user }) => {
   };
 
   const handleSignOut = async () => {
-    await signOut(auth);
+    await secureSignOut();
   };
 
   return (

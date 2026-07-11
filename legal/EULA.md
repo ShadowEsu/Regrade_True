@@ -78,6 +78,6 @@ to this EULA.
 
 ## 10. Contact
 
-Email: pretonjs2024@gmail.com
+Email: regradeteam@gmail.com
 
 — End of EULA —

@@ -1,6 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
-import admin from "firebase-admin";
+import admin from "./admin.js";
+import type { DecodedIdToken } from "firebase-admin/auth";
+import type { ServiceAccount } from "firebase-admin/app";
 
 let initialized = false;
 
@@ -35,12 +37,14 @@ export function ensureFirebaseAdmin(): void {
   }
 
   admin.initializeApp({
-    credential: admin.credential.cert(credJson as admin.ServiceAccount)
+    credential: admin.credential.cert(credJson as ServiceAccount),
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET?.trim() || undefined,
   });
   initialized = true;
 }
 
-export async function verifyIdToken(idToken: string): Promise<admin.auth.DecodedIdToken> {
+export async function verifyIdToken(idToken: string): Promise<DecodedIdToken> {
   ensureFirebaseAdmin();
-  return admin.auth().verifyIdToken(idToken);
+  // checkRevoked closes sessions immediately after server-side logout/account deletion.
+  return admin.auth().verifyIdToken(idToken, true);
 }

@@ -8,6 +8,7 @@ import ThemeQuickToggle from './ThemeQuickToggle';
 import NotificationQuickToggle from './NotificationQuickToggle';
 import type { ProfileSection } from '../views/Profile';
 import { caseService } from '../services/caseService';
+import { automationService } from '../services/automationService';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -53,6 +54,7 @@ export default function Layout({
   }, []);
 
   useEffect(() => { void refreshUnread(); }, [activeTab, refreshUnread]);
+  useEffect(() => { void automationService.runGradeDetection(); }, []);
 
   const selectTab = (tab: string) => {
     const now = Date.now().toString();

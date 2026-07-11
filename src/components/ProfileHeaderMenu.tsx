@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DEFAULT_AVATAR_SRC, ICONS } from '../constants';
-import { auth, signOut } from '../lib/firebase';
+import { auth } from '../lib/firebase';
+import { secureSignOut } from '../services/sessionService';
 import { isPreviewMode } from '../lib/previewMode';
 import type { ProfileSection } from '../views/Profile';
 
@@ -46,7 +47,7 @@ export default function ProfileHeaderMenu({
 
   const handleSignOut = () => {
     setOpen(false);
-    void signOut(auth);
+    void secureSignOut();
   };
 
   return (

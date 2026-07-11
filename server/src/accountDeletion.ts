@@ -1,4 +1,4 @@
-import admin from "firebase-admin";
+import admin from "./admin.js";
 import { ensureFirebaseAdmin } from "./firebaseAdmin.js";
 
 const BATCH_SIZE = 450;
@@ -8,22 +8,34 @@ export async function deleteUserAccountCompletely(uid: string): Promise<void> {
   ensureFirebaseAdmin();
   const db = admin.firestore();
 
-  const casesSnap = await db.collection("cases").where("userId", "==", uid).get();
-  const caseDocs = casesSnap.docs;
+  if (process.env.FIREBASE_STORAGE_BUCKET?.trim()) {
+    await admin.storage().bucket().deleteFiles({ prefix: `users/${uid}/` });
+  }
 
-  for (let i = 0; i < caseDocs.length; i += BATCH_SIZE) {
-    const batch = db.batch();
-    for (const doc of caseDocs.slice(i, i + BATCH_SIZE)) {
-      batch.delete(doc.ref);
+  for (const [collectionName, ownerField] of [["cases", "userId"], ["aiFeedback", "uid"]] as const) {
+    const owned = await db.collection(collectionName).where(ownerField, "==", uid).get();
+    for (let i = 0; i < owned.docs.length; i += BATCH_SIZE) {
+      const batch = db.batch();
+      for (const doc of owned.docs.slice(i, i + BATCH_SIZE)) batch.delete(doc.ref);
+      await batch.commit();
     }
+  }
+
+  const [learnerLinks, supervisorLinks, pairingCodes] = await Promise.all([
+    db.collection("supervisionLinks").where("learnerUid", "==", uid).get(),
+    db.collection("supervisionLinks").where("supervisorUid", "==", uid).get(),
+    db.collection("pairingCodes").where("learnerUid", "==", uid).get(),
+  ]);
+  for (const link of [...learnerLinks.docs, ...supervisorLinks.docs]) await db.recursiveDelete(link.ref);
+  if (!pairingCodes.empty) {
+    const batch = db.batch();
+    pairingCodes.docs.forEach((doc) => batch.delete(doc.ref));
     await batch.commit();
   }
 
-  const userRef = db.doc(`users/${uid}`);
-  const userSnap = await userRef.get();
-  if (userSnap.exists) {
-    await userRef.delete();
-  }
+  // Firestore does not cascade deletes. recursiveDelete removes billing periods,
+  // connector credentials, pairing records, and any future user subcollections.
+  await db.recursiveDelete(db.doc(`users/${uid}`));
 
   try {
     await admin.auth().deleteUser(uid);

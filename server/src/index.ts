@@ -17,7 +17,13 @@ import { createRegradeGeminiRouter } from "./regradeGemini.js";
 import { createConnectionsRouter } from "./connections.js";
 import { deleteUserAccountCompletely } from "./accountDeletion.js";
 import { ensureFirebaseAdmin } from "./firebaseAdmin.js";
-import { createBillingRouter, createStripeWebhookHandler } from "./billing.js";
+import { createBillingRouter, createRevenueCatWebhookHandler, createStripeWebhookHandler, deleteExternalBillingProfile } from "./billing.js";
+import { createAutomationRouter } from "./automation.js";
+import { requireAppCheck } from "./middleware/appCheck.js";
+import { createFamilyRouter } from "./family.js";
+import { createConnectorImportsRouter } from "./connectorImports.js";
+import { automaticConnectorJob } from "./jobs.js";
+import admin from "./admin.js";
 
 const env = loadEnv();
 
@@ -33,6 +39,7 @@ if (env.NODE_ENV !== "production" && !env.GEMINI_API_KEY.trim()) {
 }
 
 const app = express();
+const appCheck = requireAppCheck(env);
 
 // Needed for correct IP-based rate limiting behind proxies (Fly, Render, Nginx, Cloudflare, etc.).
 app.set("trust proxy", 1);
@@ -50,33 +57,48 @@ app.use(
     origin: env.CORS_ORIGIN === "*" ? true : env.CORS_ORIGIN.split(",").map((s) => s.trim()),
     credentials: false,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
-    allowedHeaders: ["authorization", "content-type", "x-request-id"]
+    allowedHeaders: ["authorization", "content-type", "x-request-id", "x-firebase-appcheck"]
   })
 );
 
 // Rate limiting: IP + Firebase uid when present (applied before body parsers).
 const { ipLimiter, userLimiter } = buildRateLimiters(env);
 app.use(ipLimiter);
-app.use(userLimiter);
 
 // Health (public)
 app.get("/health", (_req, res) => res.json({ ok: true }));
 
 // Stripe must receive the exact raw request bytes so its signature can be verified.
 app.post("/v1/billing/webhook", express.raw({ type: "application/json" }), createStripeWebhookHandler(env));
+app.post("/v1/billing/revenuecat/webhook", express.json({ limit: "64kb" }), createRevenueCatWebhookHandler(env));
+app.post("/v1/jobs/connector-imports", automaticConnectorJob(env));
 
 // Gemini proxy: large JSON — must run before the global 64kb parser.
 app.use(
   "/v1/gemini",
   express.json({ limit: "25mb", type: ["application/json", "application/*+json"] }),
   requireFirebaseUser,
+  appCheck,
+  userLimiter,
   requireAiConsent,
   createRegradeGeminiRouter(env)
 );
 
 app.use(express.json({ limit: "64kb", type: ["application/json", "application/*+json"] }));
 
-app.use("/v1/billing", requireFirebaseUser, createBillingRouter(env));
+app.use("/v1/billing", requireFirebaseUser, appCheck, userLimiter, createBillingRouter(env));
+app.use("/v1/automation", requireFirebaseUser, appCheck, userLimiter, createAutomationRouter());
+app.use("/v1/family", requireFirebaseUser, appCheck, userLimiter, createFamilyRouter(env));
+app.use("/v1/imports", requireFirebaseUser, appCheck, userLimiter, createConnectorImportsRouter(env));
+
+app.post("/v1/session/logout", requireFirebaseUser, appCheck, userLimiter, (req, res, next) => {
+  void (async () => {
+    const uid = (req as express.Request & { firebase?: { uid?: string } }).firebase?.uid;
+    if (!uid) throw new ApiError({ status: 401, code: "UNAUTHORIZED", message: "Not signed in." });
+    await admin.auth().revokeRefreshTokens(uid);
+    res.json({ signedOut: true });
+  })().catch(next);
+});
 
 // Platform connections: encrypted credential store + Canvas token verify.
 // This route has a small JSON payload (tokens and connection metadata). It
@@ -86,6 +108,8 @@ app.use(
   "/v1/connections",
   express.json({ limit: "16kb", type: ["application/json", "application/*+json"] }),
   requireFirebaseUser,
+  appCheck,
+  userLimiter,
   createConnectionsRouter(env)
 );
 
@@ -102,8 +126,23 @@ const FeedbackSchema = z.object({
     .optional()
 });
 
+const AiFeedbackSchema = z.object({
+  reason: z.enum(["inappropriate_or_inaccurate"]),
+  excerpt: z.string().min(1).max(500),
+});
+
+app.post("/v1/ai-feedback", requireFirebaseUser, appCheck, userLimiter, validate(AiFeedbackSchema, "body"), (req, res, next) => {
+  void (async () => {
+    const uid = (req as express.Request & { firebase?: { uid?: string } }).firebase?.uid;
+    if (!uid) throw new ApiError({ status: 401, code: "UNAUTHORIZED", message: "Not signed in." });
+    const body = req.body as z.infer<typeof AiFeedbackSchema>;
+    await admin.firestore().collection("aiFeedback").add({ uid, ...body, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+    res.status(202).json({ accepted: true });
+  })().catch(next);
+});
+
 // Account deletion — App Store §5.1.1(v) / Google Play account-deletion policy.
-app.delete("/v1/account", requireFirebaseUser, (req, res, next) => {
+app.delete("/v1/account", requireFirebaseUser, appCheck, userLimiter, (req, res, next) => {
   void (async () => {
     try {
       const uid = (req as express.Request & { firebase?: { uid: string } }).firebase?.uid;
@@ -111,6 +150,7 @@ app.delete("/v1/account", requireFirebaseUser, (req, res, next) => {
         next(new ApiError({ status: 401, code: "UNAUTHORIZED", message: "Not signed in." }));
         return;
       }
+      await deleteExternalBillingProfile(uid, env);
       await deleteUserAccountCompletely(uid);
       res.status(200).json({ deleted: true });
     } catch (err) {

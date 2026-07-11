@@ -1,55 +1,10 @@
-import {
-  collection,
-  deleteDoc,
-  doc,
-  getDocs,
-  query,
-  where,
-} from 'firebase/firestore';
-import { deleteUser, signOut } from 'firebase/auth';
+import { signOut } from 'firebase/auth';
 import { apiFetch } from '../lib/api';
-import { APP_SUPPORT_EMAIL } from '../version';
-import { auth, db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { auth } from '../lib/firebase';
 import { isPreviewMode } from '../lib/previewMode';
 import { PREVIEW_USER_UID } from '../lib/previewFixtures';
 import { userService } from './userService';
 import { caseService } from './caseService';
-
-async function deleteAccountClientSide(uid: string): Promise<void> {
-  const casesQ = query(collection(db, 'cases'), where('userId', '==', uid));
-  try {
-    const snap = await getDocs(casesQ);
-    await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, 'cases');
-    throw error;
-  }
-
-  try {
-    await deleteDoc(doc(db, 'users', uid));
-  } catch (error) {
-    handleFirestoreError(error, OperationType.DELETE, `users/${uid}`);
-    throw error;
-  }
-
-  const user = auth.currentUser;
-  if (user && user.uid === uid) {
-    try {
-      await deleteUser(user);
-    } catch (err: unknown) {
-      const code =
-        typeof err === 'object' && err !== null && 'code' in err
-          ? String((err as { code?: string }).code)
-          : '';
-      if (code === 'auth/requires-recent-login') {
-        throw new Error(
-          `For security, sign out, sign in again, then retry Delete Account — or email ${APP_SUPPORT_EMAIL}.`,
-        );
-      }
-      throw err;
-    }
-  }
-}
 
 async function resetPreviewAccount(uid: string): Promise<void> {
   if (uid !== PREVIEW_USER_UID) return;
@@ -72,16 +27,10 @@ export const accountService = {
       return;
     }
 
-    try {
-      const res = await apiFetch('/v1/account', { method: 'DELETE' });
-      if (!res.ok) {
-        const msg = await res.text().catch(() => '');
-        throw new Error(msg || `Delete failed (${res.status})`);
-      }
-    } catch (apiErr) {
-      console.warn('API account deletion unavailable, falling back to client delete:', apiErr);
-      await deleteAccountClientSide(user.uid);
-      return;
+    const res = await apiFetch('/v1/account', { method: 'DELETE' });
+    if (!res.ok) {
+      const payload = await res.json().catch(() => null) as { error?: { message?: string } } | null;
+      throw new Error(payload?.error?.message ?? `Delete failed (${res.status}). No account data was changed.`);
     }
 
     await signOut(auth);

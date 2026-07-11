@@ -1,6 +1,8 @@
 import crypto from "node:crypto";
+import dns from "node:dns/promises";
+import net from "node:net";
 import { Router } from "express";
-import admin from "firebase-admin";
+import admin from "./admin.js";
 import { z } from "zod";
 import type { Env } from "./env.js";
 import { ApiError } from "./http/errors.js";
@@ -89,7 +91,27 @@ export function safeCanvasBaseUrl(input: string): string | null {
   return `https://${host}`;
 }
 
-interface EncryptedSecret {
+function isPrivateAddress(address: string): boolean {
+  if (net.isIPv4(address)) {
+    const [a = 0, b = 0] = address.split(".").map(Number);
+    return a === 10 || a === 127 || a === 0 || (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || a >= 224;
+  }
+  const normalized = address.toLowerCase();
+  return normalized === "::1" || normalized === "::" || normalized.startsWith("fc") ||
+    normalized.startsWith("fd") || normalized.startsWith("fe8") || normalized.startsWith("fe9") ||
+    normalized.startsWith("fea") || normalized.startsWith("feb") || normalized.startsWith("::ffff:127.") ||
+    normalized.startsWith("::ffff:10.") || normalized.startsWith("::ffff:192.168.");
+}
+
+async function assertPublicDns(hostname: string): Promise<void> {
+  const records = await dns.lookup(hostname, { all: true, verbatim: true });
+  if (records.length === 0 || records.some(({ address }) => isPrivateAddress(address))) {
+    throw new ApiError({ status: 400, code: "BAD_REQUEST", message: "That Canvas host is not publicly reachable." });
+  }
+}
+
+export interface EncryptedSecret {
   alg: "aes-256-gcm";
   iv: string;
   tag: string;
@@ -122,6 +144,16 @@ function loadKey(env: Env): Buffer | null {
   if (!raw) return null;
   const key = Buffer.from(raw, "base64");
   return key.length === 32 ? key : null;
+}
+
+export async function loadConnectionCredential(uid: string, platformId: string, env: Env): Promise<{ secret: string; meta: Record<string, string> } | null> {
+  const key = loadKey(env);
+  if (!key) throw new ApiError({ status: 503, code: "SERVICE_UNAVAILABLE", message: "Credential storage is not configured." });
+  const snap = await admin.firestore().collection("users").doc(uid).collection("connections").doc(platformId).get();
+  if (!snap.exists) return null;
+  const data = snap.data() as { secret?: EncryptedSecret; meta?: Record<string, string> };
+  if (!data.secret) return null;
+  return { secret: decryptSecret(key, data.secret), meta: data.meta ?? {} };
 }
 
 function uidOf(req: unknown): string | null {
@@ -220,6 +252,7 @@ export function createConnectionsRouter(env: Env): Router {
         if (!base) {
           throw new ApiError({ status: 400, code: "BAD_REQUEST", message: "That address is not a valid Canvas site." });
         }
+        await assertPublicDns(new URL(base).hostname);
         const controller = new AbortController();
         const timeout = setTimeout(() => controller.abort(), 8_000);
         try {

@@ -48,6 +48,8 @@ export interface UserProfile {
   analysisAlerts?: boolean;
   /** Paid-plan automation preference. Server entitlements still decide whether it may run. */
   autoMode?: boolean;
+  /** Poll connected gradebooks for newly graded work. Paid entitlement is enforced server-side. */
+  automaticGradeDetection?: boolean;
   /** Study-pattern checklist items the student has reviewed before a final. */
   studyChecklist?: string[];
 }
@@ -64,6 +66,7 @@ const previewProfile: UserProfile = {
   appealGoal: '',
   avatarUrl: '',
   analysisAlerts: true,
+  automaticGradeDetection: false,
 };
 const PREVIEW_PROFILE_STORAGE_KEY = 'regrade_preview_profile_v2';
 
@@ -142,6 +145,7 @@ export const userService = {
           'tutorialComplete',
           'analysisAlerts',
           'autoMode',
+          'automaticGradeDetection',
           'studyChecklist',
           'accountRole',
         ] as const;
@@ -203,6 +207,7 @@ export const userService = {
     delete previewProfile.studyChecklist;
     previewProfile.analysisAlerts = true;
     previewProfile.autoMode = false;
+    previewProfile.automaticGradeDetection = false;
     if (typeof window !== 'undefined') localStorage.removeItem(PREVIEW_PROFILE_STORAGE_KEY);
   },
 
@@ -318,6 +323,17 @@ export const userService = {
     const docRef = doc(db, 'users', uid);
     await setDoc(docRef, { autoMode, updatedAt: serverTimestamp() }, { merge: true });
     return { autoMode };
+  },
+
+  async setAutomaticGradeDetection(uid: string, automaticGradeDetection: boolean) {
+    if (isPreviewMode()) {
+      if (uid === PREVIEW_USER_UID) previewProfile.automaticGradeDetection = automaticGradeDetection;
+      persistPreviewProfile();
+      return previewProfile;
+    }
+    const docRef = doc(db, 'users', uid);
+    await setDoc(docRef, { automaticGradeDetection, updatedAt: serverTimestamp() }, { merge: true });
+    return { automaticGradeDetection };
   },
 
   async setStudyChecklist(uid: string, studyChecklist: string[]) {

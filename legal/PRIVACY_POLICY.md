@@ -1,7 +1,7 @@
-theput t# Regrade — Privacy Policy
+# Regrade — Privacy Policy
 
 **Effective date:** May 14, 2026
-**Last updated:** May 14, 2026
+**Last updated:** July 10, 2026
 
 This Privacy Policy explains how Preston Jay Susanto ("we", "us", "Regrade")
 collects, uses, shares, and protects information when you use the Regrade
@@ -9,7 +9,7 @@ mobile application and the Regrade web application (collectively, the
 "Service"). By using the Service you agree to this Policy. If you do not
 agree, do not use the Service.
 
-> **Contact:** pretonjs2024@gmail.com (App Store, Google Play, and in-app support).
+> **Contact:** regradeteam@gmail.com (App Store, Google Play, and in-app support).
 > Mailing address available on written request.
 
 ---
@@ -102,29 +102,14 @@ following legal bases:
 
 To produce the analysis and draft appeal letter, your uploaded files,
 extracted text, and any notes you add are sent over an encrypted connection
-to a Regrade-operated backend, which then calls one or both of the
-following third-party AI providers depending on the **AI Engine** you
-select inside the app (Profile → AI Engine):
+to a Regrade-operated backend, which calls **Google LLC's Gemini API**.
+Google processes the content as our service provider under its API and
+data-processing terms. The app asks for explicit AI-processing consent
+before the first analysis.
 
-- **Google LLC — Gemini API.** Used in "Hybrid" and "Gemini only" modes.
-  Google processes the content as a "Customer" of its API on our behalf
-  under the Google Gen AI SDK terms.
-- **Anthropic PBC — Claude API.** Used in "Hybrid" and "Claude only" modes.
-  Anthropic processes the content as our service provider under the
-  Anthropic API Services Terms and the standard Anthropic data-processing
-  addendum.
-
-When you first start an analysis, the app asks you to choose an engine and
-records that choice as your explicit consent to send the upload to the
-selected providers. You can change the engine at any time in
-**Profile → AI Engine**.
-
-- We instruct both providers not to use your content to train their
-  general models. This relies on each provider honoring the published API
-  terms in effect at the time of processing. As of the date of this
-  Policy, Anthropic's default API retention is up to 30 days for trust
-  and safety; Google retains API content per the Gemini API additional
-  terms.
+- We do not use your uploaded content to train any model of our own.
+- We configure and use the provider API according to its commercial data
+  terms in effect at the time of processing.
 - We do not use your uploaded content to train any model of our own.
 - Outputs returned by the AI providers are stored in your Regrade account
   so you can reopen the case later.
@@ -138,9 +123,10 @@ We share information only with:
 - **Google LLC (USA)** — Firebase Authentication, Firestore database,
   Firebase Hosting, and the Gemini API used in our AI pipeline. Google is
   contractually bound by its data protection terms.
-- **Anthropic PBC (USA)** — the Claude API used in our AI pipeline when
-  you have selected "Hybrid" or "Claude only" as your engine. Anthropic
-  is contractually bound by its API Services Terms.
+- **RevenueCat, Apple, and Google Play** — purchase validation,
+  subscription status, restoration, and billing management. Regrade does
+  not receive your full payment-card number. Store account and transaction
+  records are governed by the applicable store's privacy terms.
 - **Our hosting provider for the Regrade API** — the Node.js backend
   runs on a commercial cloud provider (e.g. Render, Fly.io, Google Cloud
   Run). The provider sees encrypted traffic and limited operational
@@ -223,7 +209,7 @@ acceptance of the updated Policy.
 
 ## 14. How to contact us
 
-Email: pretonjs2024@gmail.com
+Email: regradeteam@gmail.com
 Postal mail: available on request.
 Controller of record: Preston Jay Susanto, USA.
 

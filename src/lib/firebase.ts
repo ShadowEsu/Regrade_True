@@ -1,4 +1,5 @@
 import { initializeApp } from 'firebase/app';
+import { initializeAppCheck, ReCaptchaEnterpriseProvider, type AppCheck } from 'firebase/app-check';
 import type { Auth, User } from 'firebase/auth';
 import {
   getAuth,
@@ -30,28 +31,17 @@ interface FirestoreErrorInfo {
   error: string;
   operationType: OperationType;
   path: string | null;
-  authInfo: {
-    userId?: string | null;
-    email?: string | null;
-    emailVerified?: boolean | null;
-    isAnonymous?: boolean | null;
-  };
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
   const errInfo: FirestoreErrorInfo = {
     error: error instanceof Error ? error.message : String(error),
-    authInfo: {
-      userId: auth.currentUser?.uid,
-      email: auth.currentUser?.email,
-      emailVerified: auth.currentUser?.emailVerified,
-      isAnonymous: auth.currentUser?.isAnonymous,
-    },
     operationType,
     path,
   };
   const jsonError = JSON.stringify(errInfo);
-  console.error('Firestore Error: ', jsonError);
+  // Do not place user IDs, email addresses, document contents, or tokens in logs.
+  if (import.meta.env.DEV) console.error('Firestore operation failed:', jsonError);
   throw new Error(jsonError);
 }
 
@@ -118,6 +108,7 @@ let auth: Auth;
 let db: Firestore;
 let googleProvider: GoogleAuthProvider;
 let appleProvider: OAuthProvider;
+let appCheck: AppCheck | null = null;
 
 if (isPreviewMode()) {
   auth = buildPreviewAuth();
@@ -129,6 +120,13 @@ if (isPreviewMode()) {
   const firestoreDatabaseId = resolveFirestoreDatabaseId();
 
   const app = initializeApp(firebaseWeb);
+  const appCheckSiteKey = import.meta.env.VITE_RECAPTCHA_ENTERPRISE_SITE_KEY?.trim();
+  if (appCheckSiteKey) {
+    appCheck = initializeAppCheck(app, {
+      provider: new ReCaptchaEnterpriseProvider(appCheckSiteKey),
+      isTokenAutoRefreshEnabled: true,
+    });
+  }
   auth = getAuth(app);
   db = getFirestore(app, firestoreDatabaseId);
   googleProvider = new GoogleAuthProvider();
@@ -142,6 +140,7 @@ export {
   db,
   googleProvider,
   appleProvider,
+  appCheck,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   signOut,

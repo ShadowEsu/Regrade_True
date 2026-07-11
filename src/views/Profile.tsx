@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import DOMPurify from 'dompurify';
 import { ICONS, DEFAULT_AVATAR_SRC } from '../constants';
-import { auth, loginWithGoogle, signOut } from '../lib/firebase';
+import { auth, loginWithGoogle } from '../lib/firebase';
+import { secureSignOut } from '../services/sessionService';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { userService, UserProfile } from '../services/userService';
 import { scanContentForThreats } from '../lib/securityScanner';
 import {
   AI_TRADEMARK_FOOTER,
+  APP_DELETE_ACCOUNT_URL,
   APP_EULA_URL,
   APP_MIN_AGE,
   APP_PRIVACY_URL,
@@ -26,6 +28,10 @@ import ThemePicker from '../components/ThemePicker';
 import { useTheme } from '../context/ThemeContext';
 import type { ThemePreference } from '../lib/theme';
 import { PLAN_CATALOG, subscriptionService, type SubscriptionSnapshot } from '../services/subscriptionService';
+import { automationService } from '../services/automationService';
+import { isNativeStore } from '../services/storePurchaseService';
+import LearnerPairingPanel from '../components/LearnerPairingPanel';
+import { notificationService } from '../services/notificationService';
 
 interface ProfileProps {
   onShowAbout?: () => void;
@@ -118,9 +124,13 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
   const [analysisAlerts, setAnalysisAlerts] = useState(true);
   const [autoMode, setAutoMode] = useState(false);
+  const [automaticGradeDetection, setAutomaticGradeDetection] = useState(false);
+  const [accountRole, setAccountRole] = useState<'student' | 'supervisor'>('student');
   const [subscription, setSubscription] = useState<SubscriptionSnapshot | null>(null);
   const [billingError, setBillingError] = useState<string | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
+  const [nativePrices, setNativePrices] = useState<Partial<Record<'student' | 'pro', string>>>({});
+  const nativePurchases = isNativeStore();
   const [alertsSaving, setAlertsSaving] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>(() => (
     typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
@@ -152,6 +162,8 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
             setForm(profileToForm(data, u));
             setAnalysisAlerts(data.analysisAlerts !== false);
             setAutoMode(data.autoMode === true);
+            setAutomaticGradeDetection(data.automaticGradeDetection === true);
+            setAccountRole(data.accountRole === 'supervisor' ? 'supervisor' : 'student');
           } else {
             setForm({
               ...EMPTY_FORM,
@@ -171,7 +183,8 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
   useEffect(() => {
     if (!user) return;
     void subscriptionService.getStatus().then(setSubscription).catch(() => setSubscription(null));
-  }, [user]);
+    if (nativePurchases) void subscriptionService.getNativePrices().then(setNativePrices).catch(() => setNativePrices({}));
+  }, [user, nativePurchases]);
 
   const updateAutoMode = async () => {
     if (!user || !subscription?.limits.autoMode) {
@@ -181,13 +194,29 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
     const next = !autoMode;
     setAutoMode(next);
     try {
-      await userService.setAutoMode(user.uid, next);
-      if (next && typeof Notification !== 'undefined' && Notification.permission === 'default') {
-        const permission = await Notification.requestPermission();
+      await automationService.update({ autoPrepare: next });
+      if (isPreviewMode()) await userService.setAutoMode(user.uid, next);
+      if (next && notificationPermission !== 'granted') {
+        const permission = await notificationService.requestPermission();
         setNotificationPermission(permission);
       }
     } catch {
       setAutoMode(!next);
+    }
+  };
+
+  const updateAutomaticGradeDetection = async () => {
+    if (!user || !subscription?.limits.autoMode) {
+      setActiveTab('subscription');
+      return;
+    }
+    const next = !automaticGradeDetection;
+    setAutomaticGradeDetection(next);
+    try {
+      await automationService.update({ automaticGradeDetection: next });
+      if (isPreviewMode()) await userService.setAutomaticGradeDetection(user.uid, next);
+    } catch {
+      setAutomaticGradeDetection(!next);
     }
   };
 
@@ -199,17 +228,29 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
     finally { setBillingBusy(false); }
   };
 
+  const restorePlan = async () => {
+    setBillingBusy(true);
+    setBillingError(null);
+    try {
+      await subscriptionService.restorePurchases();
+      setSubscription(await subscriptionService.getStatus());
+    } catch (error) {
+      setBillingError(error instanceof Error ? error.message : 'Purchases could not be restored.');
+    } finally { setBillingBusy(false); }
+  };
+
   const handleAnalysisAlertsChange = async () => {
     if (!user || alertsSaving) return;
     const next = !analysisAlerts;
-    if (next && typeof Notification !== 'undefined' && Notification.permission === 'default') {
-      const permission = await Notification.requestPermission();
+    if (next && notificationPermission !== 'granted') {
+      const permission = await notificationService.requestPermission();
       setNotificationPermission(permission);
     }
     setAlertsSaving(true);
     setAnalysisAlerts(next);
     try {
-      await userService.setAnalysisAlerts(user.uid, next);
+      await automationService.update({ notifications: next });
+      if (isPreviewMode()) await userService.setAnalysisAlerts(user.uid, next);
     } catch (err) {
       console.error('Failed to save recovery alert preference:', err);
       setAnalysisAlerts(!next);
@@ -219,11 +260,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
   };
 
   const sendTestNotification = () => {
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-    new Notification('Regrade alerts are on', {
-      body: 'Mr Whale will alert you when a completed review finds evidence worth checking.',
-      icon: '/favicon.ico',
-    });
+    void notificationService.test();
   };
 
   const handleThemeChange = async (next: ThemePreference) => {
@@ -668,7 +705,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
                     </p>
                   </div>
                   <span className="rounded-lg bg-primary/10 px-3 py-1.5 text-[12px] font-semibold text-primary">
-                    {subscription ? `$${PLAN_CATALOG[subscription.plan].price.toFixed(2)}/month` : '$0.00/month'}
+                    {subscription ? `${subscription.plan === 'free' ? '$0.00' : nativePrices[subscription.plan] ?? `$${PLAN_CATALOG[subscription.plan].price.toFixed(2)}`}/month` : '$0.00/month'}
                   </span>
                 </div>
                 {subscription && <div className="grid grid-cols-2 gap-3">
@@ -678,19 +715,21 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
                   </div>)}
                 </div>}
                 {subscription?.cancelAtPeriodEnd && <p className="text-[12px] text-amber-700">Your plan ends at the close of this billing period.</p>}
-                {subscription?.hasBillingAccount && <button type="button" onClick={() => void subscriptionService.openPortal()} className="rg-btn-secondary w-full">Manage billing</button>}
+                {subscription?.hasBillingAccount && <button type="button" onClick={() => void subscriptionService.openPortal()} className="rg-btn-secondary w-full">Manage subscription</button>}
+                {nativePurchases && <button type="button" disabled={billingBusy} onClick={() => void restorePlan()} className="rg-btn-ghost w-full">Restore Purchases</button>}
               </div>
 
               <div className="grid gap-3 sm:grid-cols-3">
                 {(Object.entries(PLAN_CATALOG) as Array<[keyof typeof PLAN_CATALOG, (typeof PLAN_CATALOG)[keyof typeof PLAN_CATALOG]]>).map(([id, plan]) => <div key={id} className={`rg-glass-card p-4 space-y-3 ${subscription?.plan === id ? 'border-primary/40' : ''}`}>
-                  <div><p className="text-[15px] font-semibold text-ink">{plan.name}</p><p className="text-xl font-semibold text-primary mt-1">${plan.price.toFixed(2)}<span className="text-[11px] font-normal text-ink-muted"> / month</span></p></div>
+                  <div><p className="text-[15px] font-semibold text-ink">{plan.name}</p><p className="text-xl font-semibold text-primary mt-1">{id === 'free' ? '$0.00' : nativePrices[id] ?? `$${plan.price.toFixed(2)}`}<span className="text-[11px] font-normal text-ink-muted"> / month</span></p></div>
                   <ul className="space-y-1 text-[11px] text-ink-muted"><li>{plan.exams} exam reviews</li><li>{plan.messages} Mr. Whale messages</li><li>{plan.autoMode ? 'Auto Mode included' : 'Manual reviews'}</li></ul>
                   {id !== 'free' && subscription?.plan !== id && <button type="button" disabled={billingBusy} onClick={() => void startPlan(id)} className="rg-btn-primary w-full text-[12px]">Choose {plan.name}</button>}
                   {subscription?.plan === id && <span className="text-[11px] font-semibold text-primary">Current plan</span>}
                 </div>)}
               </div>
               {billingError && <p className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-[12px] text-red-700">{billingError}</p>}
-              <p className="text-[11px] text-ink-muted">Usage resets at the displayed billing-period end. Paid access is activated only after Stripe confirms the subscription.</p>
+              <p className="text-[11px] text-ink-muted">Payment renews monthly until cancelled. Usage resets at the displayed billing-period end. Paid access begins only after {nativePurchases ? 'the App Store verifies the purchase' : 'payment verification'}.</p>
+              {nativePurchases && <p className="text-[11px] leading-relaxed text-ink-muted">Purchases are charged to your Apple or Google account. Manage or cancel in your store subscription settings. By subscribing, you agree to the <a href={APP_TERMS_URL} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">Terms of Service</a> and <a href={APP_PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">Privacy Policy</a>.</p>}
             </motion.div>
           )}
 
@@ -712,6 +751,10 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
                 <button type="button" role="switch" aria-checked={autoMode} onClick={() => void updateAutoMode()} className="mb-3 w-full text-left flex items-start justify-between gap-4 rounded-2xl rg-glass-chip p-4">
                   <span className="min-w-0"><span className="block text-[14px] font-semibold text-ink">Auto Mode</span><span className="block mt-1 text-[12px] leading-relaxed text-ink-muted">Automatically analyze newly imported marked exams, prepare the draft, then add the result to Review and History. Student or Pro plan required.</span></span>
                   <span className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${autoMode && subscription?.limits.autoMode ? 'bg-primary' : 'bg-ink/20'}`} aria-hidden><span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${autoMode && subscription?.limits.autoMode ? 'translate-x-6' : 'translate-x-1'}`} /></span>
+                </button>
+                <button type="button" role="switch" aria-checked={automaticGradeDetection} onClick={() => void updateAutomaticGradeDetection()} className="mb-3 w-full text-left flex items-start justify-between gap-4 rounded-2xl rg-glass-chip p-4">
+                  <span className="min-w-0"><span className="block text-[14px] font-semibold text-ink">Automatic grade detection</span><span className="block mt-1 text-[12px] leading-relaxed text-ink-muted">Check connected platforms for newly graded exams. Only work graded in the last seven days is eligible for automatic import.</span></span>
+                  <span className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${automaticGradeDetection && subscription?.limits.autoMode ? 'bg-primary' : 'bg-ink/20'}`} aria-hidden><span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${automaticGradeDetection && subscription?.limits.autoMode ? 'translate-x-6' : 'translate-x-1'}`} /></span>
                 </button>
                 <button
                   type="button"
@@ -800,6 +843,10 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
                     <span className="text-[14px] font-medium text-ink">Contact support</span>
                     <span className="text-[12px] text-muted">{APP_SUPPORT_EMAIL}</span>
                   </a>
+                  <a href={APP_DELETE_ACCOUNT_URL} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between px-4 py-3 rounded-xl rg-glass-chip hover:border-primary/30 transition-all">
+                    <span className="text-[14px] font-medium text-ink">Account deletion help</span>
+                    <ICONS.ArrowRight className="w-4 h-4 text-muted" strokeWidth={1.75} />
+                  </a>
                   {onShowAbout && (
                     <button
                       type="button"
@@ -813,6 +860,8 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
                 </div>
               </div>
 
+              {accountRole === 'student' && <LearnerPairingPanel />}
+
               {/* Regrade-style account actions — not GitHub row layout */}
               <div className="rg-glass-card p-5 space-y-4">
                 <div className="text-center space-y-1">
@@ -825,7 +874,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
                 {!isPreviewMode() && (
                   <button
                     type="button"
-                    onClick={() => void signOut(auth)}
+                    onClick={() => void secureSignOut()}
                     className="rg-btn-ghost w-full py-3 text-[14px]"
                   >
                     Sign out

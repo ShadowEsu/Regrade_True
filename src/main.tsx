@@ -4,6 +4,7 @@ import App from './App.tsx';
 import AuthGate from './AuthGate.tsx';
 import { bootstrapTheme } from './lib/theme';
 import { ThemeProvider } from './context/ThemeContext';
+import { MotionConfig } from 'motion/react';
 import './index.css';
 
 bootstrapTheme();
@@ -18,6 +19,9 @@ class BootErrorBoundary extends Component<{children: ReactNode}, {error: Error |
 
   render() {
     if (this.state.error) {
+      const detail = import.meta.env.DEV
+        ? this.state.error.stack ?? this.state.error.message
+        : 'Please close and reopen Regrade. If the problem continues, contact support.';
       return (
         <div style={{padding: 24, fontFamily: 'system-ui, sans-serif', maxWidth: 720}}>
           <h1 style={{color: '#b00020', fontSize: 18, margin: '0 0 12px'}}>Regrade hit a runtime error</h1>
@@ -30,7 +34,7 @@ class BootErrorBoundary extends Component<{children: ReactNode}, {error: Error |
               fontSize: 12,
             }}
           >
-            {this.state.error.stack ?? this.state.error.message}
+            {detail}
           </pre>
         </div>
       );
@@ -48,16 +52,20 @@ try {
   createRoot(el).render(
     <StrictMode>
       <BootErrorBoundary>
-        <ThemeProvider>
-          <AuthGate>
-            <App />
-          </AuthGate>
-        </ThemeProvider>
+        <MotionConfig reducedMotion="user">
+          <ThemeProvider>
+            <AuthGate>
+              <App />
+            </AuthGate>
+          </ThemeProvider>
+        </MotionConfig>
       </BootErrorBoundary>
     </StrictMode>,
   );
 } catch (err) {
-  const msg = err instanceof Error ? err.stack ?? err.message : String(err);
+  const msg = import.meta.env.DEV
+    ? (err instanceof Error ? err.stack ?? err.message : String(err))
+    : 'Please close and reopen Regrade. If the problem continues, contact support.';
   const wrap = document.createElement('div');
   wrap.style.cssText = 'padding:24px;font-family:system-ui,sans-serif;max-width:720px';
   const title = document.createElement('h1');
@@ -68,5 +76,5 @@ try {
   pre.textContent = msg;
   wrap.append(title, pre);
   el.replaceChildren(wrap);
-  console.error(err);
+  if (import.meta.env.DEV) console.error(err);
 }

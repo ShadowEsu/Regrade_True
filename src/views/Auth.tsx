@@ -14,7 +14,7 @@ import Logo from '../components/Logo';
 import BrandSpinner from '../components/BrandSpinner';
 import ContinueWithGoogleButton from '../components/ContinueWithGoogleButton';
 import ContinueWithAppleButton from '../components/ContinueWithAppleButton';
-import { APP_MIN_AGE, APP_EULA_URL, APP_PRIVACY_URL, APP_TERMS_URL } from '../version';
+import { APP_DELETE_ACCOUNT_URL, APP_MIN_AGE, APP_EULA_URL, APP_PRIVACY_URL, APP_TERMS_URL } from '../version';
 
 const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -275,6 +275,7 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
           <ICONS.Shield size={14} strokeWidth={2} />
           Encrypted sign-in · delete your account anytime in Profile
         </p>
+        <p className="mt-2 text-center text-[11px] text-primary/40"><a href={APP_DELETE_ACCOUNT_URL} target="_blank" rel="noopener noreferrer" className="underline hover:text-primary">Account deletion help</a></p>
       </motion.div>
     </div>
   );

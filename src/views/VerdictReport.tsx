@@ -27,6 +27,30 @@ function strengthLabel(strength?: string) {
   return 'Under review';
 }
 
+export function strengthRating(strength?: string): number {
+  if (strength === 'strong') return 5;
+  if (strength === 'moderate') return 3;
+  if (strength === 'weak') return 2;
+  return 1;
+}
+
+function AppealStrengthMeter({ strength }: { strength?: string }) {
+  const rating = strengthRating(strength);
+  return (
+    <div className="mt-2" aria-label={`Appeal strength ${rating} out of 5`}>
+      <div className="flex items-center gap-1.5" aria-hidden>
+        {[1, 2, 3, 4, 5].map((level) => (
+          <span
+            key={level}
+            className={`h-1.5 flex-1 rounded-full transition-colors ${level <= rating ? 'bg-primary' : 'bg-ink/10'}`}
+          />
+        ))}
+      </div>
+      <p className="mt-1 text-[10px] font-medium text-ink-muted">{rating} / 5 appeal strength</p>
+    </div>
+  );
+}
+
 type AppealFinding = {
   id: string;
   title: string;
@@ -165,6 +189,7 @@ export default function VerdictReport({
           <div className="rg-card p-4 flex items-center justify-between gap-3">
             <div className="min-w-0">
               <p className="rg-meta-k">{strengthLabel(analysis.case_analysis.overall_case_strength)}</p>
+              <AppealStrengthMeter strength={analysis.case_analysis.overall_case_strength} />
               <p className="rg-meta-v mt-0.5 truncate">
                 {analysis.assignment?.title || currentCase?.title || 'Your appeal'}
               </p>

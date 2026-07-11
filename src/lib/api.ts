@@ -1,4 +1,5 @@
-import { auth } from './firebase';
+import { getToken } from 'firebase/app-check';
+import { appCheck, auth } from './firebase';
 
 /**
  * Remote API origin when the backend is on another host (production).
@@ -43,5 +44,9 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     headers.set('Content-Type', 'application/json');
   }
   headers.set('Authorization', `Bearer ${token}`);
+  if (appCheck) {
+    const appCheckToken = await getToken(appCheck, false);
+    headers.set('X-Firebase-AppCheck', appCheckToken.token);
+  }
   return fetch(apiUrl(path), { ...init, headers });
 }
