@@ -2057,7 +2057,7 @@ header.bg-gradient-to-b {
   position: fixed;
   z-index: 1000;
   left: 50%;
-  bottom: max(18px, env(safe-area-inset-bottom));
+  top: max(10px, env(safe-area-inset-top));
   transform: translateX(-50%);
   display: flex;
   align-items: center;
@@ -2070,6 +2070,14 @@ header.bg-gradient-to-b {
   background: rgba(255, 255, 255, 0.94);
   box-shadow: 0 14px 38px rgba(16, 21, 46, 0.18);
   backdrop-filter: blur(18px);
+}
+body:has(.rg-preview-toolbar) .rg-app-bg,
+body:has(.rg-preview-toolbar) .rg-auth-screen,
+body:has(.rg-preview-toolbar) .rg-welcome-shell {
+  padding-top: calc(58px + env(safe-area-inset-top));
+}
+body:has(.rg-preview-toolbar) .rg-boot {
+  padding-top: calc(52px + env(safe-area-inset-top));
 }
 .rg-preview-toolbar button,
 .rg-preview-label {
