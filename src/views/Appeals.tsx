@@ -22,19 +22,23 @@ export default function Appeals({
 }) {
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   useEffect(() => {
     async function load() {
+      setLoading(true);
+      setLoadError(null);
       try {
         setCases(await caseService.getUserCases());
-      } catch (err) {
-        console.error('Failed to load appeals:', err);
+      } catch {
+        setLoadError('Your saved appeals could not be loaded. Check your connection and try again.');
       } finally {
         setLoading(false);
       }
     }
     load();
-  }, []);
+  }, [loadAttempt]);
 
   return (
     <div className="space-y-8 pb-6">
@@ -85,6 +89,11 @@ export default function Appeals({
           <BrandSpinner size={28} />
           <p className="rg-section-title">One moment…</p>
         </div>
+      ) : loadError ? (
+        <section className="rg-card p-6 text-center space-y-4" role="alert">
+          <p className="text-sm text-ink-muted">{loadError}</p>
+          <button type="button" className="rg-action-button mx-auto" onClick={() => setLoadAttempt((value) => value + 1)}>Retry</button>
+        </section>
       ) : cases.length > 0 ? (
         <section className="space-y-4">
           <div className="flex items-center justify-between gap-3">

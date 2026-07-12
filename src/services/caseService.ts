@@ -190,6 +190,8 @@ export const caseService = {
 
     const docRef = doc(db, 'cases', id);
     try {
+      const { documentStorageService } = await import('./documentStorageService');
+      await documentStorageService.deleteCasePages(id);
       await deleteDoc(docRef);
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, `cases/${id}`);

@@ -6,6 +6,8 @@ import { auth } from './lib/firebase';
 import { userService } from './services/userService';
 import Layout from './components/Layout';
 import ProductTutorial from './components/ProductTutorial';
+import BrandSpinner from './components/BrandSpinner';
+import { notificationService } from './services/notificationService';
 import type { ProfileSection } from './views/Profile';
 
 // Keep the dashboard fast. PDF rendering, AI reports, and profile tooling load
@@ -25,11 +27,19 @@ const StudyPrep = lazy(() => import('./views/StudyPrep'));
 const PaperView = lazy(() => import('./views/PaperView'));
 
 function ScreenLoader() {
-  return <div className="min-h-[45vh] grid place-items-center text-sm text-ink-muted">Loading…</div>;
+  return <div className="min-h-[45vh] flex flex-col items-center justify-center gap-3 text-sm text-ink-muted"><BrandSpinner size={28} /><span>Opening your workspace…</span></div>;
+}
+
+const APP_TABS = new Set(['dashboard', 'upload', 'chat', 'study', 'history', 'profile']);
+
+function initialTab(): string {
+  const requested = new URLSearchParams(window.location.search).get('tab');
+  if (requested && APP_TABS.has(requested)) return requested;
+  return isPreviewSupervisorView() ? 'study' : 'dashboard';
 }
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState(() => isPreviewSupervisorView() ? 'study' : 'dashboard');
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [flowStep, setFlowStep] = useState('none');
   const [currentCaseId, setCurrentCaseId] = useState<string | null>(null);
   const [appealFlowActive, setAppealFlowActive] = useState(false);
@@ -64,6 +74,8 @@ export default function App() {
       }
     })();
   }, []);
+
+  useEffect(() => { void notificationService.initializeDeepLinks(); }, []);
 
   const handleStartAppeal = () => {
     setCurrentCaseId(null);
@@ -183,6 +195,14 @@ export default function App() {
           onSubmit={handleSubmitUpload}
           onBack={exitAppealFlow}
           onOpenChat={() => setActiveTab('chat')}
+          onOpenPlatforms={() => {
+            setProfileSection('platform');
+            setActiveTab('profile');
+          }}
+          onOpenAutomation={() => {
+            setProfileSection('ai');
+            setActiveTab('profile');
+          }}
         />
       );
     }

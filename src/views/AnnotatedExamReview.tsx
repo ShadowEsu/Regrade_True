@@ -80,6 +80,8 @@ export default function AnnotatedExamReview({
 }) {
   const [currentCase, setCurrentCase] = useState<Case | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedPage, setSelectedPage] = useState(0);
+  const [zoom, setZoom] = useState(1);
 
   useEffect(() => {
     if (!caseId) return;
@@ -135,7 +137,12 @@ export default function AnnotatedExamReview({
               <div className="py-5">
                 {originalPages.length ? (
                   <figure className="overflow-hidden rounded-lg border border-hairline bg-canvas">
-                    <img src={originalPages[0]} alt="First page of the original marked exam" className="h-auto w-full" />
+                    <div className="flex items-center justify-between gap-2 border-b border-hairline px-3 py-2">
+                      <div className="flex items-center gap-1"><button type="button" onClick={() => setSelectedPage((page) => Math.max(0, page - 1))} disabled={selectedPage === 0} className="rg-paper-page-button" aria-label="Previous PDF page"><ICONS.ChevronLeft /></button><button type="button" onClick={() => setSelectedPage((page) => Math.min(originalPages.length - 1, page + 1))} disabled={selectedPage === originalPages.length - 1} className="rg-paper-page-button" aria-label="Next PDF page"><ICONS.ChevronRight /></button></div>
+                      <span className="text-[11px] font-semibold text-ink-muted">Page {selectedPage + 1} of {originalPages.length}</span>
+                      <div className="flex items-center gap-1"><button type="button" onClick={() => setZoom((value) => Math.max(0.75, value - 0.25))} disabled={zoom <= 0.75} className="rg-paper-page-button" aria-label="Zoom out">−</button><span className="min-w-9 text-center text-[10px] font-semibold text-ink-muted">{Math.round(zoom * 100)}%</span><button type="button" onClick={() => setZoom((value) => Math.min(2, value + 0.25))} disabled={zoom >= 2} className="rg-paper-page-button" aria-label="Zoom in">+</button></div>
+                    </div>
+                    <div className="max-h-[70vh] overflow-auto"><img src={originalPages[selectedPage]} alt={`Page ${selectedPage + 1} of the original marked exam`} className="h-auto max-w-none" style={{ width: `${zoom * 100}%` }} /></div>
                     <figcaption className="border-t border-hairline px-3 py-2 text-[11px] leading-relaxed text-ink-muted">
                       Showing the retained original page. Notes stay in the evidence rail unless the analysis provides verified page coordinates; Regrade never invents a highlight position.
                     </figcaption>

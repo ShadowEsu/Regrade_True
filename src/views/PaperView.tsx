@@ -153,6 +153,7 @@ export default function PaperView({
 }
 
 const PaperPage: React.FC<{ src: string; page: number; totalPages: number }> = ({ src, page, totalPages }) => {
+  const [zoom, setZoom] = useState(1);
   return (
     <motion.figure
       initial={{ opacity: 0, y: 8 }}
@@ -160,16 +161,17 @@ const PaperPage: React.FC<{ src: string; page: number; totalPages: number }> = (
       transition={{ duration: 0.35 }}
       className="rg-glass-card overflow-hidden"
     >
-      <div className="flex items-center justify-between px-4 py-2 border-b border-hairline text-[11px] uppercase tracking-[0.14em] text-ink-muted">
+      <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-hairline text-[11px] uppercase tracking-[0.14em] text-ink-muted">
         <span>Page {page} of {totalPages}</span>
-        <span className="text-[10px]">Graded copy</span>
+        <div className="flex items-center gap-1 normal-case tracking-normal"><button type="button" onClick={() => setZoom((value) => Math.max(.75, value - .25))} disabled={zoom <= .75} className="rg-paper-page-button" aria-label={`Zoom out page ${page}`}>−</button><span className="min-w-9 text-center text-[10px] font-semibold">{Math.round(zoom * 100)}%</span><button type="button" onClick={() => setZoom((value) => Math.min(2, value + .25))} disabled={zoom >= 2} className="rg-paper-page-button" aria-label={`Zoom in page ${page}`}>+</button></div>
       </div>
-      <img
-        src={src}
-        alt={`Graded page ${page}`}
-        className="w-full h-auto bg-canvas"
-        loading={page === 1 ? 'eager' : 'lazy'}
-      />
+      <div className="max-h-[75vh] overflow-auto"><img
+          src={src}
+          alt={`Graded page ${page}`}
+          className="h-auto max-w-none bg-canvas"
+          style={{ width: `${zoom * 100}%` }}
+          loading={page === 1 ? 'eager' : 'lazy'}
+        /></div>
     </motion.figure>
   );
 };

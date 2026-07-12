@@ -22,6 +22,7 @@ import { buildStudentProfileContext, isValidPlatformGuideId } from '../lib/profi
 import type { PlatformGuideId } from '../lib/platformUploadGuides';
 import { AI_SERVICES_CONSENT, AI_TRADEMARK_FOOTER } from '../version';
 import { COACH_CTA } from '../branding';
+import { userFacingError } from '../lib/userFacingError';
 
 type PdfStatus = 'idle' | 'loading' | 'done' | 'error';
 
@@ -46,10 +47,14 @@ export default function UploadCenter({
   onSubmit,
   onBack,
   onOpenChat,
+  onOpenPlatforms,
+  onOpenAutomation,
 }: {
   onSubmit: (caseId?: string) => void;
   onBack?: () => void;
   onOpenChat?: () => void;
+  onOpenPlatforms?: () => void;
+  onOpenAutomation?: () => void;
 }) {
   /** Single optional box — rubric, marks, and feedback are inferred from the upload by default. */
   const [extraNotes, setExtraNotes] = useState('');
@@ -185,8 +190,7 @@ export default function UploadCenter({
                 s.id === id ? { ...s, pdfText, pdfStatus: 'done', progress: 100 } : s,
               ),
             );
-          } catch (e) {
-            console.error(e);
+          } catch {
             setStagedUploads((prev) =>
               prev.map((s) =>
                 s.id === id
@@ -393,14 +397,16 @@ export default function UploadCenter({
         // graded copy back later. Real mode strips them until Storage is wired.
         ...(isPreviewMode() && inlineImages.length ? { pageImages: inlineImages } : {}),
       });
+
+      if (!isPreviewMode() && inlineImages.length && docRef.id) {
+        setLoadingDetail('Saving your graded copy securely…');
+        const { documentStorageService } = await import('../services/documentStorageService');
+        const pageImageUrls = await documentStorageService.uploadCasePages(docRef.id, inlineImages);
+        await caseService.updateCase(docRef.id, { pageImageUrls });
+      }
       onSubmit(docRef.id);
     } catch (err: unknown) {
-      console.error('Analysis failed:', err);
-      setSecurityError(
-        err instanceof Error
-          ? err.message
-          : 'Analysis failed. Please check that your text is readable and try again.',
-      );
+      setSecurityError(userFacingError(err, 'Analysis could not be completed. Check that the paper is readable and try again.'));
     } finally {
       setLoading(false);
       setLoadingDetail(null);
@@ -470,6 +476,15 @@ export default function UploadCenter({
     <AppealFlowShell step="upload" centered hideHeader onBack={onBack}>
     <div className="space-y-6">
       <div className="space-y-6">
+
+        <section className="rg-start-options" aria-label="Choose how to start">
+          <div><p>Choose how to start</p><h2>Upload, connect, or automate.</h2><span>Appeal is always available. Pick the source that is easiest for this exam.</span></div>
+          <div>
+            <button type="button" className="rg-start-option-active"><ICONS.Upload /><span><strong>Upload a file</strong><small>PDF or photo</small></span></button>
+            {onOpenPlatforms && <button type="button" onClick={onOpenPlatforms}><ICONS.Library /><span><strong>Use a platform</strong><small>Canvas, Classroom, and more</small></span></button>}
+            {onOpenAutomation && <button type="button" onClick={onOpenAutomation}><ICONS.Bell /><span><strong>Turn on Auto Mode</strong><small>Ask when new work arrives</small></span></button>}
+          </div>
+        </section>
 
         <UploadGuidePanel
           selectedPlatformId={appealPlatform}

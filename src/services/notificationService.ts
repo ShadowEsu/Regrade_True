@@ -1,5 +1,22 @@
 import { Capacitor } from '@capacitor/core';
 
+const notificationId = () => Math.floor(Date.now() / 1000) % 2_000_000_000;
+
+async function deliver(title: string, body: string, tag: string, url: string): Promise<void> {
+  if (Capacitor.isNativePlatform()) {
+    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    if ((await LocalNotifications.checkPermissions()).display !== 'granted') return;
+    await LocalNotifications.schedule({ notifications: [{ id: notificationId(), title, body, extra: { url } }] });
+    return;
+  }
+  if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  const notification = new Notification(title, { body, icon: '/favicon.png', tag, data: { url } });
+  notification.onclick = () => {
+    window.focus();
+    window.location.assign(url);
+  };
+}
+
 export const notificationService = {
   async requestPermission(): Promise<'granted' | 'denied' | 'unsupported'> {
     if (Capacitor.isNativePlatform()) {
@@ -13,21 +30,17 @@ export const notificationService = {
   },
   async automaticImportComplete(count: number): Promise<void> {
     if (count <= 0) return;
-    if (Capacitor.isNativePlatform()) {
-      const { LocalNotifications } = await import('@capacitor/local-notifications');
-      if ((await LocalNotifications.checkPermissions()).display !== 'granted') return;
-      await LocalNotifications.schedule({ notifications: [{ id: Math.floor(Date.now() / 1000) % 2_000_000_000, title: 'New graded work found', body: `Regrade imported ${count} recent item${count === 1 ? '' : 's'} for your review.`, schedule: { at: new Date(Date.now() + 250) } }] });
-      return;
-    }
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') new Notification('New graded work found', { body: `Regrade imported ${count} recent item${count === 1 ? '' : 's'} for your review.`, icon: '/favicon.png' });
+    await deliver('New graded work found', `Regrade imported ${count} recent item${count === 1 ? '' : 's'} for your review.`, 'regrade-imports', '/app?tab=study');
+  },
+  async initializeDeepLinks(): Promise<void> {
+    if (!Capacitor.isNativePlatform()) return;
+    const { LocalNotifications } = await import('@capacitor/local-notifications');
+    await LocalNotifications.addListener('localNotificationActionPerformed', (event) => {
+      const url = typeof event.notification.extra?.url === 'string' ? event.notification.extra.url : '/app';
+      window.location.assign(url);
+    });
   },
   async test(): Promise<void> {
-    if (Capacitor.isNativePlatform()) {
-      const { LocalNotifications } = await import('@capacitor/local-notifications');
-      if ((await LocalNotifications.checkPermissions()).display !== 'granted') return;
-      await LocalNotifications.schedule({ notifications: [{ id: Math.floor(Date.now() / 1000) % 2_000_000_000, title: 'Regrade alerts are on', body: 'Mr Whale will notify you when recent graded work is ready to review.', schedule: { at: new Date(Date.now() + 250) } }] });
-    } else if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      new Notification('Regrade alerts are on', { body: 'Mr Whale will notify you when recent graded work is ready to review.', icon: '/favicon.png' });
-    }
+    await deliver('Regrade alerts are on', 'Mr Whale will notify you when recent graded work is ready to review.', 'regrade-test', '/app?tab=study');
   },
 };

@@ -65,6 +65,17 @@ service cloud.firestore {
       return value is list && value.size() <= 12 && value.join(',').size() <= 480;
     }
 
+    function isValidPageImageUrls(value) {
+      return value is list && value.size() <= 24 && value.join(',').size() <= 49152;
+    }
+
+    function isValidNotificationPreferences(value) {
+      return value is map &&
+             value.keys().hasOnly(['imports', 'analysisComplete', 'possibleIssue', 'appealReady', 'parent', 'weeklySummary']) &&
+             value.imports is bool && value.analysisComplete is bool && value.possibleIssue is bool &&
+             value.appealReady is bool && value.parent is bool && value.weeklySummary is bool;
+    }
+
     function isValidUserProfileFields(data) {
       return optionalBoundedString(data.major, 128) &&
              optionalBoundedString(data.school, 256) &&
@@ -79,6 +90,7 @@ service cloud.firestore {
              (!('onboardingComplete' in data) || data.onboardingComplete is bool) &&
              (!('tutorialComplete' in data) || data.tutorialComplete is bool) &&
              (!('analysisAlerts' in data) || data.analysisAlerts is bool) &&
+             (!('notificationPreferences' in data) || isValidNotificationPreferences(data.notificationPreferences)) &&
              (!('autoMode' in data) || data.autoMode is bool) &&
              (!('automaticGradeDetection' in data) || data.automaticGradeDetection is bool) &&
              (!('accountRole' in data) || (data.accountRole is string && data.accountRole in ['student', 'supervisor'])) &&
@@ -94,7 +106,7 @@ service cloud.firestore {
                                    'university', 'gradeLevel', 'gpa', 'appealGoal',
                                    'appealTone', 'appealFocus', 'theme',
                                    'preferredPlatform', 'avatarUrl',
-                                   'aiEngine', 'aiConsentAt', 'onboardingComplete', 'tutorialComplete', 'analysisAlerts', 'autoMode', 'automaticGradeDetection', 'studyChecklist', 'accountRole',
+                                   'aiEngine', 'aiConsentAt', 'onboardingComplete', 'tutorialComplete', 'analysisAlerts', 'notificationPreferences', 'autoMode', 'automaticGradeDetection', 'studyChecklist', 'accountRole',
                                    'createdAt', 'updatedAt']) &&
              boundedString(data.name, 256) &&
              boundedString(data.email, 320) &&
@@ -116,7 +128,7 @@ service cloud.firestore {
       return data.keys().hasAll(['title', 'userId', 'createdAt', 'updatedAt', 'ref', 'status']) &&
              data.keys().hasOnly(['title', 'description', 'ref', 'status', 'progress',
                                    'evidenceLogged', 'facultyReview', 'userId',
-                                   'analysis', 'rawInput', 'draftEmail', 'createdAt', 'updatedAt']) &&
+                                   'analysis', 'rawInput', 'draftEmail', 'pageImageUrls', 'createdAt', 'updatedAt']) &&
              boundedString(data.title, 200) &&
              optionalBoundedString(data.description, 4000) &&
              boundedString(data.ref, 64) &&
@@ -128,6 +140,7 @@ service cloud.firestore {
              (!('analysis' in data) || data.analysis is map) &&
              (!('rawInput' in data) || isValidRawInputBlock(data.rawInput)) &&
              (!('draftEmail' in data) || optionalBoundedString(data.draftEmail, 64000)) &&
+             (!('pageImageUrls' in data) || isValidPageImageUrls(data.pageImageUrls)) &&
              data.createdAt == request.time &&
              data.updatedAt == request.time;
     }
@@ -153,7 +166,8 @@ service cloud.firestore {
              data.facultyReview is bool &&
              (!('analysis' in data) || data.analysis is map) &&
              (!('rawInput' in data) || isValidRawInputBlock(data.rawInput)) &&
-             (!('draftEmail' in data) || optionalBoundedString(data.draftEmail, 64000));
+             (!('draftEmail' in data) || optionalBoundedString(data.draftEmail, 64000)) &&
+             (!('pageImageUrls' in data) || isValidPageImageUrls(data.pageImageUrls));
     }
 
     // --- Rules ---
@@ -174,7 +188,7 @@ service cloud.firestore {
                         'name', 'major', 'school', 'university', 'gradeLevel', 'gpa',
                         'appealGoal', 'appealTone', 'appealFocus', 'theme',
                         'preferredPlatform', 'avatarUrl', 'aiEngine',
-                        'aiConsentAt', 'onboardingComplete', 'tutorialComplete', 'analysisAlerts', 'autoMode', 'automaticGradeDetection', 'studyChecklist', 'accountRole', 'updatedAt'
+                        'aiConsentAt', 'onboardingComplete', 'tutorialComplete', 'analysisAlerts', 'notificationPreferences', 'autoMode', 'automaticGradeDetection', 'studyChecklist', 'accountRole', 'updatedAt'
                       ]) &&
                       optionalBoundedString(incoming().name, 256) &&
                       isValidUserProfileFields(incoming());
@@ -191,7 +205,7 @@ service cloud.firestore {
                       incoming().diff(existing()).affectedKeys().hasOnly([
                         'title', 'description', 'status', 'progress',
                         'evidenceLogged', 'facultyReview', 'analysis', 'rawInput',
-                        'draftEmail', 'updatedAt'
+                        'draftEmail', 'pageImageUrls', 'updatedAt'
                       ]);
       allow delete: if isSignedIn() && existing().userId == request.auth.uid;
 

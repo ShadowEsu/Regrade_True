@@ -67,7 +67,7 @@ export default function CoachComposer({
               type="button"
               disabled={loading}
               onClick={() => pickPrompt(p.label)}
-              className="shrink-0 rg-glass-chip px-3 py-2 text-left min-w-[118px] disabled:opacity-50"
+              className="shrink-0 rg-coach-quick px-1 py-1 text-left min-w-[118px] disabled:opacity-50"
             >
               <p className="text-[12px] font-semibold text-ink leading-tight">{p.label}</p>
               <p className="text-[10px] text-ink-muted mt-0.5">{p.hint}</p>

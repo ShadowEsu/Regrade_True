@@ -85,7 +85,6 @@ export async function scanContentForThreats(
       recommendation: data.recommendation ?? 'Could not verify input.',
     };
   } catch (error) {
-    console.error('Security scan error:', error);
     if (error instanceof Error && error.message.includes('AI analysis is coming soon')) {
       if (import.meta.env.DEV || isPreviewMode()) {
         return {
@@ -112,7 +111,7 @@ export async function scanContentForThreats(
       threatLevel: 'medium',
       detectedPatterns: ['Security scan unavailable'],
       recommendation: keyIssue
-        ? 'The analysis service is not configured or rejected the request. Ask the administrator to set GEMINI_API_KEY on the API server.'
+        ? 'The analysis service is unavailable. Please try again later or contact support.'
         : quotaIssue
           ? 'The AI service is busy or rate-limited. Wait a minute and try again.'
           : 'We could not verify your input right now. Please try again in a moment.',

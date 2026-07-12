@@ -20,6 +20,8 @@ export function isApiLikelyAvailable(): boolean {
 export const API_NOT_DEPLOYED_MESSAGE =
   'AI analysis is coming soon. Sign-in, profile, and saving appeals work on Firebase — connect the analysis API when you deploy the server (set VITE_API_BASE_URL).';
 
+const API_TIMEOUT_MS = 25_000;
+
 export function apiUrl(path: string): string {
   const p = path.startsWith('/') ? path : `/${path}`;
   const remote = import.meta.env.VITE_API_BASE_URL?.trim();
@@ -38,6 +40,9 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   if (!user) {
     throw new Error('You must be signed in to use this feature.');
   }
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    throw new Error('You appear to be offline. Reconnect and try again.');
+  }
   const token = await user.getIdToken();
   const headers = new Headers(init.headers);
   if (!headers.has('Content-Type') && init.body) {
@@ -48,5 +53,18 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
     const appCheckToken = await getToken(appCheck, false);
     headers.set('X-Firebase-AppCheck', appCheckToken.token);
   }
-  return fetch(apiUrl(path), { ...init, headers });
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), API_TIMEOUT_MS);
+  const externalSignal = init.signal;
+  const abortFromExternal = () => controller.abort();
+  externalSignal?.addEventListener('abort', abortFromExternal, { once: true });
+  try {
+    return await fetch(apiUrl(path), { ...init, headers, signal: controller.signal });
+  } catch (error) {
+    if (controller.signal.aborted) throw new Error('The request timed out. Check your connection and try again.');
+    throw new Error('Regrade could not reach the service. Check your connection and try again.');
+  } finally {
+    window.clearTimeout(timeout);
+    externalSignal?.removeEventListener('abort', abortFromExternal);
+  }
 }

@@ -33,6 +33,8 @@ export const automationService = {
     const connections = await listConnections();
     const results = await Promise.allSettled(connections.filter((item) => IMPORTABLE_PLATFORMS.has(item.platformId)).map((item) => connectorImportService.runAutomatic(item.platformId)));
     const imported = results.reduce((sum, result) => sum + (result.status === 'fulfilled' ? result.value.imported : 0), 0);
-    if (profile.analysisAlerts !== false) await notificationService.automaticImportComplete(imported);
+    if (profile.analysisAlerts !== false && profile.notificationPreferences?.imports !== false) {
+      await notificationService.automaticImportComplete(imported);
+    }
   },
 };

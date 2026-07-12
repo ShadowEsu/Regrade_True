@@ -14,11 +14,14 @@ import BrandSpinner from '../components/BrandSpinner';
 import ContinueWithGoogleButton from '../components/ContinueWithGoogleButton';
 import ContinueWithAppleButton from '../components/ContinueWithAppleButton';
 import { APP_DELETE_ACCOUNT_URL, APP_MIN_AGE, APP_EULA_URL, APP_PRIVACY_URL, APP_TERMS_URL } from '../version';
+import { BRAND_ICON_SRC } from '../branding';
+import { userFacingError } from '../lib/userFacingError';
 
 type Mode = 'signin' | 'signup' | 'forgot';
 
 const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
   const [mode, setMode] = useState<Mode>('signin');
+  const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -42,13 +45,8 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
       if (e.code === 'auth/popup-closed-by-user' || e.message?.includes('popup-closed-by-user')) return;
-      if (e.code === 'auth/unauthorized-domain') {
-        setError(
-          "This URL isn't allowed for sign-in yet. In Firebase, Authentication, Authorized domains, add your hostname.",
-        );
-        return;
-      }
-      setError(e.message || 'Something went wrong. Please try again.');
+      if (e.code === 'auth/unauthorized-domain') setError('Sign-in is not available from this address. Open Regrade from the official app or website.');
+      else setError(userFacingError(err, 'Sign-in could not be completed. Try again.'));
     } finally {
       if (provider === 'google') setGoogleLoading(false);
       else setAppleLoading(false);
@@ -68,6 +66,7 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
         await sendPasswordResetEmail(auth, email);
         setError('Password reset email sent. Check your inbox.');
         setMode('signin');
+        setShowEmail(false);
       } else if (mode === 'signin') {
         await signInWithEmailAndPassword(auth, email, password);
       } else {
@@ -78,8 +77,7 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
         return;
       }
     } catch (err: unknown) {
-      const e = err as { message?: string };
-      setError(e.message || 'An authentication error occurred.');
+      setError(userFacingError(err, 'Authentication could not be completed. Try again.'));
     } finally {
       setLoading(false);
     }
@@ -105,8 +103,7 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
       >
         <div className="rg-auth-brand">
           <div className="rg-auth-mark" aria-hidden>
-            <span>R</span>
-            <i />
+            <img src={BRAND_ICON_SRC} alt="" draggable={false} />
           </div>
           <p className="rg-auth-wordmark">Regrade</p>
         </div>
@@ -151,7 +148,14 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
           </div>
         )}
 
-        {mode !== 'forgot' && (
+        {mode !== 'forgot' && !showEmail && (
+          <button type="button" className="rg-auth-email-toggle" onClick={() => setShowEmail(true)}>
+            <span><strong>Continue with email</strong><small>Email + password</small></span>
+            <ICONS.ArrowRight aria-hidden />
+          </button>
+        )}
+
+        {(mode === 'forgot' || showEmail) && mode !== 'forgot' && (
           <div className="rg-auth-divider">
             <span />
             <em>or with email</em>
@@ -159,7 +163,7 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="rg-auth-form">
+        {(mode === 'forgot' || showEmail) && <form onSubmit={handleSubmit} className="rg-auth-form">
           <label className="rg-auth-field">
             <span>Email</span>
             <div className="rg-auth-field-input">
@@ -217,14 +221,18 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
               'Create account'
             )}
           </button>
-        </form>
+        </form>}
 
         <div className="rg-auth-switch">
           <button
             type="button"
             onClick={() => {
               if (mode === 'forgot') setMode('signin');
-              else setMode(mode === 'signin' ? 'signup' : 'signin');
+              else {
+                const next = mode === 'signin' ? 'signup' : 'signin';
+                setMode(next);
+                setShowEmail(next === 'signup');
+              }
               setError(null);
             }}
           >

@@ -54,7 +54,11 @@ export default function Layout({
   }, []);
 
   useEffect(() => { void refreshUnread(); }, [activeTab, refreshUnread]);
-  useEffect(() => { void automationService.runGradeDetection(); }, []);
+  useEffect(() => {
+    void automationService.runGradeDetection().catch(() => {
+      localStorage.setItem('regrade.automation.lastFailure', String(Date.now()));
+    });
+  }, []);
 
   const selectTab = (tab: string) => {
     const now = Date.now().toString();
@@ -68,10 +72,7 @@ export default function Layout({
   return (
     <div className="rg-app-bg selection:bg-primary/15">
       <header
-        className={`shrink-0 z-50 overflow-visible pt-[env(safe-area-inset-top)] ${
-          isChat ? 'bg-gradient-to-b from-primary/[0.1] to-canvas/80 border-b border-primary/10' : 'rg-subnav'
-        }`}
-        style={isChat ? { backdropFilter: 'saturate(180%) blur(16px)' } : undefined}
+        className="shrink-0 z-50 overflow-visible pt-[env(safe-area-inset-top)] rg-subnav"
       >
         <div className="rg-app-shell h-16 sm:h-[4.25rem] flex items-center justify-between gap-3">
           {isChat ? (
@@ -129,9 +130,9 @@ export default function Layout({
       <main className="flex flex-col flex-1 min-h-0 pb-[calc(4.25rem+env(safe-area-inset-bottom))]">
         <motion.div
           key={activeTab}
-          initial={{ opacity: 0, y: 8 }}
+          initial={{ opacity: 0, y: 4 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+          transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className={`flex flex-col flex-1 min-h-0 w-full ${
             isChat ? 'w-full' : 'rg-app-shell py-6 sm:py-8 md:py-10'
           }`}
@@ -146,8 +147,7 @@ export default function Layout({
         aria-label="Main"
       >
         <div
-          className="rg-bottom-nav rg-app-shell flex justify-between items-end gap-1 px-2 py-2"
-          style={{ backdropFilter: 'saturate(180%) blur(20px)' }}
+          className="rg-bottom-nav rg-app-shell flex justify-between items-center gap-1 px-2 py-2"
         >
           {tabs.map((tab) => {
             const active = activeTab === tab.id;
@@ -159,32 +159,21 @@ export default function Layout({
                 key={tab.id}
                 type="button"
                 onClick={() => selectTab(tab.id)}
-                className="relative flex flex-col items-center gap-1 flex-1 min-w-0 py-0.5"
+                className="rg-nav-item relative flex flex-col items-center gap-1 flex-1 min-w-0 py-0.5"
                 data-tour={tab.id === 'upload' ? 'appeal' : tab.id === 'chat' ? 'coach' : tab.id}
               >
                 <div
-                  className={`relative flex items-center justify-center ${
-                    isCoach
-                      ? 'w-12 h-12 -mt-3 rounded-full bg-canvas shadow-lg shadow-primary/15 border border-primary/15'
-                      : 'w-10 h-10'
-                  }`}
+                  className="relative flex h-10 w-10 items-center justify-center"
                 >
-                  {active && !isCoach && (
+                  {active && (
                     <motion.span
                       layoutId="nav-bubble"
-                      className="absolute inset-0 rounded-2xl rg-glass rg-nav-active-glow border border-primary/20"
-                      transition={{ type: 'spring', stiffness: 420, damping: 28 }}
-                    />
-                  )}
-                  {active && isCoach && (
-                    <motion.span
-                      layoutId="nav-bubble-coach"
-                      className="absolute -inset-0.5 rounded-2xl rg-glass rg-nav-active-glow border border-primary/25"
-                      transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+                      className="rg-nav-selection absolute inset-0 rounded-2xl"
+                      transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
                     />
                   )}
                   <span className="relative z-10 flex items-center justify-center">
-                    <Icon active={active} className={isCoach ? 'w-7 h-7' : 'w-[22px] h-[22px]'} />
+                    <Icon active={active} className={isCoach ? 'h-6 w-6' : 'h-[22px] w-[22px]'} />
                     {!active && (unread[tab.id] ?? 0) > 0 && <span className="absolute -right-2 -top-2 min-w-4 h-4 rounded-full bg-red-600 px-1 text-[9px] font-bold leading-4 text-white shadow-sm" aria-label={`${unread[tab.id]} unread`}>{Math.min(99, unread[tab.id])}</span>}
                   </span>
                 </div>

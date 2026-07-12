@@ -2,6 +2,7 @@ import { apiFetch } from './api';
 import { isPreviewMode } from './previewMode';
 import { PREVIEW_ANALYSIS } from './previewFixtures';
 import type { AnalysisResult } from '../types';
+import { userFacingError } from './userFacingError';
 
 type InlineImagePart = { mimeType: string; data: string };
 
@@ -42,12 +43,10 @@ export async function performComprehensiveAnalysis(
     }
     return res.json() as Promise<AnalysisResult>;
   } catch (error) {
-    console.error('Gemini Analysis Error:', error);
     if (error instanceof Error && error.message.includes('AI analysis is coming soon')) {
       throw error;
     }
-    const hint = error instanceof Error && error.message ? ` (${error.message})` : '';
-    throw new Error(`Analysis failed.${hint} Try clearer photos, or paste text from the rubric and feedback.`);
+    throw new Error(userFacingError(error, 'Analysis could not be completed. Try clearer photos, or paste text from the rubric and feedback.'));
   }
 }
 
@@ -86,16 +85,11 @@ export async function chatWithAdvocate(
     if (!data.text) throw new Error('Empty response from assistant.');
     return data.text;
   } catch (error) {
-    console.error('Advocate API Error:', error);
     if (error instanceof Error && error.message.includes('AI analysis is coming soon')) {
       throw new Error(
         'Appeal assistant chat requires the analysis server. Sign-in and appeals work on Firebase — AI chat will connect when you deploy the API.',
       );
     }
-    throw new Error(
-      error instanceof Error
-        ? error.message
-        : 'Failed to reach the appeal assistant. Try again in a moment.',
-    );
+    throw new Error(userFacingError(error, 'Mr Whale could not respond. Check your connection and try again.'));
   }
 }

@@ -119,6 +119,8 @@ export default function StudyPrep({
   const [examCases, setExamCases] = useState<Case[]>([]);
   const [checked, setChecked] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [showEvidence, setShowEvidence] = useState(false);
   const [usingPreviewPlan, setUsingPreviewPlan] = useState(false);
   const [accountRole, setAccountRole] = useState<'student' | 'supervisor'>('student');
@@ -131,6 +133,8 @@ export default function StudyPrep({
     const user = auth.currentUser;
     if (!user) return;
     let cancelled = false;
+    setLoading(true);
+    setLoadError(null);
     void (async () => {
       try {
         const [cases, profile] = await Promise.all([caseService.getUserCases(), userService.getProfile(user.uid)]);
@@ -138,10 +142,12 @@ export default function StudyPrep({
         setAccountRole(isPreviewSupervisorView() || profile?.accountRole === 'supervisor' ? 'supervisor' : 'student');
         setExamCases(cases.filter((item) => item.analysis?.assignment.assignment_type === 'exam'));
         setChecked(profile?.studyChecklist ?? []);
+      } catch {
+        if (!cancelled) setLoadError('Your exam reviews could not be loaded. Check your connection and try again.');
       } finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [loadAttempt]);
 
   const patterns = useMemo(() => derivePatterns(examCases), [examCases]);
   const courses = useMemo(() => [...new Set(examCases.map((exam) => exam.analysis?.assignment.subject?.trim()).filter((value): value is string => Boolean(value)))].sort(), [examCases]);
@@ -171,6 +177,13 @@ export default function StudyPrep({
 
   if (loading) return <div className="flex justify-center py-24"><ICONS.Loader2 className="w-6 h-6 text-primary animate-spin" /></div>;
 
+  if (loadError) return (
+    <div className="rg-glass-form-card p-6 text-center space-y-4" role="alert">
+      <p className="text-sm text-ink-muted">{loadError}</p>
+      <button type="button" className="rg-action-button mx-auto" onClick={() => setLoadAttempt((value) => value + 1)}>Retry</button>
+    </div>
+  );
+
   if (accountRole === 'supervisor') return <SupervisorHub />;
 
   if (reviewExam) return <StudyReviewStudio exam={reviewExam} onBack={() => setReviewExam(null)} />;
@@ -190,7 +203,7 @@ export default function StudyPrep({
         <section className="rg-glass-form-card p-6 text-center space-y-4">
           <div className="w-12 h-12 mx-auto rounded-2xl bg-primary/10 text-primary flex items-center justify-center"><ICONS.BookOpen className="w-6 h-6" strokeWidth={1.8} /></div>
           <div><h2 className="rg-serif text-xl text-ink font-semibold">Your Review room starts with one marked exam.</h2><p className="text-[13px] text-ink-muted leading-relaxed mt-2 max-w-sm mx-auto">Upload an exam that shows its score, rubric, or teacher feedback. Once it is analyzed, its visible marks can become your review plan.</p></div>
-          <AnimatedPrimaryButton onClick={onStartAppeal} showPlus className="max-w-xs mx-auto">Analyze a marked exam</AnimatedPrimaryButton>
+          <AnimatedPrimaryButton onClick={onStartAppeal} className="max-w-xs mx-auto">Analyze a marked exam</AnimatedPrimaryButton>
           {isPreviewMode() && <button type="button" onClick={() => { setExamCases(PREVIEW_EXAMS); setUsingPreviewPlan(true); }} className="text-[13px] font-semibold text-primary hover:underline">View a sample review plan</button>}
         </section>
       ) : <>

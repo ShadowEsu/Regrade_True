@@ -107,7 +107,7 @@ export default function SupervisorHub() {
 
     <section className="rg-glass-form-card p-5 space-y-3">
       <div><h2 className="text-[16px] font-semibold text-ink">Connect a learner</h2><p className="mt-1 text-[12px] text-ink-muted">Ask the learner to open Profile → Settings &amp; account → Generate pairing code.</p></div>
-      <div className="flex gap-2"><input value={code} onChange={(event) => setCode(event.target.value.toUpperCase().slice(0, 8))} placeholder="8-character code" className="min-w-0 flex-1 rounded-xl border border-hairline bg-canvas px-3 py-2.5 font-mono tracking-wider text-ink outline-none focus:border-primary" /><button type="button" disabled={busy || code.replace(/\s/g, '').length !== 8} onClick={() => void redeem()} className="rg-btn-primary px-4 disabled:opacity-45">Connect</button></div>
+      <div className="grid w-full min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"><input value={code} onChange={(event) => setCode(event.target.value.toUpperCase().slice(0, 8))} placeholder="8-character code" className="w-full min-w-0 rounded-xl border border-hairline bg-canvas px-3 py-2.5 font-mono tracking-wider text-ink outline-none focus:border-primary" /><button type="button" disabled={busy || code.replace(/\s/g, '').length !== 8} onClick={() => void redeem()} className="rg-btn-primary w-full px-4 disabled:opacity-45 sm:w-auto">Connect</button></div>
       {error && <p className="text-[12px] text-red-700">{error}</p>}
     </section>
 

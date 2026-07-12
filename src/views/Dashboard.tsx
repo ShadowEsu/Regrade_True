@@ -1,53 +1,43 @@
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { ICONS } from '../constants';
 import { auth } from '../lib/firebase';
 import { isPreviewMode } from '../lib/previewMode';
-import { caseService, Case } from '../services/caseService';
+import { caseService, type Case } from '../services/caseService';
 import { userService } from '../services/userService';
-import MarketingEyebrow from '../components/MarketingEyebrow';
-import AnimatedPrimaryButton from '../components/AnimatedPrimaryButton';
 import CoachWhale from '../components/CoachWhale';
-import { COACH_CTA, COACH_GREETING } from '../branding';
-import {
-  getPossiblePointsBack,
-  getClassName,
-  getScoreDisplay,
-  getNextStep,
-} from '../lib/appealHelpers';
+import { getClassName, getNextStep, getPossiblePointsBack, getScoreDisplay } from '../lib/appealHelpers';
 
-const STEPS = [
-  { icon: ICONS.Upload, label: 'Upload', tint: 'text-primary' },
-  { icon: ICONS.Search, label: 'Analyze', tint: 'text-violet-600' },
-  { icon: ICONS.Send, label: 'Draft', tint: 'text-emerald-700' },
-] as const;
+function todayLabel() {
+  return new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date());
+}
 
-const QUICK_STATS = [
-  { stat: '60s', label: 'first draft', icon: ICONS.Zap },
-  { stat: '12+', label: 'platforms', icon: ICONS.Library },
-  { stat: 'Free', label: 'to start', icon: ICONS.Verified },
-] as const;
+function timestampMs(value: unknown): number {
+  if (value && typeof (value as { toDate?: () => Date }).toDate === 'function') return (value as { toDate: () => Date }).toDate().getTime();
+  const parsed = new Date(value as string | number | Date).getTime();
+  return Number.isFinite(parsed) ? parsed : 0;
+}
 
-const WHAT_IT_DOES = [
-  {
-    icon: ICONS.Search,
-    title: 'Reads your rubric',
-    body: 'Scores, deductions, and comments in one pass.',
-    tint: 'bg-primary/10 text-primary',
-  },
-  {
-    icon: ICONS.Lightbulb,
-    title: 'Finds your angle',
-    body: 'Partial credit, missing explanations, math errors.',
-    tint: 'bg-amber-500/12 text-amber-800',
-  },
-  {
-    icon: ICONS.Send,
-    title: 'Writes the email',
-    body: 'Polite, specific — yours to edit before sending.',
-    tint: 'bg-emerald-500/10 text-emerald-800',
-  },
-] as const;
+function dayKey(value: unknown): string | null {
+  const ms = timestampMs(value);
+  if (!ms) return null;
+  const date = new Date(ms);
+  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+}
+
+function currentReviewStreak(cases: Case[]): number {
+  const activeDays = new Set(cases.map((item) => dayKey(item.updatedAt ?? item.createdAt)).filter(Boolean) as string[]);
+  if (!activeDays.size) return 0;
+  const cursor = new Date();
+  cursor.setHours(12, 0, 0, 0);
+  if (!activeDays.has(dayKey(cursor)!)) cursor.setDate(cursor.getDate() - 1);
+  let streak = 0;
+  while (activeDays.has(dayKey(cursor)!)) {
+    streak += 1;
+    cursor.setDate(cursor.getDate() - 1);
+  }
+  return streak;
+}
 
 export default function Dashboard({
   onStartAppeal,
@@ -65,369 +55,202 @@ export default function Dashboard({
   onOpenStudy: () => void;
 }) {
   const user = auth.currentUser;
-  const authFirstName =
-    user?.displayName?.split(' ')[0] ||
-    (isPreviewMode() ? null : user?.email?.split('@')[0]) ||
-    null;
-  const [profileFirstName, setProfileFirstName] = useState<string | null>(authFirstName);
-  const firstName = profileFirstName || authFirstName;
-  const hour = new Date().getHours();
-  const timeGreeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
+  const fallbackName = user?.displayName?.split(' ')[0] || (isPreviewMode() ? 'Preview' : user?.email?.split('@')[0]) || null;
+  const [firstName, setFirstName] = useState<string | null>(fallbackName);
   const [latestCase, setLatestCase] = useState<Case | null>(null);
+  const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [loadAttempt, setLoadAttempt] = useState(0);
   const [analysisAlerts, setAnalysisAlerts] = useState(true);
+  const [possibleIssueAlerts, setPossibleIssueAlerts] = useState(true);
+  const [guidanceVisible, setGuidanceVisible] = useState(() => localStorage.getItem('regrade.home.guide.dismissed') !== '1');
   const notifiedCaseId = useRef<string | null>(null);
-  const pts = latestCase ? getPossiblePointsBack(latestCase) : 0;
+  const points = latestCase ? getPossiblePointsBack(latestCase) : 0;
+  const hour = new Date().getHours();
+  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
   useEffect(() => {
-    async function fetchCases() {
-      try {
-        const [cases, profile] = await Promise.all([
-          caseService.getUserCases(),
-          user?.uid ? userService.getProfile(user.uid) : Promise.resolve(null),
-        ]);
-        if (cases.length > 0) setLatestCase(cases[0]);
+    setLoading(true);
+    setLoadError(null);
+    void Promise.all([
+      caseService.getUserCases(),
+      user?.uid ? userService.getProfile(user.uid) : Promise.resolve(null),
+    ])
+      .then(([cases, profile]) => {
+        setCases(cases);
+        setLatestCase(cases[0] ?? null);
         setAnalysisAlerts(profile?.analysisAlerts !== false);
-        const savedFirstName = profile?.name?.trim().split(/\s+/)[0];
-        if (savedFirstName) setProfileFirstName(savedFirstName);
-      } catch (err) {
-        console.error('Failed to load appeal records:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchCases();
-  }, [user?.uid]);
+        setPossibleIssueAlerts(profile?.notificationPreferences?.possibleIssue !== false);
+        const savedName = profile?.name?.trim().split(/\s+/)[0];
+        if (savedName) setFirstName(savedName);
+      })
+      .catch(() => setLoadError('Your dashboard could not be loaded. Check your connection and try again.'))
+      .finally(() => setLoading(false));
+  }, [loadAttempt, user?.uid]);
 
   useEffect(() => {
-    if (!analysisAlerts || !latestCase?.analysis || !latestCase.id || pts <= 0) return;
+    if (!analysisAlerts || !possibleIssueAlerts || !latestCase?.analysis || !latestCase.id || points <= 0) return;
     if (notifiedCaseId.current === latestCase.id) return;
     if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
     notifiedCaseId.current = latestCase.id;
     new Notification('Regrade found something worth reviewing', {
-      body: `Mr Whale found up to +${pts} points to check before you decide what to do next.`,
-      icon: '/favicon.ico',
+      body: `There may be up to ${points} points worth checking.`,
+      icon: '/favicon.png',
     });
-  }, [analysisAlerts, latestCase, pts]);
+  }, [analysisAlerts, latestCase, points, possibleIssueAlerts]);
+
+  const dismissGuide = () => {
+    localStorage.setItem('regrade.home.guide.dismissed', '1');
+    setGuidanceVisible(false);
+  };
+
+  const stats = useMemo(() => {
+    const reviewed = cases.filter((item) => Boolean(item.analysis));
+    const improved = cases.filter((item) => item.status === 'Resolved' || (item.draftEmail && getPossiblePointsBack(item) > 0));
+    const recovered = improved.reduce((total, item) => total + getPossiblePointsBack(item), 0);
+    const pending = cases.filter((item) => !item.analysis || item.progress < 80).length;
+    return {
+      streak: currentReviewStreak(cases),
+      reviewed: reviewed.length,
+      improved: improved.length,
+      recovered,
+      aiComplete: reviewed.length,
+      pending,
+    };
+  }, [cases]);
+
+  const activity = useMemo(() => {
+    const activeDays = new Set(cases.map((item) => dayKey(item.updatedAt ?? item.createdAt)).filter(Boolean) as string[]);
+    return Array.from({ length: 28 }, (_, index) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (27 - index));
+      return { key: dayKey(date)!, active: activeDays.has(dayKey(date)!) };
+    });
+  }, [cases]);
 
   return (
-    <div className="space-y-8 pb-6">
-      {/* Personal greeting and primary actions intentionally sit directly on the page. */}
-      <section className="pt-3 sm:pt-5">
-        <div className="flex flex-col sm:flex-row sm:items-center gap-6 sm:gap-10">
-          <div className="flex-1 space-y-6 min-w-0">
-            <div className="space-y-2">
-              <motion.h1
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="rg-serif text-[clamp(32px,8vw,46px)] text-ink font-bold leading-[1.06] tracking-tight"
-              >
-                {timeGreeting}{firstName ? <>, <span className="text-primary">{firstName}</span>.</> : '.'}
-              </motion.h1>
-              <p className="text-[15px] text-ink-muted leading-relaxed max-w-md">
-                What would you like to review today?
-              </p>
-            </div>
+    <div className="rg-home space-y-7 pb-5">
+      <header className="rg-page-heading pt-2">
+        <p className="rg-page-kicker">{todayLabel()}</p>
+        <h1>{greeting}{firstName ? `, ${firstName}` : ''}.</h1>
+        <p>Ready when you are.</p>
+      </header>
 
-            <div className="flex flex-wrap items-center gap-2">
-              {STEPS.map((step, i) => (
-                <React.Fragment key={step.label}>
-                  <motion.span
-                    initial={{ opacity: 0, y: 6 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.15 + i * 0.08 }}
-                    className={`rg-dash-step-pill ${step.tint}`}
-                  >
-                    <step.icon className="w-3.5 h-3.5" strokeWidth={2} />
-                    {step.label}
-                  </motion.span>
-                  {i < STEPS.length - 1 && (
-                    <ICONS.ChevronRight className="w-3 h-3 text-primary/30 shrink-0" strokeWidth={2} />
-                  )}
-                </React.Fragment>
-              ))}
-              <motion.span
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: 0.4 }}
-                className="rg-dash-step-pill text-primary bg-primary/8 border-primary/20"
-              >
-                <ICONS.Zap className="w-3.5 h-3.5" strokeWidth={2} />
-                ~60 sec
-              </motion.span>
-            </div>
-
-            <div className="flex flex-col gap-3 pt-1">
-              <AnimatedPrimaryButton onClick={onStartAppeal} showPlus hero className="w-full">
-                Review graded work
-              </AnimatedPrimaryButton>
-              <motion.button
-                type="button"
-                onClick={onOpenChat}
-                whileTap={{ scale: 0.97 }}
-                className="rg-dash-coach-chip group text-ink-muted hover:text-ink w-full justify-center"
-              >
-                <CoachWhale size={36} animate={false} />
-                <span className="font-semibold text-ink">{COACH_CTA}</span>
-                <ICONS.ArrowRight
-                  className="w-4 h-4 text-primary opacity-60 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all"
-                  strokeWidth={2}
-                />
-              </motion.button>
-            </div>
-          </div>
-
-          <div className="flex shrink-0 flex-col items-center justify-center gap-2 mx-auto sm:mx-0">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.92, y: 6 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              transition={{ delay: 0.3, type: 'spring', stiffness: 320, damping: 22 }}
-              className="z-10 max-w-[14rem] sm:max-w-[17rem] text-center"
-            >
-              <div className="rg-whale-speech rg-whale-speech-top">
-                <p className="text-[12px] sm:text-[13px] font-semibold text-ink leading-snug">
-                  {COACH_GREETING}
-                </p>
-              </div>
-            </motion.div>
-            <CoachWhale
-              size={132}
-              className="drop-shadow-[0_8px_24px_rgba(0,102,204,0.18)] sm:scale-110"
-            />
-          </div>
+      {loadError && (
+        <div className="rg-notice flex items-center justify-between gap-4" role="alert">
+          <p>{loadError}</p>
+          <button type="button" className="rg-text-button shrink-0" onClick={() => setLoadAttempt((value) => value + 1)}>Retry</button>
         </div>
-      </section>
-
-      {/* Quick stats */}
-      <div className="grid grid-cols-3 gap-2.5">
-        {QUICK_STATS.map((item, i) => (
-          <motion.div
-            key={item.label}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 + i * 0.07 }}
-            whileHover={{ y: -3, scale: 1.02 }}
-            className="rg-glass-stat text-center px-2 py-3.5"
-          >
-            <item.icon className="w-4 h-4 text-primary mx-auto mb-1 opacity-70" strokeWidth={1.75} />
-            <p className="rg-serif text-xl sm:text-2xl text-ink font-bold">{item.stat}</p>
-            <p className="text-[10px] sm:text-[11px] font-semibold text-ink-muted mt-0.5">{item.label}</p>
-          </motion.div>
-        ))}
-      </div>
-
-      {!loading && analysisAlerts && latestCase?.analysis && pts > 0 && (
-        <motion.button
-          type="button"
-          onClick={() => latestCase.id && onOpenAppeal?.(latestCase.id)}
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="w-full text-left rounded-[18px] border border-primary/20 bg-primary/[0.07] px-4 py-4 flex items-start gap-3 hover:border-primary/35 transition-colors"
-        >
-          <span className="w-9 h-9 shrink-0 rounded-xl bg-primary text-white flex items-center justify-center shadow-md shadow-primary/20">
-            <ICONS.Bell className="w-4.5 h-4.5" strokeWidth={2.25} />
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block text-[14px] font-semibold text-ink">We found up to +{pts} points worth a second look.</span>
-            <span className="block text-[12px] text-ink-muted mt-0.5">Review the evidence before deciding whether to draft an appeal.</span>
-          </span>
-          <ICONS.ArrowRight className="w-4 h-4 text-primary mt-1 shrink-0" strokeWidth={2.25} />
-        </motion.button>
       )}
 
-      {loading ? (
-        <div className="rg-glass-form-card p-6 space-y-3">
-          <div className="h-3 w-28 rg-shimmer rounded" />
-          <div className="h-20 w-full rg-shimmer rounded-xl" />
-        </div>
-      ) : latestCase ? (
-        <section className="space-y-3">
-          <MarketingEyebrow>pick up where you left off</MarketingEyebrow>
-          <motion.button
-            type="button"
-            onClick={() => latestCase.id && onOpenAppeal?.(latestCase.id)}
-            whileHover={{ y: -4 }}
-            whileTap={{ scale: 0.98 }}
-            className="w-full text-left overflow-hidden rounded-[20px] rg-glass-card"
-          >
-            <div className="p-5 space-y-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <h2 className="rg-serif text-xl text-ink font-semibold truncate">{latestCase.title}</h2>
-                  <p className="text-sm text-ink-muted mt-0.5">{getClassName(latestCase)}</p>
-                </div>
-                <span className="shrink-0 text-[11px] font-bold uppercase tracking-wide text-white bg-primary px-2.5 py-1 rounded-full shadow-sm">
-                  {latestCase.progress}%
-                </span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { k: 'Score', v: getScoreDisplay(latestCase), accent: false },
-                  { k: 'Recoverable', v: pts > 0 ? `+${pts}` : '—', accent: true },
-                  { k: 'Status', v: latestCase.status, accent: false },
-                ].map((stat) => (
-                  <div
-                    key={stat.k}
-                    className="rounded-xl rg-glass-chip px-2 py-2.5 text-center"
-                  >
-                    <p className="text-[10px] font-medium text-ink-muted uppercase tracking-wide">{stat.k}</p>
-                    <p className={`text-sm font-semibold mt-0.5 capitalize ${stat.accent ? 'text-primary' : 'text-ink'}`}>
-                      {stat.v}
-                    </p>
-                  </div>
-                ))}
-              </div>
-
-              <p className="text-sm text-ink-muted flex items-center gap-1.5">
-                <ICONS.ArrowRight className="w-3.5 h-3.5 text-primary" strokeWidth={2.5} />
-                Next: <span className="text-ink font-medium">{getNextStep(latestCase)}</span>
-              </p>
-            </div>
-          </motion.button>
-        </section>
-      ) : (
-        <motion.button
-          type="button"
-          onClick={onStartAppeal}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          whileHover={{ scale: 1.01 }}
-          whileTap={{ scale: 0.98 }}
-          className="rg-dash-upload-zone w-full p-7 sm:p-8 space-y-4 group"
-        >
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-violet-400/5 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" aria-hidden />
-          <motion.div
-            animate={{ y: [0, -5, 0] }}
-            transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
-            className="relative w-16 h-16 mx-auto rounded-2xl bg-gradient-to-br from-primary/15 to-primary/5 border border-primary/20 flex items-center justify-center shadow-[0_8px_24px_rgba(0,102,204,0.15)]"
-          >
-            <ICONS.Upload className="w-8 h-8 text-primary" strokeWidth={1.5} />
-          </motion.div>
-          <div className="relative space-y-2">
-            <p className="rg-serif text-[clamp(20px,4.5vw,24px)] text-ink">
-              One upload. Sixty seconds.
-            </p>
-            <p className="text-[14px] text-ink-muted max-w-xs mx-auto leading-relaxed">
-              Snap a photo or PDF from Canvas, Gradescope, or any gradebook.
-            </p>
-            <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-primary mt-1 group-hover:gap-2.5 transition-all">
-              Tap to start
-              <ICONS.ArrowRight className="w-4 h-4" strokeWidth={2.5} />
-            </span>
-          </div>
-        </motion.button>
-      )}
-
-      {/* What it does */}
-      <section className="space-y-4">
-        <div>
-          <MarketingEyebrow>how it works</MarketingEyebrow>
-          <h2 className="rg-serif text-[clamp(20px,4vw,24px)] text-ink mt-2">
-            Three steps. Points back.
-          </h2>
-        </div>
-        <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-          {WHAT_IT_DOES.map((item, i) => (
-            <motion.div
-              key={item.title}
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 + i * 0.07, type: 'spring', stiffness: 280, damping: 24 }}
-              whileHover={{ y: -4, scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="rg-glass-card p-4 flex items-start gap-4 cursor-default"
-            >
-              <motion.div
-                whileHover={{ rotate: [0, -6, 6, 0], scale: 1.08 }}
-                transition={{ duration: 0.4 }}
-                className={`shrink-0 p-3 rounded-2xl ${item.tint}`}
-              >
-                <item.icon className="w-5 h-5" strokeWidth={1.75} />
-              </motion.div>
-              <div>
-                <p className="rg-serif text-[15px] font-semibold text-ink">{item.title}</p>
-                <p className="text-[13px] text-muted mt-0.5 leading-relaxed">{item.body}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </section>
-
-      {latestCase?.analysis && (
-        <section className="space-y-3">
-          <MarketingEyebrow>latest read</MarketingEyebrow>
-          <div className="rg-glass-form-card overflow-hidden divide-y divide-primary/8">
-            <MetaRow label="Case strength" value={latestCase.analysis.case_analysis.overall_case_strength} icon={ICONS.TrendingUp} />
-            <MetaRow label="Rubric scan" value="Complete ✓" icon={ICONS.Shield} />
-            {pts > 0 && <MetaRow label="Points at stake" value={`+${pts}`} highlight icon={ICONS.Zap} />}
-          </div>
-        </section>
-      )}
-
-      <section className="rg-glass-form-card p-5 flex items-center justify-between gap-4">
+      <section className="rg-home-primary">
         <div className="min-w-0">
-          <MarketingEyebrow>your gradebook</MarketingEyebrow>
-          <p className="rg-serif text-lg text-ink font-semibold mt-1">Connect a platform when you need it.</p>
-          <p className="text-[13px] text-ink-muted leading-relaxed mt-1">
-            Search Canvas, Moodle, Classroom, and more, or upload a graded file directly.
-          </p>
+          <span className="rg-home-primary-icon" aria-hidden><ICONS.Search /></span>
+          <p className="rg-home-label">Start here</p>
+          <h2>Review an exam.</h2>
+          <p>Add a marked paper, rubric, or teacher feedback. Regrade will separate evidence from uncertainty.</p>
         </div>
-        <button
+        <button type="button" onClick={onStartAppeal} className="rg-action-button">
+          Review graded work <ICONS.ArrowRight aria-hidden />
+        </button>
+      </section>
+
+      <section className="rg-insights" aria-labelledby="dashboard-insights-title">
+        <div className="rg-section-heading">
+          <div><p>Progress</p><h2 id="dashboard-insights-title">Your Regrade activity.</h2></div>
+          <span className="rg-insights-caption">Based on analyzed exams</span>
+        </div>
+        <div className="rg-insights-grid">
+          <article className="rg-insight-card rg-insight-streak">
+            <div>
+              <p className="rg-insight-value">{stats.streak}</p>
+              <span>day streak</span>
+            </div>
+            <div className="rg-activity-grid" aria-label={`${stats.streak} day review streak`}>
+              {activity.map((day) => <i key={day.key} className={day.active ? 'is-active' : ''} title={day.key} />)}
+            </div>
+          </article>
+          <article className="rg-insight-card"><p className="rg-insight-value">{stats.reviewed}</p><span>Exams reviewed</span><small>Marked exams analyzed</small></article>
+          <article className="rg-insight-card"><p className="rg-insight-value">{stats.improved}</p><span>Exams improved</span><small>Resolved or draft ready</small></article>
+          <article className="rg-insight-card"><p className="rg-insight-value">{stats.recovered}</p><span>Marks identified</span><small>Potential points worth checking</small></article>
+          <article className="rg-insight-card"><p className="rg-insight-value">{stats.aiComplete}</p><span>AI reviews complete</span><small>Evidence reads finished</small></article>
+          <article className="rg-insight-card"><p className="rg-insight-value">{stats.pending}</p><span>Pending reviews</span><small>Waiting for analysis</small></article>
+        </div>
+      </section>
+
+      {!loading && analysisAlerts && latestCase?.analysis && points > 0 && (
+        <motion.button
           type="button"
-          onClick={onOpenPlatforms}
-          className="rg-btn-secondary shrink-0 px-3.5 py-2.5 text-[13px]"
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          onClick={() => latestCase.id && onOpenAppeal?.(latestCase.id)}
+          className="rg-notice rg-notice-accent w-full text-left"
         >
-          Search
-        </button>
-      </section>
-
-      <section className="relative overflow-hidden rounded-[20px] border border-violet-500/15 bg-gradient-to-br from-violet-500/[0.08] via-canvas to-primary/[0.06] p-5 flex items-center justify-between gap-4">
-        <div className="absolute -bottom-10 -right-8 w-36 h-36 rounded-full bg-violet-400/15 blur-3xl" aria-hidden />
-        <div className="relative min-w-0">
-          <MarketingEyebrow>review room</MarketingEyebrow>
-          <p className="rg-serif text-lg text-ink font-semibold mt-1">Turn marked exams into your review checklist.</p>
-          <p className="text-[13px] text-ink-muted leading-relaxed mt-1">Find recurring patterns before your next exam.</p>
-        </div>
-        <button type="button" onClick={onOpenStudy} className="relative rg-btn-secondary shrink-0 px-3.5 py-2.5 text-[13px]">
-          Review
-        </button>
-      </section>
-
-      {onOpenSampleVerdict && (
-        <button type="button" onClick={onOpenSampleVerdict} className="rg-text-link text-sm w-full justify-center">
-          {latestCase ? 'Preview sample analysis' : 'See a sample analysis'}{' '}
-          <span aria-hidden>›</span>
-        </button>
-      )}
-    </div>
-  );
-}
-
-function MetaRow({
-  label,
-  value,
-  highlight,
-  icon: Icon,
-}: {
-  label: string;
-  value: string;
-  highlight?: boolean;
-  icon?: typeof ICONS.Zap;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 px-4 py-3.5">
-      <div className="flex items-center gap-2.5 min-w-0">
-        {Icon && (
-          <span className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${highlight ? 'bg-primary/10 text-primary' : 'bg-parchment text-ink-muted'}`}>
-            <Icon className="w-4 h-4" strokeWidth={1.75} />
+          <span className="rg-notice-icon"><ICONS.Bell aria-hidden /></span>
+          <span className="min-w-0 flex-1">
+            <strong>Possible grading issue found</strong>
+            <small>Up to +{points} points may be worth checking.</small>
           </span>
+          <ICONS.ChevronRight aria-hidden />
+        </motion.button>
+      )}
+
+      <section className="space-y-3">
+        <div className="rg-section-heading">
+          <div><p>Recent work</p><h2>{latestCase ? 'Pick up where you left off.' : 'Your workspace is clear.'}</h2></div>
+          {latestCase && <button type="button" onClick={onOpenStudy}>Open Review</button>}
+        </div>
+
+        {loading ? (
+          <div className="rg-content-card p-5 space-y-3" aria-label="Loading recent work">
+            <div className="rg-shimmer h-4 w-36 rounded" />
+            <div className="rg-shimmer h-14 w-full rounded-xl" />
+          </div>
+        ) : latestCase ? (
+          <button type="button" className="rg-exam-row" onClick={() => latestCase.id && onOpenAppeal?.(latestCase.id)}>
+            <span className="rg-exam-score">{getScoreDisplay(latestCase)}</span>
+            <span className="min-w-0 flex-1">
+              <strong>{latestCase.title}</strong>
+              <small>{getClassName(latestCase)} · Next: {getNextStep(latestCase)}</small>
+            </span>
+            <span className="rg-status-chip">{latestCase.progress}%</span>
+            <ICONS.ChevronRight aria-hidden />
+          </button>
+        ) : (
+          <div className="rg-content-card rg-empty-compact">
+            <span><ICONS.FileText aria-hidden /></span>
+            <div><strong>No exams yet</strong><p>Your first analyzed exam will appear here.</p></div>
+            <button type="button" onClick={onStartAppeal}>Add one</button>
+          </div>
         )}
-        <span className="text-sm text-ink-muted">{label}</span>
-      </div>
-      <span className={`text-sm font-semibold capitalize shrink-0 ${highlight ? 'text-primary' : 'text-ink'}`}>
-        {value}
-      </span>
+      </section>
+
+      <section className="rg-home-grid">
+        <button type="button" onClick={onOpenChat} className="rg-home-tool">
+          <CoachWhale size={54} animate={false} />
+          <span><small>AI assistant</small><strong>Ask Mr Whale</strong><em>Discuss a mark or draft.</em></span>
+          <ICONS.ChevronRight aria-hidden />
+        </button>
+        <button type="button" onClick={onOpenPlatforms} className="rg-home-tool">
+          <span className="rg-tool-icon"><ICONS.Library aria-hidden /></span>
+          <span><small>Connections</small><strong>School platforms</strong><em>Import recent graded work.</em></span>
+          <ICONS.ChevronRight aria-hidden />
+        </button>
+      </section>
+
+      {guidanceVisible && (
+        <section className="rg-guidance-card">
+          <button type="button" onClick={dismissGuide} aria-label="Dismiss guide"><ICONS.X aria-hidden /></button>
+          <p>Make the first review stronger</p>
+          <h2>Include the marks and the reason.</h2>
+          <span>A graded copy plus the rubric or teacher feedback gives Regrade enough evidence to explain what happened.</span>
+          <div>
+            <button type="button" onClick={onStartAppeal}>Add a marked exam</button>
+            {onOpenSampleVerdict && <button type="button" onClick={onOpenSampleVerdict}>See an example</button>}
+          </div>
+        </section>
+      )}
     </div>
   );
 }

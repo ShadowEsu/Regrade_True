@@ -2,23 +2,32 @@ import { useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { auth } from '../lib/firebase';
 import { userService } from '../services/userService';
+import { notificationService } from '../services/notificationService';
 import { ConnectScreen } from '../features/connect';
 import { ICONS } from '../constants';
+import { BRAND_ICON_SRC } from '../branding';
 
-type Step = 'role' | 'name' | 'institution' | 'connector' | 'complete';
+type Step = 'intro' | 'role' | 'name' | 'institution' | 'connector' | 'notifications' | 'complete';
 
-const ORDER: Exclude<Step, 'complete'>[] = ['role', 'name', 'institution', 'connector'];
+const ORDER: Exclude<Step, 'intro' | 'complete'>[] = ['role', 'name', 'institution', 'connector', 'notifications'];
+
+const INTRO_SLIDES = [
+  { eyebrow: 'Understand', title: 'See what the marks mean.', body: 'Regrade reads the score, rubric, and teacher feedback together.', icon: ICONS.Search },
+  { eyebrow: 'Appeal', title: 'Use evidence, not guesses.', body: 'Possible grading issues become a respectful draft you control.', icon: ICONS.MessageSquare },
+  { eyebrow: 'Improve', title: 'Learn from every exam.', body: 'Only analyzed exams shape your personal Review plan.', icon: ICONS.BookOpen },
+] as const;
 
 export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }) {
   const user = auth.currentUser;
-  const [step, setStep] = useState<Step>('role');
+  const [step, setStep] = useState<Step>('intro');
+  const [introIndex, setIntroIndex] = useState(0);
   const [role, setRole] = useState<'student' | 'supervisor'>('student');
   const [name, setName] = useState(user?.displayName ?? '');
   const [institution, setInstitution] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const stepIndex = step === 'complete' ? ORDER.length : ORDER.indexOf(step);
+  const stepIndex = step === 'complete' ? ORDER.length : step === 'intro' ? -1 : ORDER.indexOf(step);
 
   useEffect(() => {
     if (step !== 'complete') return;
@@ -45,11 +54,12 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
     }
   };
 
-  const finish = async () => {
+  const finish = async (requestNotifications = false) => {
     if (!user) return;
     setSaving(true);
     setError(null);
     try {
+      if (requestNotifications) await notificationService.requestPermission();
       await userService.completeOnboarding(user.uid, {
         name: name.trim(),
         school: institution.trim(),
@@ -62,8 +72,32 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
     }
   };
 
+  const intro = INTRO_SLIDES[introIndex];
+
   const content =
-    step === 'role' ? (
+    step === 'intro' ? (
+      <div className="rg-intro-slide">
+        <div className="rg-intro-visual" aria-hidden>
+          <span><intro.icon /></span>
+          <i /><i /><i />
+        </div>
+        <div>
+          <p className="rg-welcome-eyebrow">{intro.eyebrow}</p>
+          <h1 className="rg-welcome-title">{intro.title}</h1>
+          <p className="rg-welcome-hint">{intro.body}</p>
+        </div>
+        <div className="rg-intro-dots" aria-label={`Introduction ${introIndex + 1} of ${INTRO_SLIDES.length}`}>
+          {INTRO_SLIDES.map((slide, index) => <span key={slide.title} data-active={index === introIndex} />)}
+        </div>
+        <button
+          type="button"
+          onClick={() => introIndex < INTRO_SLIDES.length - 1 ? setIntroIndex(introIndex + 1) : setStep('role')}
+          className="rg-auth-cta w-full"
+        >
+          {introIndex < INTRO_SLIDES.length - 1 ? 'Continue' : 'Get started'}
+        </button>
+      </div>
+    ) : step === 'role' ? (
       <div className="space-y-7">
         <div>
           <p className="rg-welcome-eyebrow">Welcome</p>
@@ -177,7 +211,7 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
           <p className="rg-welcome-hint">Optional. You can skip and connect one later from Profile.</p>
         </div>
         {role === 'student' ? (
-          <ConnectScreen onManualUpload={() => void finish()} onConnected={() => void finish()} compact />
+          <ConnectScreen onManualUpload={() => setStep('notifications')} onConnected={() => setStep('notifications')} compact />
         ) : (
           <div className="rounded-2xl border border-hairline bg-parchment px-4 py-4 text-[13px] leading-relaxed text-ink-muted">
             Invite a learner after setup to view only the information they choose to share.
@@ -188,9 +222,33 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
             {error}
           </p>
         )}
-        <button type="button" disabled={saving} onClick={() => void finish()} className="rg-btn-ghost w-full">
-          {saving ? 'Finishing…' : 'Skip for now'}
+        <button type="button" disabled={saving} onClick={() => setStep('notifications')} className="rg-btn-ghost w-full">
+          Skip for now
         </button>
+      </div>
+    ) : step === 'notifications' ? (
+      <div className="space-y-7">
+        <div>
+          <p className="rg-welcome-eyebrow">Stay informed</p>
+          <h1 className="rg-welcome-title">Know when a review is ready.</h1>
+          <p className="rg-welcome-hint">You can change this any time in Settings.</p>
+        </div>
+        <div className="rg-notification-primer" aria-hidden>
+          <span><ICONS.Bell /></span>
+          <i /><i /><i />
+        </div>
+        <ul className="rg-permission-benefits">
+          <li><ICONS.Check /> Analysis finished</li>
+          <li><ICONS.Check /> Possible grading issue found</li>
+          <li><ICONS.Check /> New work imported by Auto Mode</li>
+        </ul>
+        {error && <p className="text-[13px] text-red-700" role="alert">{error}</p>}
+        <div className="space-y-3">
+          <button type="button" disabled={saving} onClick={() => void finish(true)} className="rg-auth-cta w-full">
+            {saving ? 'Finishing…' : 'Allow notifications'}
+          </button>
+          <button type="button" disabled={saving} onClick={() => void finish(false)} className="rg-btn-ghost w-full">Maybe later</button>
+        </div>
       </div>
     ) : (
       <motion.div
@@ -219,11 +277,11 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
         transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
         className="rg-welcome-card"
       >
-        {step !== 'complete' && (
+        {step !== 'complete' && step !== 'intro' && (
           <>
             <div className="rg-welcome-head">
               <div className="rg-welcome-brand">
-                <i aria-hidden>R</i>
+                <img src={BRAND_ICON_SRC} alt="" aria-hidden draggable={false} />
                 <span>Regrade</span>
               </div>
               <div className="flex items-center gap-3">

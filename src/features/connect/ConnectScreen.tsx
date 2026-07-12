@@ -29,9 +29,11 @@ export default function ConnectScreen({
 }) {
   const [connections, setConnections] = useState<StoredConnection[]>([]);
   const [busy, setBusy] = useState<ConnectPlatformId | null>(null);
-  const [notes, setNotes] = useState<Partial<Record<ConnectPlatformId, string>>>({});
+  const [notes, setNotes] = useState<Partial<Record<ConnectPlatformId, { text: string; state: 'success' | 'failed' }>>>({});
   const [canvasOpen, setCanvasOpen] = useState(false);
   const [query, setQuery] = useState('');
+  const [connectionsLoading, setConnectionsLoading] = useState(true);
+  const [connectionLoadError, setConnectionLoadError] = useState(false);
   const canvasResolver = useRef<((v: { baseUrl: string; token: string } | null) => void) | null>(null);
 
   const promptCanvasToken = useCallback(() => {
@@ -49,9 +51,15 @@ export default function ConnectScreen({
   });
   const byId = new Map(connectors.map((c) => [c.platformId, c]));
 
-  useEffect(() => {
-    void listConnections().then(setConnections).catch(() => setConnections([]));
+  const loadSavedConnections = useCallback(async () => {
+    setConnectionsLoading(true);
+    setConnectionLoadError(false);
+    try { setConnections(await listConnections()); }
+    catch { setConnections([]); setConnectionLoadError(true); }
+    finally { setConnectionsLoading(false); }
   }, []);
+
+  useEffect(() => { void loadSavedConnections(); }, [loadSavedConnections]);
 
   const connectionFor = (id: ConnectPlatformId) => connections.find((c) => c.platformId === id);
 
@@ -62,13 +70,13 @@ export default function ConnectScreen({
       const result = await connector.connect();
       if (isConnectFailure(result)) {
         if (result.reason !== 'cancelled') {
-          setNotes((n) => ({ ...n, [connector.platformId]: result.message }));
+          setNotes((n) => ({ ...n, [connector.platformId]: { text: result.message, state: 'failed' } }));
         }
       } else {
         setConnections(await listConnections());
         setNotes((n) => ({
           ...n,
-          [connector.platformId]: result.simulated ? S.previewSimulatedNote : S.savedSecurely,
+          [connector.platformId]: { text: result.simulated ? S.previewSimulatedNote : S.savedSecurely, state: 'success' },
         }));
         onConnected?.();
       }
@@ -83,9 +91,16 @@ export default function ConnectScreen({
 
   const handleRevoke = async (id: ConnectPlatformId) => {
     if (!window.confirm(S.disconnectConfirm)) return;
-    await revokeConnection(id);
-    setConnections(await listConnections());
-    setNotes((n) => ({ ...n, [id]: undefined }));
+    setBusy(id);
+    try {
+      await revokeConnection(id);
+      setConnections(await listConnections());
+      setNotes((n) => ({ ...n, [id]: { text: 'Disconnected. Regrade will no longer request new work from this platform.', state: 'success' } }));
+    } catch {
+      setNotes((n) => ({ ...n, [id]: { text: 'Regrade could not disconnect this platform. Check your connection and try again.', state: 'failed' } }));
+    } finally {
+      setBusy(null);
+    }
   };
 
   return (
@@ -128,6 +143,9 @@ export default function ConnectScreen({
           })}
         </div>
       )}
+
+      {connectionsLoading && <p className="text-[12px] text-ink-muted" role="status">Checking saved connections…</p>}
+      {connectionLoadError && <div className="flex items-center justify-between gap-3 rounded-xl border border-red-500/20 bg-red-500/5 p-3"><p className="text-[12px] text-red-700">Saved connections could not be loaded. Your accounts were not changed.</p><button type="button" onClick={() => void loadSavedConnections()} className="shrink-0 text-[12px] font-semibold text-primary">Retry</button></div>}
 
       <div className={compact ? 'space-y-2' : 'space-y-3'}>
         {!query.trim() && (
@@ -179,7 +197,7 @@ interface PlatformCardProps {
   connector: Connector;
   connection: StoredConnection | undefined;
   busy: boolean;
-  note: string | undefined;
+  note: { text: string; state: 'success' | 'failed' } | undefined;
   onConnect: () => void;
   onRevoke: () => void;
   onManualUpload: () => void;
@@ -200,8 +218,18 @@ const PlatformCard: React.FC<PlatformCardProps> = ({
   const [importNote, setImportNote] = useState<string | null>(null);
   const connectable = connector.isAvailable() && !connection;
   const canImport = Boolean(connection && IMPORTABLE_PLATFORMS.has(meta.platformId));
+  const connectionStatus = note?.state === 'failed'
+    ? 'Connection failed'
+    : connection
+    ? (connection.simulated ? 'Demo connection' : 'Connected')
+    : meta.authMethod === 'institution_gated'
+      ? 'Coming soon'
+      : connectable || meta.authMethod === 'manual_only'
+        ? 'Available'
+        : 'Needs setup';
   const browse = async () => { setImportBusy(true); setImportNote(null); try { const items = await connectorImportService.list(meta.platformId); setImportItems(items); if (!items.length) setImportNote('No graded records or files were returned.'); } catch (e) { setImportNote(e instanceof Error ? e.message : 'The platform did not respond.'); } finally { setImportBusy(false); } };
   const importOne = async (item: ImportItem) => { setImportBusy(true); setImportNote(null); try { await connectorImportService.importManual(meta.platformId, item.externalId); setImportNote(`${item.title} is ready in Regrade. Manual imports can be any age.`); } catch (e) { setImportNote(e instanceof Error ? e.message : 'Import failed.'); } finally { setImportBusy(false); } };
+  const dismissItem = (externalId: string) => setImportItems((items) => items?.filter((item) => item.externalId !== externalId) ?? []);
   const checkRecent = async () => { setImportBusy(true); setImportNote(null); try { const result = await connectorImportService.runAutomatic(meta.platformId); setImportNote(result.imported ? `${result.imported} recent graded item${result.imported === 1 ? '' : 's'} imported. ${result.ignoredOlderCount} older item${result.ignoredOlderCount === 1 ? '' : 's'} ignored.` : `No new grades in the last seven days. ${result.ignoredOlderCount} older item${result.ignoredOlderCount === 1 ? '' : 's'} left untouched.`); } catch (e) { setImportNote(e instanceof Error ? e.message : 'Automatic check failed.'); } finally { setImportBusy(false); } };
 
   return (
@@ -235,6 +263,9 @@ const PlatformCard: React.FC<PlatformCardProps> = ({
 
       {(meta.region || meta.apiStatus) && (
         <div className="flex flex-wrap gap-1.5" aria-label="Connection details">
+          <span className={`inline-flex rounded-md border px-2 py-1 text-[10px] font-semibold ${connection ? 'border-emerald-500/25 bg-emerald-500/8 text-emerald-800' : 'border-hairline bg-parchment text-ink-muted'}`}>
+            {connectionStatus}
+          </span>
           {meta.region && (
             <span className="inline-flex rounded-md border border-hairline bg-parchment px-2 py-1 text-[10px] font-medium text-ink-muted">
               {meta.region}
@@ -245,9 +276,9 @@ const PlatformCard: React.FC<PlatformCardProps> = ({
               {meta.apiStatus === 'live'
                 ? 'Direct connection'
                 : meta.apiStatus === 'public_api'
-                  ? 'API available'
+                  ? 'School setup required'
                   : meta.apiStatus === 'partner_api'
-                    ? 'Partner API'
+                    ? 'Partner setup required'
                     : 'File import'}
             </span>
           )}
@@ -288,9 +319,9 @@ const PlatformCard: React.FC<PlatformCardProps> = ({
         {canImport && (meta.platformId === 'canvas' || meta.platformId === 'google_classroom') && <button type="button" disabled={importBusy} onClick={() => void checkRecent()} className="rg-btn-ghost text-[13px]">Check last 7 days</button>}
       </div>
 
-      {note && <p className="text-[12px] text-ink-muted leading-relaxed">{note}</p>}
+      {note && <p className={`text-[12px] leading-relaxed ${note.state === 'failed' ? 'text-red-700' : 'text-ink-muted'}`} role={note.state === 'failed' ? 'alert' : 'status'}>{note.text}</p>}
       {importNote && <p className="text-[12px] text-ink-muted leading-relaxed" role="status">{importNote}</p>}
-      {importItems && importItems.length > 0 && <div className="space-y-2 border-t border-hairline pt-3">{importItems.slice(0, 20).map((item) => <div key={item.externalId} className="flex items-center justify-between gap-3 rounded-lg bg-parchment p-2.5"><div className="min-w-0"><p className="truncate text-[12px] font-semibold text-ink">{item.title}</p><p className="text-[10px] text-ink-muted">{item.course || (item.kind === 'file' ? 'Selected file' : 'Graded work')}{item.gradedAt ? ` · ${new Date(item.gradedAt).toLocaleDateString()}` : ''}</p></div><button type="button" disabled={importBusy} onClick={() => void importOne(item)} className="shrink-0 text-[11px] font-semibold text-primary">Import</button></div>)}</div>}
+      {importItems && importItems.length > 0 && <div className="space-y-2 border-t border-hairline pt-3"><p className="text-[11px] font-semibold uppercase tracking-[.08em] text-ink-muted">New graded work</p>{importItems.slice(0, 20).map((item) => <div key={item.externalId} className="rounded-xl bg-parchment p-3"><div className="min-w-0"><p className="truncate text-[12px] font-semibold text-ink">{item.title}</p><p className="text-[10px] text-ink-muted">{item.course || (item.kind === 'file' ? 'Selected file' : 'Graded work')}{item.gradedAt ? ` · ${new Date(item.gradedAt).toLocaleDateString()}` : ''}</p><p className="mt-2 text-[11px] text-ink-muted">Would you like Regrade to review this exam?</p></div><div className="mt-2 flex items-center gap-2"><button type="button" disabled={importBusy} onClick={() => void importOne(item)} className="rg-btn-primary px-3 py-2 text-[11px]">Yes, review it</button><button type="button" disabled={importBusy} onClick={() => dismissItem(item.externalId)} className="rg-btn-ghost px-3 py-2 text-[11px]">Not now</button></div></div>)}</div>}
     </div>
   );
 };

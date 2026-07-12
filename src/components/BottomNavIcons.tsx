@@ -1,4 +1,4 @@
-import { COACH_WHALE_SRC } from '../branding';
+import { Brain } from 'lucide-react';
 
 type IconProps = { active?: boolean; className?: string };
 
@@ -44,22 +44,9 @@ export function NavAppealIcon({ active, className = 'w-5 h-5' }: IconProps) {
 
 export function NavChatIcon({ active, className = 'w-6 h-6' }: IconProps) {
   return (
-    <div
-      className={`relative flex items-center justify-center rounded-xl overflow-hidden ${className} ${
-        active ? 'shadow-sm shadow-primary/25' : 'opacity-80'
-      }`}
-      aria-hidden
-    >
-      <img
-        src={COACH_WHALE_SRC}
-        alt=""
-        className="w-full h-full object-contain rg-pixel-mascot"
-        draggable={false}
-      />
-      {active && (
-        <span className="absolute inset-0 rounded-xl ring-2 ring-primary/40 ring-offset-1 ring-offset-parchment" />
-      )}
-    </div>
+    <span className={`${className} inline-flex items-center justify-center ${active ? 'text-primary' : 'text-ink-muted'}`} aria-hidden>
+      <Brain className="h-full w-full" strokeWidth={active ? 2.2 : 1.85} />
+    </span>
   );
 }
 

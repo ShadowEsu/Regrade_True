@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, completeAuthRedirectIfNeeded } from './lib/firebase';
-import { isPreviewMode, isPreviewOnboardingView, isPreviewSignInView } from './lib/previewMode';
+import { isPreviewMode, isPreviewOnboardingView, isPreviewSignInView, isPreviewSplashView } from './lib/previewMode';
 import PreviewBanner from './components/PreviewBanner';
 import Auth from './views/Auth';
 import BrandSpinner from './components/BrandSpinner';
@@ -87,6 +87,7 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   }, []);
 
   if (isPreviewMode()) {
+    if (isPreviewSplashView()) return <BootSplash label="Regrade" />;
     if (isPreviewSignInView()) {
       return (
         <>

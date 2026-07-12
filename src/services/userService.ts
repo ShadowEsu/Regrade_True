@@ -46,6 +46,7 @@ export interface UserProfile {
   tutorialComplete?: boolean;
   /** Show an in-app recovery alert when analysis finds actionable points. */
   analysisAlerts?: boolean;
+  notificationPreferences?: NotificationPreferences;
   /** Paid-plan automation preference. Server entitlements still decide whether it may run. */
   autoMode?: boolean;
   /** Poll connected gradebooks for newly graded work. Paid entitlement is enforced server-side. */
@@ -53,6 +54,24 @@ export interface UserProfile {
   /** Study-pattern checklist items the student has reviewed before a final. */
   studyChecklist?: string[];
 }
+
+export type NotificationPreferences = {
+  imports: boolean;
+  analysisComplete: boolean;
+  possibleIssue: boolean;
+  appealReady: boolean;
+  parent: boolean;
+  weeklySummary: boolean;
+};
+
+export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  imports: true,
+  analysisComplete: true,
+  possibleIssue: true,
+  appealReady: true,
+  parent: true,
+  weeklySummary: false,
+};
 
 /** Fresh preview user — empty until they fill Profile or start an appeal. */
 const previewProfile: UserProfile = {
@@ -66,6 +85,7 @@ const previewProfile: UserProfile = {
   appealGoal: '',
   avatarUrl: '',
   analysisAlerts: true,
+  notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
   automaticGradeDetection: false,
 };
 const PREVIEW_PROFILE_STORAGE_KEY = 'regrade_preview_profile_v2';
@@ -119,6 +139,8 @@ export const userService = {
           appealGoal: profile.appealGoal ?? '',
           preferredPlatform: profile.preferredPlatform,
           avatarUrl: profile.avatarUrl || '',
+          analysisAlerts: profile.analysisAlerts ?? true,
+          notificationPreferences: profile.notificationPreferences ?? DEFAULT_NOTIFICATION_PREFERENCES,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
@@ -144,6 +166,7 @@ export const userService = {
           'onboardingComplete',
           'tutorialComplete',
           'analysisAlerts',
+          'notificationPreferences',
           'autoMode',
           'automaticGradeDetection',
           'studyChecklist',
@@ -206,6 +229,7 @@ export const userService = {
     delete previewProfile.tutorialComplete;
     delete previewProfile.studyChecklist;
     previewProfile.analysisAlerts = true;
+    previewProfile.notificationPreferences = DEFAULT_NOTIFICATION_PREFERENCES;
     previewProfile.autoMode = false;
     previewProfile.automaticGradeDetection = false;
     if (typeof window !== 'undefined') localStorage.removeItem(PREVIEW_PROFILE_STORAGE_KEY);
@@ -308,6 +332,22 @@ export const userService = {
     try {
       await setDoc(docRef, { analysisAlerts, updatedAt: serverTimestamp() }, { merge: true });
       return { analysisAlerts };
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, `users/${uid}`);
+      throw error;
+    }
+  },
+
+  async setNotificationPreferences(uid: string, notificationPreferences: NotificationPreferences) {
+    if (isPreviewMode()) {
+      if (uid === PREVIEW_USER_UID) previewProfile.notificationPreferences = { ...notificationPreferences };
+      persistPreviewProfile();
+      return previewProfile;
+    }
+    const docRef = doc(db, 'users', uid);
+    try {
+      await setDoc(docRef, { notificationPreferences, updatedAt: serverTimestamp() }, { merge: true });
+      return { notificationPreferences };
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, `users/${uid}`);
       throw error;

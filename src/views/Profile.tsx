@@ -5,7 +5,7 @@ import { ICONS, DEFAULT_AVATAR_SRC } from '../constants';
 import { auth, loginWithGoogle } from '../lib/firebase';
 import { secureSignOut } from '../services/sessionService';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { userService, UserProfile } from '../services/userService';
+import { userService, UserProfile, DEFAULT_NOTIFICATION_PREFERENCES, type NotificationPreferences } from '../services/userService';
 import { scanContentForThreats } from '../lib/securityScanner';
 import {
   AI_TRADEMARK_FOOTER,
@@ -71,6 +71,15 @@ const FOCUS_CHIPS = [
   { id: 'stronger_evidence', label: 'Stronger evidence' },
 ] as const;
 
+const NOTIFICATION_CATEGORIES: Array<{ key: keyof NotificationPreferences; label: string; detail: string }> = [
+  { key: 'imports', label: 'Imports', detail: 'New graded work arrived from a connected platform.' },
+  { key: 'analysisComplete', label: 'Analysis completed', detail: 'An AI evidence review finished successfully.' },
+  { key: 'possibleIssue', label: 'Possible grading issue', detail: 'Evidence may be worth checking with the teacher.' },
+  { key: 'appealReady', label: 'Appeal ready', detail: 'A respectful draft is ready for your review.' },
+  { key: 'parent', label: 'Parent and supervisor', detail: 'Pairing, permission, and shared-review updates.' },
+  { key: 'weeklySummary', label: 'Weekly summary', detail: 'One grouped recap of reviews and study patterns.' },
+];
+
 function toggleChip(list: string[], id: string): string[] {
   return list.includes(id) ? list.filter((x) => x !== id) : [...list, id];
 }
@@ -123,11 +132,13 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
   const [user, setUser] = useState<User | null>(auth.currentUser);
   const [form, setForm] = useState<ProfileForm>(EMPTY_FORM);
   const [analysisAlerts, setAnalysisAlerts] = useState(true);
+  const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES);
   const [autoMode, setAutoMode] = useState(false);
   const [automaticGradeDetection, setAutomaticGradeDetection] = useState(false);
   const [accountRole, setAccountRole] = useState<'student' | 'supervisor'>('student');
   const [subscription, setSubscription] = useState<SubscriptionSnapshot | null>(null);
   const [billingError, setBillingError] = useState<string | null>(null);
+  const [automationError, setAutomationError] = useState<string | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
   const [nativePrices, setNativePrices] = useState<Partial<Record<'student' | 'pro', string>>>({});
   const nativePurchases = isNativeStore();
@@ -161,6 +172,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
           if (data) {
             setForm(profileToForm(data, u));
             setAnalysisAlerts(data.analysisAlerts !== false);
+            setNotificationPreferences({ ...DEFAULT_NOTIFICATION_PREFERENCES, ...data.notificationPreferences });
             setAutoMode(data.autoMode === true);
             setAutomaticGradeDetection(data.automaticGradeDetection === true);
             setAccountRole(data.accountRole === 'supervisor' ? 'supervisor' : 'student');
@@ -171,8 +183,9 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               email: u.email || '',
             });
           }
-        } catch (err) {
-          console.error('Failed to fetch profile:', err);
+        } catch {
+          setToastMessage('Your profile could not be loaded. Check your connection and try again.');
+          setShowSavedToast(true);
         }
       }
       setLoading(false);
@@ -192,6 +205,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
       return;
     }
     const next = !autoMode;
+    setAutomationError(null);
     setAutoMode(next);
     try {
       await automationService.update({ autoPrepare: next });
@@ -202,6 +216,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
       }
     } catch {
       setAutoMode(!next);
+      setAutomationError('Auto Mode could not be updated. Check your connection and try again.');
     }
   };
 
@@ -211,12 +226,14 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
       return;
     }
     const next = !automaticGradeDetection;
+    setAutomationError(null);
     setAutomaticGradeDetection(next);
     try {
       await automationService.update({ automaticGradeDetection: next });
       if (isPreviewMode()) await userService.setAutomaticGradeDetection(user.uid, next);
     } catch {
       setAutomaticGradeDetection(!next);
+      setAutomationError('Automatic grade detection could not be updated. Check your connection and try again.');
     }
   };
 
@@ -252,8 +269,8 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
       await automationService.update({ notifications: next });
       if (isPreviewMode()) await userService.setAnalysisAlerts(user.uid, next);
     } catch (err) {
-      console.error('Failed to save recovery alert preference:', err);
       setAnalysisAlerts(!next);
+      setAutomationError('Notification settings could not be updated. Check your connection and try again.');
     } finally {
       setAlertsSaving(false);
     }
@@ -261,6 +278,24 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
 
   const sendTestNotification = () => {
     void notificationService.test();
+  };
+
+  const toggleNotificationCategory = async (key: keyof NotificationPreferences) => {
+    if (!user || alertsSaving) return;
+    const previous = notificationPreferences;
+    const next = { ...previous, [key]: !previous[key] };
+    setNotificationPreferences(next);
+    setAlertsSaving(true);
+    try {
+      await userService.setNotificationPreferences(user.uid, next);
+    } catch {
+      setNotificationPreferences(previous);
+      setToastMessage('Notification preference could not be saved');
+      setShowSavedToast(true);
+      setTimeout(() => setShowSavedToast(false), 2600);
+    } finally {
+      setAlertsSaving(false);
+    }
   };
 
   const handleThemeChange = async (next: ThemePreference) => {
@@ -271,8 +306,10 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
       setToastMessage('Appearance updated');
       setShowSavedToast(true);
       setTimeout(() => setShowSavedToast(false), 2200);
-    } catch (err) {
-      console.error('Failed to save theme preference:', err);
+    } catch {
+      setToastMessage('Appearance could not be saved');
+      setShowSavedToast(true);
+      setTimeout(() => setShowSavedToast(false), 2600);
     } finally {
       setThemeSaving(false);
     }
@@ -338,8 +375,10 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
       setToastMessage('Appeal profile saved');
       setShowSavedToast(true);
       setTimeout(() => setShowSavedToast(false), 2800);
-    } catch (err) {
-      console.error('Profile save failed', err);
+    } catch {
+      setToastMessage('Profile changes could not be saved');
+      setShowSavedToast(true);
+      setTimeout(() => setShowSavedToast(false), 2600);
     } finally {
       setSaving(false);
     }
@@ -413,52 +452,41 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
 
   return (
     <div className="space-y-6 pb-8">
-      <section className="relative overflow-hidden rounded-[22px] rg-glass-hero px-5 py-7 sm:py-8 text-center">
-        <div className="absolute -top-12 -right-8 w-40 h-40 rounded-full bg-primary/10 blur-3xl pointer-events-none" aria-hidden />
-        <div className="absolute -bottom-10 -left-6 w-32 h-32 rounded-full bg-violet-400/10 blur-3xl pointer-events-none" aria-hidden />
-        <div className="relative space-y-4">
-          <MarketingEyebrow>appeal profile</MarketingEyebrow>
-          <motion.div
-            initial={{ opacity: 0, scale: 0.92 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="flex flex-col items-center gap-3"
-          >
-            <motion.div
-              whileHover={{ scale: 1.05, rotate: 2 }}
-              className="relative"
-            >
-              <div className="absolute -inset-1 rounded-[18px] bg-gradient-to-br from-primary/30 to-violet-400/20 blur-sm" aria-hidden />
-              <img
-                src={user.photoURL || DEFAULT_AVATAR_SRC}
-                alt=""
-                className="relative w-[84px] h-[84px] rounded-2xl border-2 border-white/80 object-cover rg-glass shadow-md"
-              />
-            </motion.div>
-            <div>
-              <h1 className="rg-serif text-[clamp(24px,5vw,30px)] text-ink font-semibold">{form.name || 'Student'}</h1>
-              <p className="text-[12px] text-muted mt-0.5">{form.email}</p>
-              <p className="text-[13px] text-ink-muted mt-2 max-w-[300px] mx-auto leading-relaxed">
-                Regrade uses this to draft appeals that sound like you.
-              </p>
+      {activeTab === 'you' ? (
+        <>
+          <header className="rg-page-heading pt-1">
+            <p className="rg-page-kicker">Account</p>
+            <h1>Your Regrade.</h1>
+          </header>
+          <section className="rg-account-summary">
+            <img src={user.photoURL || DEFAULT_AVATAR_SRC} alt="" />
+            <div className="min-w-0 flex-1">
+              <h2>{form.name || 'Student'}</h2>
+              <p>{form.email}</p>
+              <span>{subscription ? PLAN_CATALOG[subscription.plan].name : 'Free'} plan</span>
             </div>
-          </motion.div>
-
-          <div className="flex flex-wrap items-center justify-center gap-2">
-            <button
-              type="button"
-              onClick={() => setActiveTab('platform')}
-              className="rg-glass-chip px-3 py-1.5 text-[11px] font-semibold text-primary inline-flex items-center gap-1.5"
-            >
-              <ICONS.Library className="w-3.5 h-3.5" strokeWidth={2} />
-              Connections
-            </button>
-          </div>
-        </div>
-      </section>
-
-      <p className="text-center text-[13px] font-medium text-ink-muted">
-        {SECTION_LABELS[activeTab]}
-      </p>
+            <button type="button" onClick={() => setActiveTab('subscription')}>Manage plan</button>
+          </section>
+          <nav className="rg-settings-directory" aria-label="Profile sections">
+            {([
+              ['platform', 'Connections', 'Import graded work', ICONS.Library],
+              ['ai', 'Notifications & automation', 'Mr Whale, alerts, and Auto Mode', ICONS.Bell],
+              ['account', 'Learner codes', 'Pair a parent or teacher', ICONS.Lock],
+              ['account', 'Settings & account', 'Privacy, family, help, and legal', ICONS.Shield],
+            ] as const).map(([id, title, detail, Icon]) => (
+              <button key={id} type="button" onClick={() => setActiveTab(id)}>
+                <span><Icon /></span><span><strong>{title}</strong><small>{detail}</small></span><ICONS.ChevronRight />
+              </button>
+            ))}
+          </nav>
+        </>
+      ) : (
+        <header className="rg-profile-subheading">
+          <button type="button" onClick={() => setActiveTab('you')} aria-label="Back to profile"><ICONS.ChevronLeft /></button>
+          <h1>{SECTION_LABELS[activeTab]}</h1>
+          <span aria-hidden />
+        </header>
+      )}
 
       <form onSubmit={(e) => void handleSave(e)} className="space-y-5">
         <AnimatePresence mode="wait">
@@ -683,14 +711,6 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               </div>
               <ConnectScreen onManualUpload={onStartUpload ?? (() => undefined)} />
 
-              <div className="border-t border-hairline pt-5">
-                <ThemePicker
-                  value={themePreference}
-                  onChange={(next) => void handleThemeChange(next)}
-                  disabled={themeSaving}
-                />
-              </div>
-
             </motion.div>
           )}
 
@@ -749,10 +769,11 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
                 </p>
               </div>
               <div className="border-t border-hairline pt-4">
-                <button type="button" role="switch" aria-checked={autoMode} onClick={() => void updateAutoMode()} className="mb-3 w-full text-left flex items-start justify-between gap-4 rounded-2xl rg-glass-chip p-4">
-                  <span className="min-w-0"><span className="block text-[14px] font-semibold text-ink">Auto Mode</span><span className="block mt-1 text-[12px] leading-relaxed text-ink-muted">Automatically analyze newly imported marked exams, prepare the draft, then add the result to Review and History. Student or Pro plan required.</span></span>
-                  <span className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${autoMode && subscription?.limits.autoMode ? 'bg-primary' : 'bg-ink/20'}`} aria-hidden><span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${autoMode && subscription?.limits.autoMode ? 'translate-x-6' : 'translate-x-1'}`} /></span>
-                </button>
+                {automationError && <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-red-500/20 bg-red-500/5 p-3" role="alert"><p className="text-[12px] text-red-700">{automationError}</p><button type="button" onClick={() => setAutomationError(null)} className="text-[12px] font-semibold text-primary">Dismiss</button></div>}
+                <div className="mb-3 w-full rounded-2xl rg-glass-chip p-4">
+                  <div className="flex items-start justify-between gap-4"><span className="min-w-0"><span className="block text-[14px] font-semibold text-ink">Auto Mode</span><span className="block mt-1 text-[12px] leading-relaxed text-ink-muted">Full automatic analysis and appeal drafting needs the production evidence pipeline. Connected grade metadata will not be presented as a completed AI review.</span></span><span className="shrink-0 rounded-full border border-amber-500/20 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold text-amber-800">Needs setup</span></div>
+                  {autoMode && <p className="mt-3 border-t border-hairline pt-3 text-[11px] leading-relaxed text-ink-muted">Your earlier preference is saved, but Regrade will not send or draft anything externally until the production pipeline is configured and tested.</p>}
+                </div>
                 <button type="button" role="switch" aria-checked={automaticGradeDetection} onClick={() => void updateAutomaticGradeDetection()} className="mb-3 w-full text-left flex items-start justify-between gap-4 rounded-2xl rg-glass-chip p-4">
                   <span className="min-w-0"><span className="block text-[14px] font-semibold text-ink">Automatic grade detection</span><span className="block mt-1 text-[12px] leading-relaxed text-ink-muted">Check connected platforms for newly graded exams. Only work graded in the last seven days is eligible for automatic import.</span></span>
                   <span className={`relative mt-0.5 inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${automaticGradeDetection && subscription?.limits.autoMode ? 'bg-primary' : 'bg-ink/20'}`} aria-hidden><span className={`absolute top-1 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${automaticGradeDetection && subscription?.limits.autoMode ? 'translate-x-6' : 'translate-x-1'}`} /></span>
@@ -784,6 +805,22 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
                     />
                   </span>
                 </button>
+                <div className="mt-3 rounded-2xl border border-hairline bg-canvas px-4">
+                  {NOTIFICATION_CATEGORIES.map((item, index) => (
+                    <button
+                      key={item.key}
+                      type="button"
+                      role="switch"
+                      aria-checked={notificationPreferences[item.key]}
+                      disabled={!analysisAlerts || alertsSaving}
+                      onClick={() => void toggleNotificationCategory(item.key)}
+                      className={`flex min-h-14 w-full items-center justify-between gap-4 py-3 text-left disabled:opacity-45 ${index ? 'border-t border-hairline' : ''}`}
+                    >
+                      <span className="min-w-0"><span className="block text-[13px] font-semibold text-ink">{item.label}</span><span className="mt-0.5 block text-[11px] leading-relaxed text-ink-muted">{item.detail}</span></span>
+                      <span className={`relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors ${notificationPreferences[item.key] ? 'bg-primary' : 'bg-ink/20'}`} aria-hidden><span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${notificationPreferences[item.key] ? 'translate-x-[18px]' : 'translate-x-0.5'}`} /></span>
+                    </button>
+                  ))}
+                </div>
                 <div className="mt-2 flex items-center justify-between gap-3 px-1 text-[11px] leading-relaxed text-ink-muted">
                   <span>{notificationPermission === 'granted' ? 'Browser alerts are enabled on this device.' : notificationPermission === 'denied' ? 'Browser alerts are blocked for this site; in-app alerts still work.' : notificationPermission === 'unsupported' ? 'This device supports in-app alerts only.' : 'Turn alerts on to allow browser notifications on this device.'}</span>
                   {notificationPermission === 'granted' && analysisAlerts && <button type="button" onClick={sendTestNotification} className="shrink-0 font-semibold text-primary hover:underline">Send test</button>}
@@ -804,6 +841,13 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               exit={{ opacity: 0, y: -4 }}
               className="space-y-4"
             >
+              <div className="rg-glass-card p-5">
+                <ThemePicker
+                  value={themePreference}
+                  onChange={(next) => void handleThemeChange(next)}
+                  disabled={themeSaving}
+                />
+              </div>
               <div className="rg-glass-card p-5 space-y-3">
                 <p className="text-[10px] font-mono uppercase tracking-wider text-primary">Legal</p>
                 <p className="text-[13px] text-muted leading-relaxed">
