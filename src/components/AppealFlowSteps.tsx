@@ -5,7 +5,7 @@ export default function AppealFlowSteps({ current }: { current: AppealFlowStepId
   const currentIdx = APPEAL_FLOW_STEPS.findIndex((s) => s.id === current);
 
   return (
-    <div className="w-full overflow-x-auto pb-1 scrollbar-none">
+    <div className="rg3-flow-steps w-full overflow-x-auto pb-1 scrollbar-none">
       <div className="flex items-center gap-1 min-w-max px-0.5">
         {APPEAL_FLOW_STEPS.map((step, idx) => {
           const done = idx < currentIdx;

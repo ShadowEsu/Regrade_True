@@ -2,10 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ICONS } from '../constants';
 import UploadGuidePanel from '../components/UploadGuidePanel';
-import UploadIngredientsPanel from '../components/UploadIngredientsPanel';
-import { PLATFORM_UPLOAD_GUIDES } from '../lib/platformUploadGuides';
 import AppealFlowShell from '../components/AppealFlowShell';
-import AnimatedPrimaryButton from '../components/AnimatedPrimaryButton';
 import { caseService } from '../services/caseService';
 import { isPreviewMode } from '../lib/previewMode';
 import { scanContentForThreats } from '../lib/securityScanner';
@@ -20,6 +17,7 @@ import { userService, type UserProfile } from '../services/userService';
 import { auth } from '../lib/firebase';
 import { buildStudentProfileContext, isValidPlatformGuideId } from '../lib/profileContext';
 import type { PlatformGuideId } from '../lib/platformUploadGuides';
+import { PageHeader, PrimaryButton, StepProgress } from '../components/mobile/MobilePrimitives';
 import { AI_SERVICES_CONSENT, AI_TRADEMARK_FOOTER } from '../version';
 import { COACH_CTA } from '../branding';
 import { userFacingError } from '../lib/userFacingError';
@@ -480,89 +478,32 @@ export default function UploadCenter({
         )}
       </AnimatePresence>
 
-    <AppealFlowShell step="upload" centered hideHeader onBack={onBack}>
-    <div className="space-y-6">
-      <div className="space-y-6">
+    <AppealFlowShell step="upload" hideHeader hideSteps>
+    <div className="rg3-screen rg3-upload-screen">
+      <PageHeader back onBack={onBack} eyebrow="New appeal" title="Add your marked work" subtitle="Choose a source. Nothing is sent without your approval." />
+      <StepProgress steps={['Upload', 'Analyze', 'Annotate', 'Evidence', 'Draft']} active={0} />
+      <div className="space-y-4">
 
-        <section className="rg-start-options" aria-label="Choose how to start">
-          <div><p>Choose how to start</p><h2>Upload, connect, or automate.</h2><span>Appeal is always available. Pick the source that is easiest for this exam.</span></div>
-          <div>
-            <button type="button" className="rg-start-option-active"><ICONS.Upload /><span><strong>Upload a file</strong><small>PDF or photo</small></span></button>
-            {onOpenPlatforms && <button type="button" onClick={onOpenPlatforms}><ICONS.Library /><span><strong>Use a platform</strong><small>Canvas, Classroom, and more</small></span></button>}
-            {onOpenAutomation && <button type="button" onClick={onOpenAutomation}><ICONS.Bell /><span><strong>Turn on Auto Mode</strong><small>Ask when new work arrives</small></span></button>}
-          </div>
+        <section className="rg3-source-picker" aria-label="Choose how to start">
+          <button type="button" className="is-active"><ICONS.Upload /><span><strong>Upload</strong><small>PDF or photo</small></span><ICONS.Check /></button>
+          {onOpenPlatforms && <button type="button" onClick={onOpenPlatforms}><ICONS.Library /><span><strong>Import</strong><small>School platform</small></span><ICONS.ChevronRight /></button>}
+          {onOpenAutomation && <button type="button" onClick={onOpenAutomation}><ICONS.Zap /><span><strong>Auto Mode</strong><small>Watch new work</small></span><ICONS.ChevronRight /></button>}
         </section>
 
-        <UploadGuidePanel
-          selectedPlatformId={appealPlatform}
-          onPlatformChange={setAppealPlatform}
-          profileDefaultPlatformId={
-            isValidPlatformGuideId(userProfile?.preferredPlatform)
-              ? userProfile.preferredPlatform
-              : undefined
-          }
-        />
-
-        <UploadIngredientsPanel
-          hasUpload={stagedUploads.length > 0}
-          hasRubricPaste={rubricCriteria.trim().length > 0}
-          platformName={
-            PLATFORM_UPLOAD_GUIDES.find((g) => g.id === appealPlatform)?.name ??
-            appealPlatform.replace(/_/g, ' ')
-          }
-        />
+        <details className="rg3-disclosure"><summary><span><ICONS.Info /><strong>How to export marked work</strong></span><ICONS.ChevronDown /></summary><div className="pt-3"><UploadGuidePanel selectedPlatformId={appealPlatform} onPlatformChange={setAppealPlatform} profileDefaultPlatformId={isValidPlatformGuideId(userProfile?.preferredPlatform) ? userProfile.preferredPlatform : undefined} /></div></details>
 
         <motion.div
           initial={{ opacity: 0, scale: 0.99 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.1 }}
-          className="rg-glass-form-card p-5 sm:p-6 space-y-5"
+          className="rg3-upload-card"
         >
-          <div className="text-center space-y-3 border-b border-primary/10 pb-5">
-            <h2 className="rg-serif text-[clamp(24px,5.5vw,30px)] text-ink font-bold leading-tight">
-              Upload your file
-            </h2>
-            <p className="text-[15px] font-medium text-ink/75">Drag graded PDF or photos here when you&apos;re ready</p>
-            <button
-              type="button"
-              onClick={() => onOpenChat?.()}
-              className="rg-btn-ghost text-sm py-2 px-5 mx-auto"
-            >
-              Get upload guidance
-            </button>
-          </div>
-
-          <div className="rg-upload-tip-glass space-y-3 text-left">
-            <p className="text-[15px] font-bold text-ink flex items-center gap-2">
-              <ICONS.BookOpen className="text-primary shrink-0" size={18} strokeWidth={2} />
-              Before you drop files
-            </p>
-            <p className="text-[14px] font-medium text-ink/80 leading-relaxed">
-              Use <strong className="font-bold text-ink">Instructions</strong> above for your platform. Upload the{' '}
-              <strong className="font-bold text-ink">graded</strong> copy — scores, rubric, and teacher comments must show.
-            </p>
-            <ul className="space-y-2 text-[14px] font-medium text-ink/75 leading-relaxed">
-              <li className="flex gap-2">
-                <span className="text-primary shrink-0">·</span>
-                <span>
-                  <strong className="font-bold text-ink">Gradescope:</strong> Download Graded Copy, not Original
-                </span>
-              </li>
-              <li className="flex gap-2">
-                <span className="text-primary shrink-0">·</span>
-                <span>
-                  <strong className="font-bold text-ink">Canvas / Moodle / others:</strong> Feedback or SpeedGrader view → PDF or screenshot
-                </span>
-              </li>
-            </ul>
-          </div>
-
           <div
             onDragOver={onDragOver}
             onDragLeave={onDragLeave}
             onDrop={onDrop}
             onClick={() => document.getElementById('file-upload-1')?.click()}
-            className={`border-2 border-dashed rounded-2xl p-8 flex flex-col items-center justify-center text-center gap-2.5 transition-all cursor-pointer ${
+            className={`rg3-drop-zone ${
               isDragging
                 ? 'border-primary bg-primary/5 scale-[1.01]'
                 : 'border-hairline bg-parchment hover:border-primary/30 hover:bg-primary/5'
@@ -579,11 +520,12 @@ export default function UploadCenter({
                 e.target.value = '';
               }}
             />
-            <div className="rg-glass-chip p-3 rounded-xl shadow-md shadow-primary/10">
+            <div className="rg3-upload-icon">
               <ICONS.Upload className="text-primary w-7 h-7" />
             </div>
-            <p className="rg-serif text-[clamp(20px,4.5vw,24px)] text-ink font-bold">Drop or choose PDF / photo</p>
-            <p className="text-[14px] font-medium text-ink/70 max-w-sm">Screenshots work. No account linking — we analyze what you upload.</p>
+            <p>Drop a marked exam here</p>
+            <span>PDF, JPG, or PNG · up to {formatMaxUploadSize()}</span>
+            <b>Choose files</b>
           </div>
 
           {stagedUploads.length > 0 && (
@@ -634,7 +576,7 @@ export default function UploadCenter({
             </div>
           )}
 
-          <div className="space-y-2 pt-2 border-t border-primary/5">
+          <details className="rg3-disclosure"><summary><span><ICONS.Edit3 /><strong>Add rubric or mark scheme</strong></span><ICONS.ChevronDown /></summary><div className="space-y-2 pt-3">
             <label className="text-[13px] font-bold text-ink/70">
               Optional — assignment rubric or mark scheme
             </label>
@@ -649,9 +591,9 @@ export default function UploadCenter({
               className="w-full rg-glass-input rounded-xl px-4 py-3 text-sm outline-none resize-y text-ink placeholder:text-ink-muted/50"
               placeholder="e.g. Q1: correct formula (+5), units required (−1). Q2: show all work (−2 if missing steps)…"
             />
-          </div>
+          </div></details>
 
-          <div className="space-y-2 pt-2 border-t border-primary/5">
+          <details className="rg3-disclosure"><summary><span><ICONS.MessageSquare /><strong>Add context or teacher comments</strong></span><ICONS.ChevronDown /></summary><div className="space-y-2 pt-3">
             <label className="text-[13px] font-bold text-ink/70">
               Optional — only if the worksheet doesn&apos;t show everything
             </label>
@@ -663,7 +605,7 @@ export default function UploadCenter({
               className="w-full rg-glass-input rounded-xl px-4 py-3 text-sm outline-none resize-y text-ink placeholder:text-ink-muted/50"
               placeholder="e.g. course name, which question you’re appealing, or text that’s cut off in the photo…"
             />
-          </div>
+          </div></details>
         </motion.div>
 
         {securityError && (
@@ -681,11 +623,7 @@ export default function UploadCenter({
         )}
 
         <div className="space-y-3 pt-2">
-          <AnimatedPrimaryButton
-            onClick={() => void handleSubmit()}
-            disabled={loading}
-            className="w-full text-[16px] font-bold py-4"
-          >
+          <PrimaryButton onClick={() => void handleSubmit()} disabled={loading}>
             {loading ? (
               <span className="flex items-center gap-2.5">
                 <span className="flex gap-1">
@@ -697,11 +635,11 @@ export default function UploadCenter({
               </span>
             ) : (
               <>
-                Analyze worksheet
+                Review with AI
                 <ICONS.ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" strokeWidth={2.25} />
               </>
             )}
-          </AnimatedPrimaryButton>
+          </PrimaryButton>
           <p className="text-center text-[12px] text-ink-muted font-medium flex items-center justify-center gap-1.5">
             <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/8 text-primary">
               <ICONS.Shield className="w-3.5 h-3.5" strokeWidth={2} />

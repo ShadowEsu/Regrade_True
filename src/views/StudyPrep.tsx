@@ -9,7 +9,7 @@ import { isPreviewMode, isPreviewSupervisorView } from '../lib/previewMode';
 import { PREVIEW_ANALYSIS } from '../lib/previewFixtures';
 import SupervisorHub from './SupervisorHub';
 import StudyReviewStudio from './StudyReviewStudio';
-import { EmptyState, MetricCard, Reveal } from '../components/mobile/MobilePrimitives';
+import { EmptyState, MetricCard, PageHeader, Reveal } from '../components/mobile/MobilePrimitives';
 
 type StudyPattern = {
   id: string;
@@ -121,7 +121,7 @@ export default function StudyPrep({
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
-  const [showEvidence, setShowEvidence] = useState(false);
+  const [showEvidence, setShowEvidence] = useState(true);
   const [usingPreviewPlan, setUsingPreviewPlan] = useState(false);
   const [accountRole, setAccountRole] = useState<'student' | 'supervisor'>('student');
   const [reviewExam, setReviewExam] = useState<Case | null>(null);
@@ -189,21 +189,21 @@ export default function StudyPrep({
   if (reviewExam) return <StudyReviewStudio exam={reviewExam} onBack={() => setReviewExam(null)} />;
 
   return (
-    <div className="space-y-7 pb-8">
-      <Reveal><section className="space-y-2 pt-1"><MarketingEyebrow>review · exam evidence only</MarketingEyebrow><h1 className="rg-serif text-[clamp(32px,8vw,44px)] text-ink font-semibold leading-[1.05]">Exam review.</h1><p className="text-[13px] leading-relaxed text-ink-muted">Understand the marked work, capture what to revisit, and build priorities from real evidence.</p></section></Reveal>
+    <div className="rg3-screen rg3-review-screen">
+      <Reveal><PageHeader eyebrow="Study · Review" title="Your exams" subtitle="Understand every mark and decide what to practise next." action={<ICONS.Search />} /></Reveal>
 
       {!examCases.length ? (
-        <section><EmptyState icon={<ICONS.BookOpen />} title="Your Review room starts with one marked exam." body="Upload an exam showing its score, rubric, or teacher feedback. Only analyzed exam evidence shapes your plan." action="Analyze a marked exam" onAction={onStartAppeal} />{isPreviewMode() && <button type="button" onClick={() => { setExamCases(PREVIEW_EXAMS); setUsingPreviewPlan(true); }} className="mt-3 min-h-11 w-full text-[12px] font-semibold text-primary">View a labeled sample plan</button>}</section>
+        <section><EmptyState icon={<ICONS.BookOpen />} title="Your review room starts here" body="Add one marked exam with its score, rubric, or teacher feedback." action="Analyze a marked exam" onAction={onStartAppeal} />{isPreviewMode() && <button type="button" onClick={() => { setExamCases(PREVIEW_EXAMS); setUsingPreviewPlan(true); }} className="mt-3 min-h-11 w-full text-[12px] font-semibold text-primary">Open sample exams</button>}</section>
       ) : <>
-        <section className="grid grid-cols-3 gap-2"><MetricCard value={examCases.length} label="Exams" detail="Analyzed" icon={<ICONS.BookOpen />} /><MetricCard value={patterns.length} label="Priorities" detail="Evidence based" tone="lavender" icon={<ICONS.Lightbulb />} /><MetricCard value={markedPoints} label="Marked points" detail="To revisit" tone="yellow" icon={<ICONS.Edit3 />} /></section>
+        <section className="rg3-review-metrics grid grid-cols-3 gap-2"><MetricCard value={examCases.length} label="Exams" detail="Analyzed" icon={<ICONS.BookOpen />} /><MetricCard value={patterns.length} label="Priorities" detail="Evidence based" tone="lavender" icon={<ICONS.Lightbulb />} /><MetricCard value={markedPoints} label="Marked points" detail="To revisit" tone="yellow" icon={<ICONS.Edit3 />} /></section>
 
-        <section className="rg-glass-form-card p-5 space-y-3">
+        <section className="rg3-review-progress rg-glass-form-card p-5 space-y-3">
           <div className="flex items-end justify-between gap-4"><div><MarketingEyebrow>your review progress</MarketingEyebrow><h2 className="rg-serif text-xl text-ink font-semibold mt-1">{complete} of {patterns.length} focus areas reviewed</h2></div><span className="text-lg font-semibold text-primary">{progress}%</span></div>
           <div className="h-2 rounded-full bg-primary/10 overflow-hidden"><motion.div className="h-full bg-primary rounded-full" animate={{ width: `${progress}%` }} /></div>
           <p className="text-[12px] leading-relaxed text-ink-muted">A check means you reviewed the pattern—not that it is permanently solved. Revisit it with your course materials before the final.</p>
         </section>
 
-        <section className="space-y-3">
+        <section className="rg3-review-plan space-y-3">
           <div><MarketingEyebrow>prioritized study plan</MarketingEyebrow><h2 className="rg-serif text-xl text-ink font-semibold mt-1">Start where the pattern appears across the most exams.</h2></div>
           {patterns.map((pattern, index) => {
             const done = checked.includes(pattern.id);
@@ -218,7 +218,7 @@ export default function StudyPrep({
           {!patterns.length && <div className="rg-glass-form-card p-5 text-[13px] text-ink-muted">These exams do not contain question-level deductions yet. Upload a marked export with questions or rubric rows for a stronger study plan.</div>}
         </section>
 
-        <section className="space-y-3"><button type="button" onClick={() => setShowEvidence((value) => !value)} className="w-full rg-glass-card rounded-xl p-4 flex items-center justify-between text-left"><span><MarketingEyebrow>exam library</MarketingEyebrow><span className="block rg-serif text-lg text-ink font-semibold mt-1">Browse the exams behind this plan</span></span><span className="flex items-center gap-2 text-[12px] font-semibold text-primary">{examCases.length} exams<ICONS.ChevronDown className={`w-5 h-5 transition-transform ${showEvidence ? 'rotate-180' : ''}`} /></span></button>
+        <section className="rg3-review-library space-y-3"><button type="button" onClick={() => setShowEvidence((value) => !value)} className="w-full rg-glass-card rounded-xl p-4 flex items-center justify-between text-left"><span><MarketingEyebrow>exam library</MarketingEyebrow><span className="block rg-serif text-lg text-ink font-semibold mt-1">Browse your marked exams</span></span><span className="flex items-center gap-2 text-[12px] font-semibold text-primary">{examCases.length} exams<ICONS.ChevronDown className={`w-5 h-5 transition-transform ${showEvidence ? 'rotate-180' : ''}`} /></span></button>
           {showEvidence && (
             <div className="space-y-4">
               <div className="grid gap-2 rounded-xl border border-hairline bg-canvas p-3 sm:grid-cols-[minmax(0,1fr)_auto_auto]">

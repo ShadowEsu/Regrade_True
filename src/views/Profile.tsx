@@ -149,6 +149,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
   const [toastMessage, setToastMessage] = useState('Profile saved');
   const [securityError, setSecurityError] = useState<string | null>(null);
   const [localSection, setLocalSection] = useState<ProfileSection>('you');
+  const [profileEditOpen, setProfileEditOpen] = useState(false);
   const activeTab = sectionProp ?? localSection;
   const setActiveTab = (s: ProfileSection) => {
     if (onSectionChange) onSectionChange(s);
@@ -452,7 +453,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               ['account', 'Learner codes', 'Pair a parent or teacher', ICONS.Lock],
               ['account', 'Settings & account', 'Privacy, family, help, and legal', ICONS.Shield],
             ] as const).map(([id, title, detail, Icon]) => (
-              <button key={id} type="button" onClick={() => setActiveTab(id)}>
+              <button key={`${id}-${title}`} type="button" onClick={() => setActiveTab(id)}>
                 <span><Icon /></span><span><strong>{title}</strong><small>{detail}</small></span><ICONS.ChevronRight />
               </button>
             ))}
@@ -476,6 +477,9 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               exit={{ opacity: 0, y: -4 }}
               className="space-y-4"
             >
+              <details className="rg3-profile-details" open={profileEditOpen} onToggle={(event) => setProfileEditOpen(event.currentTarget.open)}>
+                <summary><span><ICONS.User /><span><strong>Edit profile details</strong><small>Name, institution, tone, and focus</small></span></span><ICONS.ChevronDown /></summary>
+                <div className="space-y-4 pt-4">
               {/* Completion */}
               <div className="rg-glass-form-card p-5 space-y-3">
                 <div className="flex items-center justify-between gap-3">
@@ -671,6 +675,8 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
                   We use this to make your appeal calmer, clearer, and more personal — never to judge you.
                 </p>
               </div>
+                </div>
+              </details>
             </motion.div>
           )}
 
@@ -936,7 +942,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
           </p>
         )}
 
-        {activeTab === 'you' && (
+        {activeTab === 'you' && profileEditOpen && (
           <div className="sticky bottom-[84px] z-30 -mx-1 px-1 pointer-events-none">
             <button
               type="submit"

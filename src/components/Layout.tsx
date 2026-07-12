@@ -1,10 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { BRAND_ICON_SRC, COACH_NAME, COACH_NAV_LABEL } from '../branding';
-import Logo from './Logo';
 import { NAV_TAB_ICONS } from './BottomNavIcons';
-import ProfileHeaderMenu from './ProfileHeaderMenu';
-import NotificationQuickToggle from './NotificationQuickToggle';
 import type { ProfileSection } from '../views/Profile';
 import { caseService } from '../services/caseService';
 import { automationService } from '../services/automationService';
@@ -19,18 +15,16 @@ interface LayoutProps {
 
 const tabs = [
   { id: 'dashboard', label: 'Home' },
-  { id: 'upload', label: 'Appeal' },
-  { id: 'chat', label: COACH_NAV_LABEL },
   { id: 'study', label: 'Review' },
+  { id: 'upload', label: 'Appeal' },
   { id: 'history', label: 'History' },
+  { id: 'profile', label: 'Profile' },
 ] as const;
 
 export default function Layout({
   children,
   activeTab,
   onTabChange,
-  profileSection,
-  onProfileSectionChange,
 }: LayoutProps) {
   const isChat = activeTab === 'chat';
   const [unread, setUnread] = useState<Record<string, number>>({ chat: 0, study: 0, history: 0 });
@@ -70,60 +64,6 @@ export default function Layout({
 
   return (
     <div className="rg-app-bg selection:bg-primary/15">
-      <header
-        className="shrink-0 z-50 overflow-visible pt-[env(safe-area-inset-top)] rg-subnav"
-      >
-        <div className="rg-app-shell h-16 sm:h-[4.25rem] flex items-center justify-between gap-3">
-          {isChat ? (
-            <>
-              <button
-                type="button"
-                onClick={() => selectTab('dashboard')}
-                className="rg-header-icon-btn w-9 h-9 shrink-0"
-                aria-label="Home"
-              >
-                <img
-                  src={BRAND_ICON_SRC}
-                  alt=""
-                  className="w-7 h-7 rounded-lg object-cover"
-                  draggable={false}
-                />
-              </button>
-              <div className="text-center min-w-0">
-                <span className="rg-serif text-lg text-ink font-semibold">{COACH_NAME}</span>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <NotificationQuickToggle />
-                <ProfileHeaderMenu
-                  activeSection={profileSection}
-                  onSectionChange={onProfileSectionChange}
-                  onOpenProfile={() => onTabChange('profile')}
-                />
-              </div>
-            </>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() => selectTab('dashboard')}
-                className="rg-header-logo-btn flex items-center min-w-0"
-                aria-label="Home"
-              >
-                <Logo size="sm" compact className="!text-left !p-0" />
-              </button>
-              <div className="flex items-center gap-1 shrink-0">
-                <NotificationQuickToggle />
-                <ProfileHeaderMenu
-                  activeSection={profileSection}
-                  onSectionChange={onProfileSectionChange}
-                  onOpenProfile={() => onTabChange('profile')}
-                />
-              </div>
-            </>
-          )}
-        </div>
-      </header>
-
       <main className="flex flex-col flex-1 min-h-0 pb-[calc(4.25rem+env(safe-area-inset-bottom))]">
         <motion.div
           key={activeTab}
@@ -131,7 +71,7 @@ export default function Layout({
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
           className={`flex flex-col flex-1 min-h-0 w-full ${
-            isChat ? 'w-full' : 'rg-app-shell py-6 sm:py-8 md:py-10'
+            isChat ? 'w-full' : 'rg-app-shell py-4 sm:py-5'
           }`}
           data-tour="content"
         >
@@ -149,15 +89,13 @@ export default function Layout({
           {tabs.map((tab) => {
             const active = activeTab === tab.id;
             const Icon = NAV_TAB_ICONS[tab.id];
-            const isCoach = tab.id === 'chat';
-
             return (
               <button
                 key={tab.id}
                 type="button"
                 onClick={() => selectTab(tab.id)}
                 className="rg-nav-item relative flex flex-col items-center gap-1 flex-1 min-w-0 py-0.5"
-                data-tour={tab.id === 'upload' ? 'appeal' : tab.id === 'chat' ? 'coach' : tab.id}
+                data-tour={tab.id === 'upload' ? 'appeal' : tab.id}
               >
                 <div
                   className="relative flex h-10 w-10 items-center justify-center"
@@ -170,7 +108,7 @@ export default function Layout({
                     />
                   )}
                   <span className="relative z-10 flex items-center justify-center">
-                    <Icon active={active} className={isCoach ? 'h-6 w-6' : 'h-[22px] w-[22px]'} />
+                    <Icon active={active} className="h-[21px] w-[21px]" />
                     {!active && (unread[tab.id] ?? 0) > 0 && <span className="absolute -right-2 -top-2 min-w-4 h-4 rounded-full bg-red-600 px-1 text-[9px] font-bold leading-4 text-white shadow-sm" aria-label={`${unread[tab.id]} unread`}>{Math.min(99, unread[tab.id])}</span>}
                   </span>
                 </div>

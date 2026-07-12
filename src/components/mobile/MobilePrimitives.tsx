@@ -68,3 +68,34 @@ export function ExpandablePanel({ open, children }: PropsWithChildren<{ open: bo
 export function EmptyState({ icon = <ICONS.FileText />, title, body, action, onAction }: { icon?: ReactNode; title: string; body: string; action?: string; onAction?: () => void }) {
   return <SurfaceCard className="rg2-empty"><motion.span animate={{ y: [0, -3, 0] }} transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut' }}>{icon}</motion.span><h3>{title}</h3><p>{body}</p>{action && <button type="button" onClick={onAction}>{action}</button>}</SurfaceCard>;
 }
+
+export function PageHeader({ title, subtitle, eyebrow, action, onAction, back, onBack }: { title: string; subtitle?: string; eyebrow?: string; action?: ReactNode; onAction?: () => void; back?: boolean; onBack?: () => void }) {
+  return <header className="rg3-page-header">{back && <button type="button" className="rg3-icon-button" onClick={onBack} aria-label="Go back"><ICONS.ChevronLeft /></button>}<div className="min-w-0 flex-1">{eyebrow && <span className="rg3-eyebrow">{eyebrow}</span>}<h1>{title}</h1>{subtitle && <p>{subtitle}</p>}</div>{action && <button type="button" className="rg3-icon-button" onClick={onAction}>{action}</button>}</header>;
+}
+
+export function PrimaryButton({ children, onClick, disabled = false, tone = 'blue', className = '' }: PropsWithChildren<{ onClick?: () => void; disabled?: boolean; tone?: 'blue' | 'ink' | 'danger'; className?: string }>) {
+  const reduced = useReducedMotion();
+  return <motion.button type="button" whileTap={reduced || disabled ? undefined : { scale: .975 }} disabled={disabled} onClick={onClick} className={`rg3-primary-button tone-${tone} ${className}`}>{children}</motion.button>;
+}
+
+export function SearchField({ value, onChange, placeholder = 'Search' }: { value: string; onChange: (value: string) => void; placeholder?: string }) {
+  return <label className="rg3-search"><ICONS.Search /><span className="sr-only">{placeholder}</span><input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} /></label>;
+}
+
+export function FilterChips({ items, value, onChange }: { items: Array<{ id: string; label: string }>; value: string; onChange: (id: string) => void }) {
+  return <div className="rg3-filter-chips" role="group" aria-label="Filters">{items.map((item) => <button type="button" key={item.id} aria-pressed={value === item.id} className={value === item.id ? 'is-active' : ''} onClick={() => onChange(item.id)}>{item.label}</button>)}</div>;
+}
+
+export function EvidenceRow({ value, title, body, tag, tone = 'positive', onClick }: { value: string; title: string; body: string; tag?: string; tone?: 'positive' | 'negative' | 'neutral'; onClick?: () => void }) {
+  const content = <><span className={`rg3-evidence-value tone-${tone}`}>{value}</span><span className="min-w-0 flex-1"><strong>{title}</strong><small>{body}</small>{tag && <i>{tag}</i>}</span>{onClick && <ICONS.ChevronRight className="rg3-evidence-arrow" />}</>;
+  return onClick ? <button type="button" onClick={onClick} className="rg3-evidence-row">{content}</button> : <div className="rg3-evidence-row">{content}</div>;
+}
+
+export function SettingsRow({ icon, title, subtitle, value, onClick, danger = false }: { icon?: ReactNode; title: string; subtitle?: string; value?: string; onClick?: () => void; danger?: boolean }) {
+  const content = <>{icon && <span className="rg3-settings-icon">{icon}</span>}<span className="min-w-0 flex-1"><strong className={danger ? 'text-red-600' : ''}>{title}</strong>{subtitle && <small>{subtitle}</small>}</span>{value && <em>{value}</em>}{onClick && <ICONS.ChevronRight />}</>;
+  return onClick ? <button type="button" className="rg3-settings-row" onClick={onClick}>{content}</button> : <div className="rg3-settings-row">{content}</div>;
+}
+
+export function StepProgress({ steps, active }: { steps: string[]; active: number }) {
+  return <div className="rg3-step-progress" aria-label={`Step ${active + 1} of ${steps.length}`}>{steps.map((step, index) => <div key={step} className={index <= active ? 'is-active' : ''}><span>{index + 1}</span><small>{step}</small></div>)}</div>;
+}

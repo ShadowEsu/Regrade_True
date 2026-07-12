@@ -104,26 +104,24 @@ export default function ConnectScreen({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="rg3-connect-screen">
       <div>
-        <h2 className="text-[17px] font-semibold text-ink">{S.screenTitle}</h2>
-        <p className="text-[13px] text-ink-muted leading-relaxed mt-1">
+        <span className="rg3-eyebrow">Connections</span><h2>{S.screenTitle}</h2>
+        <p>
           Search {connectors.length} supported sources by platform or country. You can always upload a PDF or screenshot instead.
         </p>
       </div>
 
-      <label className="relative block">
+      <label className="rg3-search">
         <span className="sr-only">Search platforms</span>
+        <span aria-hidden>⌕</span>
         <input
           type="search"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Search a platform, country, or school system…"
-          className="rg-glass-field w-full pl-10 py-3 text-[14px]"
+          className=""
         />
-        <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-primary/65" aria-hidden>
-          ⌕
-        </span>
       </label>
 
       {!query.trim() && (
@@ -135,7 +133,7 @@ export default function ConnectScreen({
                 key={id}
                 type="button"
                 onClick={() => setQuery(platform.displayName)}
-                className="rg-glass-chip px-3 py-1.5 text-[12px] font-semibold text-primary"
+                className="rg3-connector-chip"
               >
                 {platform.displayName}
               </button>
@@ -233,7 +231,7 @@ const PlatformCard: React.FC<PlatformCardProps> = ({
   const checkRecent = async () => { setImportBusy(true); setImportNote(null); try { const result = await connectorImportService.runAutomatic(meta.platformId); setImportNote(result.imported ? `${result.imported} recent graded item${result.imported === 1 ? '' : 's'} imported. ${result.ignoredOlderCount} older item${result.ignoredOlderCount === 1 ? '' : 's'} ignored.` : `No new grades in the last seven days. ${result.ignoredOlderCount} older item${result.ignoredOlderCount === 1 ? '' : 's'} left untouched.`); } catch (e) { setImportNote(e instanceof Error ? e.message : 'Automatic check failed.'); } finally { setImportBusy(false); } };
 
   return (
-    <div className="rg-glass-form-card p-4 space-y-3" data-platform={meta.platformId}>
+    <div className="rg3-connector-card" data-platform={meta.platformId}>
       <div className="flex items-center gap-3">
         {meta.logo ? (
           <img src={meta.logo} alt="" className="w-8 h-8 rounded-lg object-contain shrink-0" />

@@ -1,13 +1,12 @@
-import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { ICONS } from '../constants';
 import BrandSpinner from '../components/BrandSpinner';
 import AppealFlowShell from '../components/AppealFlowShell';
-import ChatMarkdown from '../components/ChatMarkdown';
 import { caseService, type Case } from '../services/caseService';
 import type { AnalysisResult, Question } from '../types';
 import DocumentAnnotator from '../components/DocumentAnnotator';
 import ContextualWhale from '../components/ContextualWhale';
+import { EvidenceRow, PageHeader, PrimaryButton, StatusBadge } from '../components/mobile/MobilePrimitives';
 
 /**
  * PaperView shows the student's own graded copy back to them, page by page,
@@ -29,6 +28,7 @@ export default function PaperView({
 }) {
   const [record, setRecord] = useState<Case | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pageIndex, setPageIndex] = useState(0);
 
   useEffect(() => {
     if (!caseId) {
@@ -71,46 +71,20 @@ export default function PaperView({
   }
 
   return (
-    <AppealFlowShell
-      title="Your paper"
-      step={mode === 'learn' ? 'learn' : 'evidence'}
-      onBack={onBack}
-    >
-      <div className="space-y-5">
-        <header className="space-y-1">
-          <p className="text-[11px] uppercase tracking-[0.14em] text-ink-muted">
-            {record.analysis?.assignment.subject ?? 'Assignment'}
-          </p>
-          <h2 className="rg-serif text-[22px] leading-tight text-ink font-semibold">
-            {record.analysis?.assignment.title ?? record.title}
-          </h2>
-          {record.analysis?.assignment.total_score_display && (
-            <p className="text-[13px] text-ink-muted">
-              Score:{' '}
-              <span className="font-medium text-ink">{record.analysis.assignment.total_score_display}</span>
-            </p>
-          )}
-        </header>
+      <div className="rg3-screen rg3-paper-screen">
+        <PageHeader back onBack={onBack} eyebrow={record.analysis?.assignment.subject ?? 'Exam review'} title={record.analysis?.assignment.title ?? record.title} action={<ICONS.MoreHorizontal />} />
+        <div className="rg3-paper-summary"><div><span>Final score</span><strong>{record.analysis?.assignment.total_score_display ?? 'Marked exam'}</strong></div><StatusBadge tone={annotations.some((item) => item.appealable) ? 'yellow' : 'green'}>{annotations.some((item) => item.appealable) ? `${annotations.filter((item) => item.appealable).length} to review` : 'Reviewed'}</StatusBadge></div>
+        <div className="rg3-paper-actions"><button type="button"><ICONS.BookOpen />Understand</button><button type="button"><ICONS.RefreshCcw />Review again</button><button type="button" onClick={() => document.querySelector('.rg2-context-whale-head') instanceof HTMLElement && (document.querySelector('.rg2-context-whale-head') as HTMLElement).click()}><ICONS.Bot />Ask Mr Whale</button></div>
 
         {pages.length === 0 ? (
           <PaperMissingNotice mode={mode} />
         ) : (
-          <div className="space-y-6">
-            {pages.map((src, i) => <div key={src + i}><DocumentAnnotator caseId={record.id ?? caseId ?? ''} pageIndex={i} src={src} pageLabel={`Graded page ${i + 1} of ${pages.length}`} /></div>)}
-          </div>
+          <div className="rg3-paper-workspace"><DocumentAnnotator caseId={record.id ?? caseId ?? ''} pageIndex={pageIndex} src={pages[pageIndex]} pageLabel={`Graded page ${pageIndex + 1} of ${pages.length}`} />{pages.length > 1 && <div className="rg3-page-nav"><button type="button" disabled={pageIndex === 0} onClick={() => setPageIndex((value) => Math.max(0,value-1))}><ICONS.ChevronLeft /></button><span>Page {pageIndex + 1} of {pages.length}</span><button type="button" disabled={pageIndex === pages.length - 1} onClick={() => setPageIndex((value) => Math.min(pages.length-1,value+1))}><ICONS.ChevronRight /></button></div>}</div>
         )}
 
         {record.analysis && <ContextualWhale analysis={record.analysis} />}
 
-        <section className="space-y-3">
-          <div className="flex items-baseline justify-between">
-            <h3 className="text-[15px] font-semibold text-ink">
-              {mode === 'learn' ? 'What went wrong, in plain words' : 'What Regrade found'}
-            </h3>
-            <span className="text-[11px] text-ink-muted">
-              {annotations.length} {annotations.length === 1 ? 'note' : 'notes'}
-            </span>
-          </div>
+        <section className="space-y-3"><div className="rg3-section-title"><div><span>Evidence</span><h2>{mode === 'learn' ? 'What to understand next' : 'What Regrade found'}</h2></div><small>{annotations.length} notes</small></div>
 
           {teacherWroteNothing && (
             <p className="rg-glass-card p-4 text-[13px] text-ink-muted leading-relaxed">
@@ -127,29 +101,13 @@ export default function PaperView({
             </p>
           )}
 
-          <ul className="space-y-3">
-            {annotations.map((a) => (
-              <AnnotationRow key={a.id} annotation={a} mode={mode} />
-            ))}
-          </ul>
+          <div className="space-y-2">{annotations.map((a) => <div key={a.id}><EvidenceRow value={a.appealable ? `+${Math.max(1,a.pointsLost)}` : a.pointsLost ? `−${a.pointsLost}` : 'i'} tone={a.appealable ? 'positive' : a.pointsLost ? 'negative' : 'neutral'} title={`${a.questionId} · ${a.heading}`} body={a.aiExplanation} tag={a.teacherQuote ? 'Teacher comment' : a.appealable ? 'Possible issue' : undefined} /></div>)}</div>
         </section>
 
         {mode === 'review' && onOpenAppeal && annotations.some((a) => a.appealable) && (
-          <div className="rg-glass-card p-4 flex items-center justify-between gap-4">
-            <p className="text-[13px] text-ink leading-relaxed">
-              At least one of these is worth appealing.
-            </p>
-            <button
-              type="button"
-              onClick={onOpenAppeal}
-              className="rg-btn-primary text-[13px] px-4 py-2 shrink-0"
-            >
-              Open the appeal
-            </button>
-          </div>
+          <PrimaryButton onClick={onOpenAppeal}>Draft appeal <ICONS.ArrowRight /></PrimaryButton>
         )}
       </div>
-    </AppealFlowShell>
   );
 }
 
@@ -163,40 +121,6 @@ type Annotation = {
   pointsLost: number;
   appealable: boolean;
   studyTip: string;
-};
-
-const AnnotationRow: React.FC<{ annotation: Annotation; mode: 'review' | 'learn' }> = ({ annotation, mode }) => {
-  return (
-    <li className="rg-glass-card p-4 space-y-2">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[13px] font-semibold text-ink">{annotation.questionId}</p>
-        {annotation.pointsLost > 0 && (
-          <span className="text-[11px] font-medium text-primary bg-primary/10 rounded-full px-2 py-0.5">
-            −{annotation.pointsLost} pt{annotation.pointsLost === 1 ? '' : 's'}
-          </span>
-        )}
-      </div>
-      <p className="text-[13px] text-ink leading-relaxed">{annotation.heading}</p>
-      {annotation.redUnderline && (
-        <p className="text-[13px] leading-relaxed">
-          <span className="rg-red-underline">{annotation.redUnderline}</span>
-        </p>
-      )}
-      {annotation.teacherQuote && (
-        <p className="text-[12px] text-ink-muted leading-relaxed border-l-2 border-hairline pl-3">
-          <ICONS.MessageSquare className="inline w-3 h-3 mr-1 text-ink-muted" strokeWidth={2} />
-          {annotation.teacherQuote}
-        </p>
-      )}
-      <div className="text-[13px] text-ink leading-relaxed"><ChatMarkdown text={annotation.aiExplanation} /></div>
-      {mode === 'learn' && annotation.studyTip && (
-        <div className="text-[12px] leading-relaxed text-emerald-800 bg-emerald-500/8 border border-emerald-500/20 rounded-lg px-3 py-2">
-          <ICONS.Lightbulb className="inline w-3.5 h-3.5 mr-1" strokeWidth={2} />
-          <ChatMarkdown text={annotation.studyTip} />
-        </div>
-      )}
-    </li>
-  );
 };
 
 function PaperMissingNotice({ mode }: { mode: 'review' | 'learn' }) {

@@ -22,6 +22,7 @@ export default function AppealFlowShell({
   children,
   centered = false,
   hideHeader = false,
+  hideSteps = false,
   wide = false,
 }: {
   step: AppealFlowStepId;
@@ -31,10 +32,11 @@ export default function AppealFlowShell({
   children: ReactNode;
   centered?: boolean;
   hideHeader?: boolean;
+  hideSteps?: boolean;
   wide?: boolean;
 }) {
   return (
-    <div className={`space-y-6 ${centered ? 'text-center' : ''}`}>
+    <div className={`rg3-flow-shell space-y-5 ${centered ? 'text-center' : ''}`}>
       {onBack && (
         <button
           type="button"
@@ -46,7 +48,7 @@ export default function AppealFlowShell({
         </button>
       )}
 
-      <AppealFlowSteps current={step} />
+      {!hideSteps && <AppealFlowSteps current={step} />}
 
       {!hideHeader && (title || subtitle || STEP_EYEBROW[step]) && (
         <motion.header

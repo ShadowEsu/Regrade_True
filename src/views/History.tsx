@@ -2,9 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { ICONS } from '../constants';
 import BrandSpinner from '../components/BrandSpinner';
-import MarketingEyebrow from '../components/MarketingEyebrow';
-import AnimatedPrimaryButton from '../components/AnimatedPrimaryButton';
-import { MetricCard, Reveal, StatusBadge } from '../components/mobile/MobilePrimitives';
+import { EmptyState, FilterChips, MetricCard, PageHeader, PrimaryButton, Reveal, SearchField, StatusBadge } from '../components/mobile/MobilePrimitives';
 import { caseService, Case } from '../services/caseService';
 import {
   getPossiblePointsBack,
@@ -88,8 +86,8 @@ export default function History({
   }, [filteredCases, visibleCount]);
 
   return (
-    <div className="space-y-8 pb-4">
-      <Reveal><section className="space-y-2 pt-1"><MarketingEyebrow>your record</MarketingEyebrow><h1 className="rg-serif text-[clamp(30px,8vw,42px)] text-ink font-semibold">My history.</h1><p className="text-[13px] leading-relaxed text-ink-muted">Imported exams, completed reviews, saved drafts, and confirmed outcomes.</p></section></Reveal>
+    <div className="rg3-screen rg3-history-screen">
+      <Reveal><PageHeader eyebrow="Your record" title="My history" subtitle="Every exam, draft, and outcome in one place." action={<ICONS.MoreHorizontal />} /></Reveal>
 
       {!loading && !error && cases.length > 0 && (
         <Reveal className="grid grid-cols-3 gap-2"><MetricCard value={totalRecoverable} label="Points identified" detail="Possible" tone="green" icon={<ICONS.TrendingUp />} /><MetricCard value={cases.filter((item) => Boolean(item.draftEmail)).length} label="Drafts saved" detail="Editable" tone="lavender" icon={<ICONS.Send />} /><MetricCard value={cases.filter((item) => item.status === 'Resolved').length} label="Outcomes" detail="Confirmed" tone="yellow" icon={<ICONS.Verified />} /></Reveal>
@@ -108,33 +106,11 @@ export default function History({
             Try again
           </button>
         </div>
-      ) : cases.length === 0 ? (
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="relative overflow-hidden rg-glass-card p-8 sm:p-10 text-center space-y-5"
-        >
-          <div className="absolute inset-0 bg-primary/[0.035] pointer-events-none" aria-hidden />
-          <div className="relative w-16 h-16 mx-auto rounded-2xl rg-glass flex items-center justify-center">
-            <ICONS.History className="w-8 h-8 text-primary" strokeWidth={1.5} />
-          </div>
-          <div className="relative space-y-2">
-            <p className="rg-serif text-2xl text-ink font-semibold">Nothing here yet.</p>
-            <p className="rg-lead text-[15px] max-w-xs mx-auto">
-              Finished appeals show up with points recovered and draft status.
-            </p>
-          </div>
-          <AnimatedPrimaryButton onClick={onStartAppeal} showPlus className="max-w-xs mx-auto relative">
-            Start your first appeal
-          </AnimatedPrimaryButton>
-        </motion.div>
-      ) : (
+      ) : cases.length === 0 ? <EmptyState icon={<ICONS.History />} title="Nothing here yet" body="Imported exams, reviews, drafts, and confirmed outcomes will appear here." action="Start your first appeal" onAction={onStartAppeal} /> : (
         <div className="space-y-5">
           {actionError && <div className="flex items-center justify-between gap-3 rounded-xl border border-red-500/20 bg-red-500/5 p-3" role="alert"><p className="text-[12px] text-red-700">{actionError}</p><button type="button" onClick={() => setActionError(null)} className="shrink-0 text-[12px] font-semibold text-primary">Dismiss</button></div>}
-          <div className="grid gap-2 rounded-xl border border-hairline bg-canvas p-3 sm:grid-cols-[minmax(0,1fr)_auto]">
-            <label className="relative block"><span className="sr-only">Search appeal history</span><ICONS.Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search appeal, course, or subject" className="h-10 w-full rounded-lg border border-hairline bg-parchment pl-9 pr-3 text-[13px] text-ink outline-none focus:border-primary" /></label>
-            <select aria-label="Filter history by status" value={status} onChange={(event) => setStatus(event.target.value)} className="h-10 rounded-lg border border-hairline bg-canvas px-3 text-[13px] text-ink outline-none focus:border-primary"><option value="all">All statuses</option><option value="draft ready">Draft ready</option><option value="under review">Under review</option><option value="resolved">Resolved</option></select>
-          </div>
+          <SearchField value={search} onChange={setSearch} placeholder="Search exams, courses, or appeals" />
+          <FilterChips value={status} onChange={setStatus} items={[{id:'all',label:'All'},{id:'draft ready',label:'Drafts'},{id:'under review',label:'In review'},{id:'resolved',label:'Outcomes'}]} />
           {groupedCases.map(([group, groupCases]) => <section key={group} className="space-y-3"><div className="flex items-center gap-3"><h2 className="text-[12px] font-semibold uppercase tracking-[0.12em] text-ink-muted">{group}</h2><span className="h-px flex-1 bg-hairline" /></div>{groupCases.map((appeal, idx) => {
             const pts = getPossiblePointsBack(appeal);
             const date = formatCaseDate(appeal.createdAt);
@@ -147,21 +123,13 @@ export default function History({
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: Math.min(idx * 0.04, 0.2) }}
-                className="rg2-card w-full p-4 text-left"
+                className={`rg3-history-record ${expanded ? 'is-expanded' : ''}`}
               >
                 <button type="button" onClick={() => setExpandedId(expanded ? null : appeal.id ?? null)} aria-expanded={expanded} className="flex w-full items-start justify-between gap-3 text-left">
                   <div className="min-w-0 flex-1">
-                    <h3 className="rg-serif text-lg text-ink font-semibold truncate">{appeal.title}</h3>
+                    <h3>{appeal.analysis?.assignment.title || appeal.title}</h3>
                     <p className="text-sm text-ink-muted mt-0.5">{getClassName(appeal)}</p>
-                    <p className="text-sm text-ink-muted mt-2">
-                      Score <span className="text-ink font-medium">{getScoreDisplay(appeal)}</span>
-                      {pts > 0 && (
-                        <span className="text-primary font-medium ml-3">+{pts} pts</span>
-                      )}
-                    </p>
-                    <p className="text-xs text-ink-muted mt-1.5">
-                      Next: <span className="text-ink">{getNextStep(appeal)}</span>
-                    </p>
+                    <p className="rg3-history-result">{pts > 0 ? `+${pts} possible point${pts === 1 ? '' : 's'}` : getNextStep(appeal)}</p>
                   </div>
                   <div className="shrink-0 flex flex-col items-end gap-2">
                     {date && (
@@ -173,18 +141,16 @@ export default function History({
                   </div>
                 </button>
 
-                <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-hairline">
+                <div className="rg3-history-meta">
                   <StatusBadge tone={statusKey === 'resolved' ? 'green' : statusKey === 'draft ready' ? 'yellow' : 'blue'}>{appeal.status}</StatusBadge>
-                  <span className="rg-glass-chip px-3 py-1 text-[11px] text-ink-muted">
-                    {appeal.progress}% done
-                  </span>
+                  <span>{getScoreDisplay(appeal)}</span><span>{appeal.progress}% complete</span>
                   {appeal.draftEmail && (
                     <span className="rg-glass-chip px-3 py-1 text-[11px] text-emerald-700 border-emerald-500/20 bg-emerald-500/8">
                       Draft saved
                     </span>
                   )}
                 </div>
-                {expanded && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-4 flex flex-wrap items-center gap-2 border-t border-hairline pt-4"><p className="mr-auto max-w-md text-[12px] leading-relaxed text-ink-muted">{appeal.analysis?.case_analysis.case_strength_reason || appeal.description || 'Open the appeal to review the evidence and saved draft.'}</p>{onViewPaper && (appeal.pageImages?.length || appeal.pageImageUrls?.length) && appeal.id && <button type="button" onClick={() => onViewPaper(appeal.id!)} className="rg-btn-secondary px-3 py-2 text-[12px]"><ICONS.FileText className="h-3.5 w-3.5" />View paper</button>}<button type="button" onClick={() => appeal.id && onOpenAppeal(appeal.id)} className="rg-btn-primary px-3 py-2 text-[12px]">Open appeal<ICONS.ArrowRight className="h-3.5 w-3.5" /></button><button type="button" disabled={deletingId === appeal.id} onClick={() => void deleteAppeal(appeal)} className="rg-btn-ghost px-3 py-2 text-[12px] text-red-600 disabled:opacity-50">{deletingId === appeal.id ? 'Deleting…' : 'Delete exam'}</button></motion.div>}
+                {expanded && <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="rg3-history-detail"><p>{appeal.analysis?.case_analysis.case_strength_reason || appeal.description || 'Open this record to review its evidence and saved draft.'}</p><div>{onViewPaper && (appeal.pageImages?.length || appeal.pageImageUrls?.length) && appeal.id && <button type="button" onClick={() => onViewPaper(appeal.id!)} className="rg3-secondary-button">Open exam</button>}<PrimaryButton onClick={() => appeal.id && onOpenAppeal(appeal.id)}>View appeal</PrimaryButton><button type="button" disabled={deletingId === appeal.id} onClick={() => void deleteAppeal(appeal)} className="rg3-delete-link">{deletingId === appeal.id ? 'Deleting…' : 'Delete'}</button></div></motion.div>}
               </motion.article>
             );
           })}</section>)}

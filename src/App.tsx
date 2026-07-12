@@ -266,6 +266,7 @@ export default function App() {
           setActiveTab('profile');
         }}
         onOpenStudy={() => setActiveTab('study')}
+        onOpenProfile={() => setActiveTab('profile')}
         onOpenSampleVerdict={
           isPreviewMode()
             ? () => {

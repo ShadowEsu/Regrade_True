@@ -7,6 +7,7 @@ import { caseService, type Case } from '../services/caseService';
 import { userService } from '../services/userService';
 import { listConnections } from '../features/connect/store';
 import CoachWhale from '../components/CoachWhale';
+import NotificationQuickToggle from '../components/NotificationQuickToggle';
 import { getClassName, getPossiblePointsBack, getScoreDisplay } from '../lib/appealHelpers';
 import {
   ActivityGrid,
@@ -58,6 +59,7 @@ export default function Dashboard({
   onOpenSampleVerdict,
   onOpenPlatforms,
   onOpenStudy,
+  onOpenProfile,
 }: {
   onStartAppeal: () => void;
   onOpenChat: () => void;
@@ -65,6 +67,7 @@ export default function Dashboard({
   onOpenSampleVerdict?: () => void;
   onOpenPlatforms?: () => void;
   onOpenStudy: () => void;
+  onOpenProfile: () => void;
 }) {
   const user = auth.currentUser;
   const fallbackName = user?.displayName?.split(' ')[0] || (isPreviewMode() ? 'Preview' : user?.email?.split('@')[0]) || null;
@@ -118,10 +121,10 @@ export default function Dashboard({
     <div className="rg2-home">
       <Reveal className="rg2-home-hello rg2-span-full">
         <div>
-          <span className="rg2-home-date">{new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())}</span>
           <h1>{greeting}{firstName ? `, ${firstName}` : ''} <span aria-hidden>👋</span></h1>
-          <p>Let&apos;s understand what your marks are saying.</p>
+          <p>Let&apos;s get those points back.</p>
         </div>
+        <div className="rg3-home-actions"><NotificationQuickToggle /><button type="button" onClick={onOpenProfile} className="rg3-avatar-button" aria-label="Open profile">{user?.photoURL ? <img src={user.photoURL} alt="" /> : <span>{firstName?.[0]?.toUpperCase() ?? 'R'}</span>}</button></div>
       </Reveal>
 
       {loadError && <div className="rg-notice rg2-span-full" role="alert"><p className="flex-1">{loadError}</p><button type="button" className="rg-text-button" onClick={() => setLoadAttempt((value) => value + 1)}>Retry</button></div>}
