@@ -87,7 +87,7 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   }, []);
 
   if (isPreviewMode()) {
-    if (isPreviewSplashView()) return <BootSplash label="Regrade" />;
+    if (isPreviewSplashView()) return <><PreviewBanner /><BootSplash label="Regrade" /></>;
     if (isPreviewSignInView()) {
       return (
         <>

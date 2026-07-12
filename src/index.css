@@ -2050,6 +2050,59 @@ header.bg-gradient-to-b {
 .rg-boot { background: var(--color-primary) !important; }
 .rg-boot-mark { width: 82px !important; height: 82px !important; background: transparent !important; box-shadow: none !important; }
 .rg-boot-icon { display: block; width: 82px; height: 82px; border-radius: 22px; object-fit: cover; }
+
+/* Preview-only screen switcher. Fixed positioning keeps it out of production
+   layouts and prevents the full-screen splash from hiding navigation. */
+.rg-preview-toolbar {
+  position: fixed;
+  z-index: 1000;
+  left: 50%;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: max-content;
+  max-width: calc(100vw - 24px);
+  padding: 6px;
+  border: 1px solid rgba(16, 21, 46, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 14px 38px rgba(16, 21, 46, 0.18);
+  backdrop-filter: blur(18px);
+}
+.rg-preview-toolbar button,
+.rg-preview-label {
+  min-height: 36px;
+  padding: 0 12px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+  color: #667085;
+  white-space: nowrap;
+}
+.rg-preview-label {
+  display: inline-flex;
+  align-items: center;
+  color: #10152e;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.rg-preview-toolbar button {
+  transition: background-color 160ms ease, color 160ms ease, transform 160ms ease;
+}
+.rg-preview-toolbar button:hover { background: #f1f4ff; color: #10152e; }
+.rg-preview-toolbar button:active { transform: scale(0.96); }
+.rg-preview-toolbar button.is-active { background: #2f61f5; color: white; }
+.rg-preview-toolbar .rg-preview-app-link { color: #2f61f5; }
+@media (max-width: 520px) {
+  .rg-preview-label { display: none; }
+  .rg-preview-toolbar button { padding-inline: 10px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rg-preview-toolbar button { transition: none; }
+}
 .rg-auth-title,
 .rg-welcome-title,
 .rg-home-primary h2,
