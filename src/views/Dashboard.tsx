@@ -1,16 +1,23 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { ICONS } from '../constants';
 import { auth } from '../lib/firebase';
 import { isPreviewMode } from '../lib/previewMode';
 import { caseService, type Case } from '../services/caseService';
 import { userService } from '../services/userService';
+import { listConnections } from '../features/connect/store';
 import CoachWhale from '../components/CoachWhale';
-import { getClassName, getNextStep, getPossiblePointsBack, getScoreDisplay } from '../lib/appealHelpers';
-
-function todayLabel() {
-  return new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date());
-}
+import { getClassName, getPossiblePointsBack, getScoreDisplay } from '../lib/appealHelpers';
+import {
+  ActivityGrid,
+  ExpandablePanel,
+  HorizontalScroller,
+  MetricCard,
+  Reveal,
+  SectionHeading,
+  StatusBadge,
+  SurfaceCard,
+} from '../components/mobile/MobilePrimitives';
 
 function timestampMs(value: unknown): number {
   if (value && typeof (value as { toDate?: () => Date }).toDate === 'function') return (value as { toDate: () => Date }).toDate().getTime();
@@ -26,17 +33,22 @@ function dayKey(value: unknown): string | null {
 }
 
 function currentReviewStreak(cases: Case[]): number {
-  const activeDays = new Set(cases.map((item) => dayKey(item.updatedAt ?? item.createdAt)).filter(Boolean) as string[]);
-  if (!activeDays.size) return 0;
+  const active = new Set(cases.map((item) => dayKey(item.updatedAt ?? item.createdAt)).filter(Boolean) as string[]);
   const cursor = new Date();
   cursor.setHours(12, 0, 0, 0);
-  if (!activeDays.has(dayKey(cursor)!)) cursor.setDate(cursor.getDate() - 1);
+  if (!active.has(dayKey(cursor)!)) cursor.setDate(cursor.getDate() - 1);
   let streak = 0;
-  while (activeDays.has(dayKey(cursor)!)) {
-    streak += 1;
-    cursor.setDate(cursor.getDate() - 1);
-  }
+  while (active.has(dayKey(cursor)!)) { streak += 1; cursor.setDate(cursor.getDate() - 1); }
   return streak;
+}
+
+function timeLabel(raw: unknown) {
+  const time = timestampMs(raw);
+  if (!time) return 'Recently';
+  const today = new Date();
+  const date = new Date(time);
+  if (today.toDateString() === date.toDateString()) return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(date);
+  return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric' }).format(date);
 }
 
 export default function Dashboard({
@@ -57,16 +69,13 @@ export default function Dashboard({
   const user = auth.currentUser;
   const fallbackName = user?.displayName?.split(' ')[0] || (isPreviewMode() ? 'Preview' : user?.email?.split('@')[0]) || null;
   const [firstName, setFirstName] = useState<string | null>(fallbackName);
-  const [latestCase, setLatestCase] = useState<Case | null>(null);
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
-  const [analysisAlerts, setAnalysisAlerts] = useState(true);
-  const [possibleIssueAlerts, setPossibleIssueAlerts] = useState(true);
-  const [guidanceVisible, setGuidanceVisible] = useState(() => localStorage.getItem('regrade.home.guide.dismissed') !== '1');
-  const notifiedCaseId = useRef<string | null>(null);
-  const points = latestCase ? getPossiblePointsBack(latestCase) : 0;
+  const [streakOpen, setStreakOpen] = useState(false);
+  const [connectionCount, setConnectionCount] = useState(0);
+  const [autoMode, setAutoMode] = useState(false);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
@@ -76,181 +85,114 @@ export default function Dashboard({
     void Promise.all([
       caseService.getUserCases(),
       user?.uid ? userService.getProfile(user.uid) : Promise.resolve(null),
-    ])
-      .then(([cases, profile]) => {
-        setCases(cases);
-        setLatestCase(cases[0] ?? null);
-        setAnalysisAlerts(profile?.analysisAlerts !== false);
-        setPossibleIssueAlerts(profile?.notificationPreferences?.possibleIssue !== false);
-        const savedName = profile?.name?.trim().split(/\s+/)[0];
-        if (savedName) setFirstName(savedName);
-      })
-      .catch(() => setLoadError('Your dashboard could not be loaded. Check your connection and try again.'))
-      .finally(() => setLoading(false));
+      listConnections().catch(() => []),
+    ]).then(([items, profile, connections]) => {
+      setCases(items);
+      setConnectionCount(connections.length);
+      setAutoMode(profile?.automaticGradeDetection === true);
+      const savedName = profile?.name?.trim().split(/\s+/)[0];
+      if (savedName) setFirstName(savedName);
+    }).catch(() => setLoadError('Your dashboard could not be loaded. Check your connection and try again.')).finally(() => setLoading(false));
   }, [loadAttempt, user?.uid]);
-
-  useEffect(() => {
-    if (!analysisAlerts || !possibleIssueAlerts || !latestCase?.analysis || !latestCase.id || points <= 0) return;
-    if (notifiedCaseId.current === latestCase.id) return;
-    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-    notifiedCaseId.current = latestCase.id;
-    new Notification('Regrade found something worth reviewing', {
-      body: `There may be up to ${points} points worth checking.`,
-      icon: '/favicon.png',
-    });
-  }, [analysisAlerts, latestCase, points, possibleIssueAlerts]);
-
-  const dismissGuide = () => {
-    localStorage.setItem('regrade.home.guide.dismissed', '1');
-    setGuidanceVisible(false);
-  };
 
   const stats = useMemo(() => {
     const reviewed = cases.filter((item) => Boolean(item.analysis));
-    const improved = cases.filter((item) => item.status === 'Resolved' || (item.draftEmail && getPossiblePointsBack(item) > 0));
-    const recovered = improved.reduce((total, item) => total + getPossiblePointsBack(item), 0);
-    const pending = cases.filter((item) => !item.analysis || item.progress < 80).length;
+    const improved = cases.filter((item) => item.status === 'Resolved');
+    const identified = reviewed.reduce((sum, item) => sum + getPossiblePointsBack(item), 0);
     return {
       streak: currentReviewStreak(cases),
       reviewed: reviewed.length,
       improved: improved.length,
-      recovered,
-      aiComplete: reviewed.length,
-      pending,
+      identified,
+      complete: reviewed.length,
+      pending: cases.filter((item) => !item.analysis || item.progress < 80).length,
     };
   }, [cases]);
 
-  const activity = useMemo(() => {
-    const activeDays = new Set(cases.map((item) => dayKey(item.updatedAt ?? item.createdAt)).filter(Boolean) as string[]);
-    return Array.from({ length: 28 }, (_, index) => {
-      const date = new Date();
-      date.setDate(date.getDate() - (27 - index));
-      return { key: dayKey(date)!, active: activeDays.has(dayKey(date)!) };
-    });
-  }, [cases]);
+  const activeDays = useMemo(() => new Set(cases.map((item) => dayKey(item.updatedAt ?? item.createdAt)).filter(Boolean) as string[]), [cases]);
+  const attention = useMemo(() => cases.filter((item) => !item.analysis || getPossiblePointsBack(item) > 0).slice(0, 5), [cases]);
+  const recent = cases.slice(0, 8);
+  const activity = cases.slice(0, 4);
 
   return (
-    <div className="rg-home space-y-7 pb-5">
-      <header className="rg-page-heading pt-2">
-        <p className="rg-page-kicker">{todayLabel()}</p>
-        <h1>{greeting}{firstName ? `, ${firstName}` : ''}.</h1>
-        <p>Ready when you are.</p>
-      </header>
-
-      {loadError && (
-        <div className="rg-notice flex items-center justify-between gap-4" role="alert">
-          <p>{loadError}</p>
-          <button type="button" className="rg-text-button shrink-0" onClick={() => setLoadAttempt((value) => value + 1)}>Retry</button>
+    <div className="rg2-home">
+      <Reveal className="rg2-home-hello rg2-span-full">
+        <div>
+          <span className="rg2-home-date">{new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'long', day: 'numeric' }).format(new Date())}</span>
+          <h1>{greeting}{firstName ? `, ${firstName}` : ''} <span aria-hidden>👋</span></h1>
+          <p>Let&apos;s understand what your marks are saying.</p>
         </div>
-      )}
+      </Reveal>
 
-      <section className="rg-home-primary">
-        <div className="min-w-0">
-          <span className="rg-home-primary-icon" aria-hidden><ICONS.Search /></span>
-          <p className="rg-home-label">Start here</p>
-          <h2>Review an exam.</h2>
-          <p>Add a marked paper, rubric, or teacher feedback. Regrade will separate evidence from uncertainty.</p>
-        </div>
-        <button type="button" onClick={onStartAppeal} className="rg-action-button">
-          Review graded work <ICONS.ArrowRight aria-hidden />
-        </button>
-      </section>
+      {loadError && <div className="rg-notice rg2-span-full" role="alert"><p className="flex-1">{loadError}</p><button type="button" className="rg-text-button" onClick={() => setLoadAttempt((value) => value + 1)}>Retry</button></div>}
 
-      <section className="rg-insights" aria-labelledby="dashboard-insights-title">
-        <div className="rg-section-heading">
-          <div><p>Progress</p><h2 id="dashboard-insights-title">Your Regrade activity.</h2></div>
-          <span className="rg-insights-caption">Based on analyzed exams</span>
-        </div>
-        <div className="rg-insights-grid">
-          <article className="rg-insight-card rg-insight-streak">
-            <div>
-              <p className="rg-insight-value">{stats.streak}</p>
-              <span>day streak</span>
+      <Reveal className="rg2-span-full">
+        <SurfaceCard className="rg2-streak">
+          <button type="button" onClick={() => setStreakOpen((open) => !open)} aria-expanded={streakOpen}>
+            <div className="rg2-streak-head">
+              <div><small>Your review streak</small><div className="rg2-streak-value">{stats.streak}<span>{stats.streak === 1 ? 'day' : 'days'}</span></div></div>
+              <motion.span className="rg2-streak-flame" animate={stats.streak > 0 ? { scale: [1, 1.07, 1] } : undefined} transition={{ duration: 2.4, repeat: Infinity }}><ICONS.Zap aria-hidden /></motion.span>
             </div>
-            <div className="rg-activity-grid" aria-label={`${stats.streak} day review streak`}>
-              {activity.map((day) => <i key={day.key} className={day.active ? 'is-active' : ''} title={day.key} />)}
-            </div>
-          </article>
-          <article className="rg-insight-card"><p className="rg-insight-value">{stats.reviewed}</p><span>Exams reviewed</span><small>Marked exams analyzed</small></article>
-          <article className="rg-insight-card"><p className="rg-insight-value">{stats.improved}</p><span>Exams improved</span><small>Resolved or draft ready</small></article>
-          <article className="rg-insight-card"><p className="rg-insight-value">{stats.recovered}</p><span>Marks identified</span><small>Potential points worth checking</small></article>
-          <article className="rg-insight-card"><p className="rg-insight-value">{stats.aiComplete}</p><span>AI reviews complete</span><small>Evidence reads finished</small></article>
-          <article className="rg-insight-card"><p className="rg-insight-value">{stats.pending}</p><span>Pending reviews</span><small>Waiting for analysis</small></article>
-        </div>
-      </section>
-
-      {!loading && analysisAlerts && latestCase?.analysis && points > 0 && (
-        <motion.button
-          type="button"
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          onClick={() => latestCase.id && onOpenAppeal?.(latestCase.id)}
-          className="rg-notice rg-notice-accent w-full text-left"
-        >
-          <span className="rg-notice-icon"><ICONS.Bell aria-hidden /></span>
-          <span className="min-w-0 flex-1">
-            <strong>Possible grading issue found</strong>
-            <small>Up to +{points} points may be worth checking.</small>
-          </span>
-          <ICONS.ChevronRight aria-hidden />
-        </motion.button>
-      )}
-
-      <section className="space-y-3">
-        <div className="rg-section-heading">
-          <div><p>Recent work</p><h2>{latestCase ? 'Pick up where you left off.' : 'Your workspace is clear.'}</h2></div>
-          {latestCase && <button type="button" onClick={onOpenStudy}>Open Review</button>}
-        </div>
-
-        {loading ? (
-          <div className="rg-content-card p-5 space-y-3" aria-label="Loading recent work">
-            <div className="rg-shimmer h-4 w-36 rounded" />
-            <div className="rg-shimmer h-14 w-full rounded-xl" />
-          </div>
-        ) : latestCase ? (
-          <button type="button" className="rg-exam-row" onClick={() => latestCase.id && onOpenAppeal?.(latestCase.id)}>
-            <span className="rg-exam-score">{getScoreDisplay(latestCase)}</span>
-            <span className="min-w-0 flex-1">
-              <strong>{latestCase.title}</strong>
-              <small>{getClassName(latestCase)} · Next: {getNextStep(latestCase)}</small>
-            </span>
-            <span className="rg-status-chip">{latestCase.progress}%</span>
-            <ICONS.ChevronRight aria-hidden />
+            <ActivityGrid active={activeDays} />
+            <ExpandablePanel open={streakOpen}><div className="rg2-streak-detail"><ActivityGrid active={activeDays} expanded /><p className="mt-4">Every analyzed exam adds a real review day. Regrade never fills this calendar with simulated activity.</p></div></ExpandablePanel>
           </button>
-        ) : (
-          <div className="rg-content-card rg-empty-compact">
-            <span><ICONS.FileText aria-hidden /></span>
-            <div><strong>No exams yet</strong><p>Your first analyzed exam will appear here.</p></div>
-            <button type="button" onClick={onStartAppeal}>Add one</button>
-          </div>
-        )}
-      </section>
+        </SurfaceCard>
+      </Reveal>
 
-      <section className="rg-home-grid">
-        <button type="button" onClick={onOpenChat} className="rg-home-tool">
-          <CoachWhale size={54} animate={false} />
-          <span><small>AI assistant</small><strong>Ask Mr Whale</strong><em>Discuss a mark or draft.</em></span>
-          <ICONS.ChevronRight aria-hidden />
-        </button>
-        <button type="button" onClick={onOpenPlatforms} className="rg-home-tool">
-          <span className="rg-tool-icon"><ICONS.Library aria-hidden /></span>
-          <span><small>Connections</small><strong>School platforms</strong><em>Import recent graded work.</em></span>
-          <ICONS.ChevronRight aria-hidden />
-        </button>
-      </section>
+      <Reveal className="rg2-span-full" delay={.03}>
+        <SectionHeading eyebrow="Focus" title="Needs your attention" action={attention.length ? `${attention.length} open` : undefined} />
+        <div className="mt-3">
+          {loading ? <div className="rg2-card h-44 rg-shimmer" aria-label="Loading attention cards" /> : attention.length ? (
+            <HorizontalScroller label="Exams needing attention">
+              {attention.map((item) => {
+                const points = getPossiblePointsBack(item);
+                return <SurfaceCard key={item.id ?? item.ref} className={`rg2-attention ${points ? '' : 'is-pending'}`} onClick={() => item.id && onOpenAppeal?.(item.id)} label={`Open ${item.title}`}>
+                  <div className="rg2-attention-top"><StatusBadge tone={points ? 'yellow' : 'blue'}>{item.analysis ? 'Evidence to review' : 'Analysis pending'}</StatusBadge><span className="text-[10px] text-ink-muted">{timeLabel(item.updatedAt)}</span></div>
+                  <h3>{item.analysis?.assignment.title ?? item.title}</h3><p>{getClassName(item)}</p>
+                  <footer><span>{points > 0 ? `+${points} possible point${points === 1 ? '' : 's'}` : `${item.progress}% complete`}</span><b>Continue review <ICONS.ArrowRight className="ml-2 h-3 w-3" /></b></footer>
+                </SurfaceCard>;
+              })}
+            </HorizontalScroller>
+          ) : <SurfaceCard className="rg2-attention is-pending" onClick={onStartAppeal} label="Add a marked exam"><div className="rg2-attention-top"><StatusBadge tone="green">All clear</StatusBadge></div><h3>Add your first marked exam</h3><p>Upload a PDF or connect a school platform.</p><footer><span>No open reviews</span><b>Get started <ICONS.ArrowRight className="ml-2 h-3 w-3" /></b></footer></SurfaceCard>}
+        </div>
+      </Reveal>
 
-      {guidanceVisible && (
-        <section className="rg-guidance-card">
-          <button type="button" onClick={dismissGuide} aria-label="Dismiss guide"><ICONS.X aria-hidden /></button>
-          <p>Make the first review stronger</p>
-          <h2>Include the marks and the reason.</h2>
-          <span>A graded copy plus the rubric or teacher feedback gives Regrade enough evidence to explain what happened.</span>
-          <div>
-            <button type="button" onClick={onStartAppeal}>Add a marked exam</button>
-            {onOpenSampleVerdict && <button type="button" onClick={onOpenSampleVerdict}>See an example</button>}
-          </div>
-        </section>
-      )}
+      <Reveal delay={.05}>
+        <SectionHeading eyebrow="Progress" title="Your progress" />
+        <div className="rg2-metrics mt-3">
+          <MetricCard value={stats.reviewed} label="Exams reviewed" detail="Evidence reads finished" icon={<ICONS.BookOpen />} />
+          <MetricCard value={stats.improved} label="Exams improved" detail="Confirmed outcomes" tone="lavender" icon={<ICONS.TrendingUp />} />
+          <MetricCard value={stats.identified} label="Points identified" detail="Possible, not guaranteed" tone="green" icon={<ICONS.CheckCircle2 />} />
+          <MetricCard value={stats.pending} label="Pending reviews" detail={`${stats.complete} AI reviews complete`} tone="yellow" icon={<ICONS.Activity />} />
+        </div>
+      </Reveal>
+
+      <Reveal delay={.08}>
+        <SectionHeading eyebrow="System" title="Regrade status" />
+        <div className="mt-3 grid gap-2">
+          <SurfaceCard className="rg2-system-card" onClick={onOpenPlatforms} label="Open connected platforms"><span><ICONS.Library /></span><div className="min-w-0 flex-1"><strong>{connectionCount ? `${connectionCount} connected platform${connectionCount === 1 ? '' : 's'}` : 'Connect a platform'}</strong><small>{connectionCount ? 'Import access is ready where supported.' : 'Search supported school tools.'}</small></div><StatusBadge tone={connectionCount ? 'green' : 'neutral'}>{connectionCount ? 'Connected' : 'Set up'}</StatusBadge></SurfaceCard>
+          <SurfaceCard className="rg2-system-card" onClick={onOpenPlatforms} label="Open Auto Mode settings"><span><ICONS.Zap /></span><div className="min-w-0 flex-1"><strong>Auto Mode</strong><small>{autoMode ? 'Watching configured import sources.' : 'Off until you choose to enable it.'}</small></div><StatusBadge tone={autoMode ? 'blue' : 'neutral'}>{autoMode ? 'On' : 'Off'}</StatusBadge></SurfaceCard>
+        </div>
+      </Reveal>
+
+      <Reveal className="rg2-span-full" delay={.1}>
+        <SectionHeading eyebrow="Library" title="Recent work" action={recent.length ? 'Open Review' : undefined} onAction={onOpenStudy} />
+        <div className="mt-3">
+          {recent.length ? <HorizontalScroller label="Recent exams">{recent.map((item) => <SurfaceCard key={item.id ?? item.ref} className="rg2-exam-card" onClick={() => item.id && onOpenAppeal?.(item.id)} label={`Open ${item.title}`}><span className="rg2-exam-thumb">{item.pageImageUrls?.[0] ? <img src={item.pageImageUrls[0]} alt="" /> : <ICONS.FileText />}</span><div><strong>{item.analysis?.assignment.title ?? item.title}</strong><small>{getClassName(item)}</small></div><footer><span>{getPossiblePointsBack(item) ? `+${getPossiblePointsBack(item)} pts to check` : getScoreDisplay(item)}</span><StatusBadge tone={item.analysis ? 'green' : 'blue'}>{item.analysis ? 'Reviewed' : 'Pending'}</StatusBadge></footer></SurfaceCard>)}</HorizontalScroller> : <SurfaceCard className="rg2-system-card" onClick={onStartAppeal} label="Add an exam"><span><ICONS.FileText /></span><div className="flex-1"><strong>No exams yet</strong><small>Your analyzed work will appear here.</small></div><ICONS.ArrowRight className="h-4 w-4 text-primary" /></SurfaceCard>}
+        </div>
+      </Reveal>
+
+      <Reveal delay={.12}>
+        <SectionHeading eyebrow="Timeline" title="Recent AI activity" />
+        <SurfaceCard className="rg2-activity-list mt-3">
+          {activity.length ? activity.map((item) => <button type="button" key={item.id ?? item.ref} className="rg2-activity-row w-full text-left" onClick={() => item.id && onOpenAppeal?.(item.id)}><time>{timeLabel(item.updatedAt)}</time><i /><span><strong>{item.analysis ? 'AI review completed' : 'Exam imported'}</strong><small>{item.analysis?.assignment.title ?? item.title}</small></span></button>) : <div className="p-5 text-center text-[12px] text-ink-muted">Your real import and review activity will appear here.</div>}
+        </SurfaceCard>
+      </Reveal>
+
+      <Reveal delay={.14}>
+        <SurfaceCard className="rg2-whale-card" onClick={onOpenChat} label="Ask Mr Whale"><div><h3>Mr Whale is here <span aria-hidden>🐋</span></h3><p>Ask about a marked question, evidence for an appeal, or what to practise next.</p></div><CoachWhale size={68} /></SurfaceCard>
+        {onOpenSampleVerdict && <button type="button" onClick={onOpenSampleVerdict} className="mt-2 min-h-11 w-full text-[11px] font-semibold text-primary">Open the labeled preview example</button>}
+      </Reveal>
     </div>
   );
 }

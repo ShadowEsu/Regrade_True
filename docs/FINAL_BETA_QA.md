@@ -1,7 +1,9 @@
 # Regrade Final Beta QA
 
-Date: July 11, 2026  
-Scope: Student and parent/supervisor modes  
+Date: July 12, 2026
+
+Scope: Student and parent/supervisor modes
+
 Result: **Not yet ready for an external beta**
 
 ## Decision
@@ -16,11 +18,11 @@ The client and server compile, automated tests pass, production dependency audit
 | Client tests | Pass | 48 tests across 7 files |
 | Client production build | Pass | `npm run build` |
 | Server TypeScript build | Pass | `npm --prefix server run build` |
-| Deterministic grading audit | Pass | 13 checks, 0 failures |
 | Client production dependency audit | Pass | 0 known vulnerabilities |
 | Server production dependency audit | Pass | 0 known vulnerabilities |
-| Capacitor asset/plugin sync | Pass with blocker warning | iOS and Android assets/plugins synced; API URL is unset |
+| Capacitor asset/plugin sync | Pass with blocker warning | iOS and Android assets/plugins synced on July 12; API URL is unset |
 | Bundle review | Warning | Firebase chunk is about 520 KB minified; PDF worker is intentionally lazy-loaded |
+| Interactive browser journey | Blocked by tooling | The installed in-app Browser plugin is missing its required browser client module; no substitute browser automation was used |
 
 ## Journey matrix
 
@@ -40,6 +42,12 @@ The client and server compile, automated tests pass, production dependency audit
 
 ## Fixes completed in this pass
 
+- Replaced the mixed dark/light presentation with the approved Regrade light system and reusable mobile primitives.
+- Rebuilt Home as a data-backed command center with needs-attention cards, metrics, recent work, activity, connector state, Auto Mode state, and Mr. Whale access.
+- Added persistent per-page user annotations: highlight, draw, text, zoom, rotation viewing, undo, redo, and retry-safe persistence.
+- Added a contextual Mr. Whale panel tied to the current case and its analyzed questions.
+- Added a persistent categorized notification inbox with unread/archive state and case deep links.
+- Changed connector imports to explicit `available_to_select` / `awaiting_returned_file` job states instead of implying an AI review was complete.
 - Added a shared 25-second API timeout, offline detection, aborted-request handling, and user-safe network errors.
 - Added a centralized error translator so Firebase, AI, and upload failures do not expose raw SDK messages, paths, tokens, or stack details.
 - Added explicit connector states: Connected, Available, Coming soon, Needs setup, and Connection failed.
@@ -72,7 +80,7 @@ This does **not** prove every third-party response has been seen. Before beta, u
 
 ## Annotation review
 
-Multi-page images, page navigation, reopening, scrolling, and zoom are supported. Findings are displayed in a separate evidence rail instead of coordinate overlays. This design avoids false visual alignment after resizing, but it does not yet provide precise red/green boxes anchored to handwriting, diagrams, or page coordinates. Rotation and coordinate-overlay testing therefore remain blocked until an annotation coordinate schema is implemented.
+Multi-page images, page navigation, reopening, scrolling, zoom, persisted highlights, free drawing, and text notes are implemented with normalized page coordinates. Saved overlays rotate with the page for viewing. Editing while rotated is intentionally blocked until inverse coordinate mapping receives real-device validation. AI findings remain in the evidence rail unless verified page coordinates exist, which prevents the interface from drawing false boxes around handwriting or diagrams.
 
 ## Accessibility and responsive review
 

@@ -5,18 +5,18 @@
  */
 
 export const palette = {
-  navy: '#0A1F44',
-  navyRaised: '#1B3464',
-  navyDark: '#060F22',
-  cyan: '#4FA8E0',
-  cyanBright: '#7DD3FC',
-  cream: '#F8F5EE',
-  creamRaised: '#EFEAE0',
-  border: '#E8E2D6',
-  muted: '#6B7280',
-  coral: '#E27D6B',
-  green: '#4ADE80',
-  gold: '#F59E0B',
+  navy: '#10152E',
+  navyRaised: '#25304F',
+  navyDark: '#0B1024',
+  cyan: '#2F61F5',
+  cyanBright: '#73A4FF',
+  cream: '#F7F8FC',
+  creamRaised: '#FFFFFF',
+  border: '#E5E9F2',
+  muted: '#667085',
+  coral: '#EF5B5B',
+  green: '#35B978',
+  gold: '#F3C94F',
 } as const;
 
 export type PaletteKey = keyof typeof palette;
@@ -36,10 +36,10 @@ export type SpaceStep = (typeof space)[number];
 
 /** Corner radii in px. `pill` is the fully rounded control shape. */
 export const radius = {
-  sm: 8,
-  md: 12,
-  lg: 16,
-  card: 20,
+  sm: 10,
+  md: 14,
+  lg: 18,
+  card: 24,
   pill: 9999,
 } as const;
 

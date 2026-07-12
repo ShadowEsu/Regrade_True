@@ -404,6 +404,13 @@ export default function UploadCenter({
         const pageImageUrls = await documentStorageService.uploadCasePages(docRef.id, inlineImages);
         await caseService.updateCase(docRef.id, { pageImageUrls });
       }
+      if (docRef.id) {
+        const { notificationService } = await import('../services/notificationService');
+        const { getPossiblePointsBack } = await import('../lib/appealHelpers');
+        await notificationService.analysisComplete(docRef.id, analysisResult.assignment.title || 'Your exam');
+        const possiblePoints = getPossiblePointsBack(docRef);
+        if (possiblePoints > 0) await notificationService.possibleIssue(docRef.id, analysisResult.assignment.title || 'Your exam', possiblePoints);
+      }
       onSubmit(docRef.id);
     } catch (err: unknown) {
       setSecurityError(userFacingError(err, 'Analysis could not be completed. Check that the paper is readable and try again.'));

@@ -18,16 +18,18 @@
 
 ## PDF and annotations
 
-- Findings use a page-aware evidence rail, not precise coordinate overlays.
-- Red/green region boxes anchored to handwriting or diagrams are not yet supported.
-- Rotation-aware coordinate transformations are not implemented.
+- User-created highlight, free-draw, and text annotations persist per case and page using normalized coordinates, so they remain aligned across zoom, resize, reopen, and page changes.
+- Pages and their saved overlays can rotate together for viewing. Creating or editing annotations while rotated is intentionally disabled until inverse rotation coordinate mapping is validated; rotate back to 0° to edit.
+- AI findings still use a page-aware evidence rail unless the model returns verified page coordinates. Regrade does not invent red/green boxes around handwriting or diagrams.
+- Typed notes accept plain math and chemistry text. Rich equation authoring directly on the document canvas is not yet a full WYSIWYG equation editor.
 - Very large, malformed, encrypted, or low-resolution PDFs require real-device stress testing.
 
 ## Notifications
 
 - Preference switches exist for imports, analysis completion, possible issues, appeal readiness, parent updates, and weekly summaries.
-- Only the currently implemented import/local notification paths can dispatch today; other categories need backend event producers.
-- Import notifications deep-link to Review, not always to a single exam when multiple items are grouped.
+- A persistent in-app inbox supports categories, unread state, archive, grouping, and case deep links.
+- Local native delivery exists. Remote APNs/FCM dispatch and background event producers still require production infrastructure.
+- Grouped notifications deep-link to a specific case when one is available; a group containing several cases opens the relevant product area.
 
 ## Platforms and builds
 

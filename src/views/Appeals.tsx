@@ -8,9 +8,11 @@ import AnimatedPrimaryButton from '../components/AnimatedPrimaryButton';
 import { caseService, Case } from '../services/caseService';
 
 const STEPS = [
-  { icon: ICONS.Upload, label: 'Upload', sub: 'Rubric + feedback', color: 'bg-blue-500/10 text-primary' },
-  { icon: ICONS.Search, label: 'Analyze', sub: 'Spot mismatches', color: 'bg-violet-500/10 text-violet-700' },
-  { icon: ICONS.Send, label: 'Draft', sub: 'Professor-safe email', color: 'bg-emerald-500/10 text-emerald-700' },
+  { icon: ICONS.Upload, label: 'Upload', color: 'bg-blue-500/10 text-primary' },
+  { icon: ICONS.Search, label: 'Analyze', color: 'bg-violet-500/10 text-violet-700' },
+  { icon: ICONS.Edit3, label: 'Annotate', color: 'bg-amber-500/10 text-amber-700' },
+  { icon: ICONS.ShieldCheck, label: 'Evidence', color: 'bg-cyan-500/10 text-cyan-700' },
+  { icon: ICONS.Send, label: 'Draft', color: 'bg-emerald-500/10 text-emerald-700' },
 ] as const;
 
 export default function Appeals({
@@ -43,36 +45,35 @@ export default function Appeals({
   return (
     <div className="space-y-8 pb-6">
       {/* Hero */}
-      <section className="rounded-xl border border-hairline bg-canvas px-5 py-8 sm:px-8 sm:py-10">
+      <section className="rg2-card overflow-hidden px-5 py-8 sm:px-8 sm:py-10">
         <div className="space-y-5 text-center">
-          <MarketingEyebrow>new appeal</MarketingEyebrow>
+          <MarketingEyebrow>Appeal · new review</MarketingEyebrow>
           <motion.h1
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="rg-serif text-[clamp(28px,7vw,38px)] text-ink font-bold leading-[1.06] tracking-tight"
           >
-            Review a grade with evidence.
+            Review a grade<br />with evidence.
           </motion.h1>
           <p className="rg-lead text-[15px] sm:text-[16px] font-medium max-w-sm mx-auto">
-            Add the marked paper, rubric, or teacher feedback. Regrade separates what is visible,
-            what may need clarification, and what belongs in a respectful draft.
+            Upload the marked work. Regrade organizes what is visible, what needs clarification, and what belongs in a respectful draft.
           </p>
 
           {/* Mini flow graphic */}
-          <div className="flex items-center justify-center gap-2 pt-1">
+          <div className="rg2-appeal-stepper pt-2" aria-label="Appeal steps">
             {STEPS.map((step, i) => (
-              <div key={step.label} className="flex items-center gap-2">
+              <div key={step.label} className="flex min-w-0 flex-1 items-center gap-1">
                 <motion.div
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.1 + i * 0.08 }}
-                  className={`flex flex-col items-center gap-1.5 p-3 rounded-lg min-w-[72px] ${step.color}`}
+                  className={`flex min-w-0 flex-1 flex-col items-center gap-1.5 rounded-xl px-1 py-3 ${step.color}`}
                 >
                   <step.icon className="w-5 h-5" strokeWidth={1.75} />
-                  <span className="text-[11px] font-semibold">{step.label}</span>
+                  <span className="truncate text-[9px] font-semibold">{step.label}</span>
                 </motion.div>
                 {i < STEPS.length - 1 && (
-                  <ICONS.ChevronRight className="w-3.5 h-3.5 text-ink-muted/50 shrink-0" strokeWidth={2} />
+                  <span className="h-px w-2 shrink-0 bg-hairline" aria-hidden />
                 )}
               </div>
             ))}

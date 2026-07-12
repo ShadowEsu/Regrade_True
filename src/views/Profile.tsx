@@ -24,9 +24,6 @@ import ContinueWithGoogleButton from '../components/ContinueWithGoogleButton';
 import { ConnectScreen } from '../features/connect';
 import DeleteAccountDialog from '../components/DeleteAccountDialog';
 import MarketingEyebrow from '../components/MarketingEyebrow';
-import ThemePicker from '../components/ThemePicker';
-import { useTheme } from '../context/ThemeContext';
-import type { ThemePreference } from '../lib/theme';
 import { PLAN_CATALOG, subscriptionService, type SubscriptionSnapshot } from '../services/subscriptionService';
 import { automationService } from '../services/automationService';
 import { isNativeStore } from '../services/storePurchaseService';
@@ -160,8 +157,6 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
-  const { preference: themePreference, setPreference: setThemePreference } = useTheme();
-  const [themeSaving, setThemeSaving] = useState(false);
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async (u) => {
@@ -295,23 +290,6 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
       setTimeout(() => setShowSavedToast(false), 2600);
     } finally {
       setAlertsSaving(false);
-    }
-  };
-
-  const handleThemeChange = async (next: ThemePreference) => {
-    if (next === themePreference || themeSaving) return;
-    setThemeSaving(true);
-    try {
-      await setThemePreference(next);
-      setToastMessage('Appearance updated');
-      setShowSavedToast(true);
-      setTimeout(() => setShowSavedToast(false), 2200);
-    } catch {
-      setToastMessage('Appearance could not be saved');
-      setShowSavedToast(true);
-      setTimeout(() => setShowSavedToast(false), 2600);
-    } finally {
-      setThemeSaving(false);
     }
   };
 
@@ -842,11 +820,11 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               className="space-y-4"
             >
               <div className="rg-glass-card p-5">
-                <ThemePicker
-                  value={themePreference}
-                  onChange={(next) => void handleThemeChange(next)}
-                  disabled={themeSaving}
-                />
+                <p className="text-[10px] font-mono uppercase tracking-wider text-primary">Appearance</p>
+                <div className="mt-3 flex items-center justify-between gap-4 rounded-xl border border-hairline bg-parchment px-4 py-3">
+                  <div><p className="text-[13px] font-semibold text-ink">Regrade Light</p><p className="mt-0.5 text-[11px] text-ink-muted">The approved Regrade 2.0 experience.</p></div>
+                  <span className="rg2-status rg2-status-blue">Active</span>
+                </div>
               </div>
               <div className="rg-glass-card p-5 space-y-3">
                 <p className="text-[10px] font-mono uppercase tracking-wider text-primary">Legal</p>

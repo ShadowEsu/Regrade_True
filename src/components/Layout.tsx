@@ -4,7 +4,6 @@ import { BRAND_ICON_SRC, COACH_NAME, COACH_NAV_LABEL } from '../branding';
 import Logo from './Logo';
 import { NAV_TAB_ICONS } from './BottomNavIcons';
 import ProfileHeaderMenu from './ProfileHeaderMenu';
-import ThemeQuickToggle from './ThemeQuickToggle';
 import NotificationQuickToggle from './NotificationQuickToggle';
 import type { ProfileSection } from '../views/Profile';
 import { caseService } from '../services/caseService';
@@ -95,7 +94,6 @@ export default function Layout({
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <NotificationQuickToggle />
-                <ThemeQuickToggle />
                 <ProfileHeaderMenu
                   activeSection={profileSection}
                   onSectionChange={onProfileSectionChange}
@@ -115,7 +113,6 @@ export default function Layout({
               </button>
               <div className="flex items-center gap-1 shrink-0">
                 <NotificationQuickToggle />
-                <ThemeQuickToggle />
                 <ProfileHeaderMenu
                   activeSection={profileSection}
                   onSectionChange={onProfileSectionChange}

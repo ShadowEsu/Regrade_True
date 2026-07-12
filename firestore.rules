@@ -213,6 +213,42 @@ service cloud.firestore {
       match /milestones/{milestoneId} {
         allow read, write: if false;
       }
+
+      match /annotations/{annotationId} {
+        allow read: if isSignedIn() &&
+          get(/databases/$(database)/documents/cases/$(caseId)).data.userId == request.auth.uid;
+        allow create, update: if isSignedIn() &&
+          get(/databases/$(database)/documents/cases/$(caseId)).data.userId == request.auth.uid &&
+          request.resource.data.keys().hasOnly(['id', 'caseId', 'userId', 'pageIndex', 'kind', 'color', 'x', 'y', 'width', 'height', 'path', 'text', 'rotation', 'createdAt', 'updatedAt']) &&
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.caseId == caseId &&
+          request.resource.data.pageIndex is int && request.resource.data.pageIndex >= 0 && request.resource.data.pageIndex < 100 &&
+          request.resource.data.kind in ['highlight', 'draw', 'text'] &&
+          request.resource.data.color in ['blue', 'yellow', 'green', 'red'] &&
+          request.resource.data.x is number && request.resource.data.x >= 0 && request.resource.data.x <= 1 &&
+          request.resource.data.y is number && request.resource.data.y >= 0 && request.resource.data.y <= 1 &&
+          request.resource.data.width is number && request.resource.data.width >= 0 && request.resource.data.width <= 1 &&
+          request.resource.data.height is number && request.resource.data.height >= 0 && request.resource.data.height <= 1 &&
+          request.resource.data.path is list && request.resource.data.path.size() <= 400 &&
+          request.resource.data.text is string && request.resource.data.text.size() <= 500 &&
+          request.resource.data.rotation in [0, 90, 180, 270];
+        allow delete: if isSignedIn() &&
+          get(/databases/$(database)/documents/cases/$(caseId)).data.userId == request.auth.uid &&
+          resource.data.userId == request.auth.uid;
+      }
+    }
+
+    match /notifications/{notificationId} {
+      allow get, list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid &&
+        request.resource.data.keys().hasOnly(['id', 'userId', 'type', 'title', 'body', 'url', 'groupKey', 'caseId', 'readAt', 'archivedAt', 'createdAt', 'updatedAt']) &&
+        request.resource.data.type in ['import', 'review', 'appeal', 'parent', 'subscription', 'system'] &&
+        boundedString(request.resource.data.title, 160) && boundedString(request.resource.data.body, 1000) &&
+        boundedString(request.resource.data.url, 2048) && boundedString(request.resource.data.groupKey, 180);
+      allow update: if isSignedIn() && resource.data.userId == request.auth.uid &&
+        request.resource.data.userId == resource.data.userId &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt', 'archivedAt', 'updatedAt', 'title', 'body', 'url', 'type', 'groupKey', 'caseId', 'createdAt']);
+      allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
   }
 }

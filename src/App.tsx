@@ -100,6 +100,17 @@ export default function App() {
     }
   };
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const caseId = params.get('case');
+    if (!caseId) return;
+    if (params.get('tab') === 'upload') void handleOpenAppeal(caseId);
+    if (params.get('tab') === 'study') {
+      setPaperViewCaseId(caseId);
+      setPaperViewMode('learn');
+    }
+  }, []);
+
   const handleSubmitUpload = (caseId?: string) => {
     if (caseId) setCurrentCaseId(caseId);
     setFlowStep('annotate');

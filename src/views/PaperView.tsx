@@ -1,12 +1,13 @@
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
-import { motion } from 'motion/react';
 import { ICONS } from '../constants';
 import BrandSpinner from '../components/BrandSpinner';
 import AppealFlowShell from '../components/AppealFlowShell';
 import ChatMarkdown from '../components/ChatMarkdown';
 import { caseService, type Case } from '../services/caseService';
 import type { AnalysisResult, Question } from '../types';
+import DocumentAnnotator from '../components/DocumentAnnotator';
+import ContextualWhale from '../components/ContextualWhale';
 
 /**
  * PaperView shows the student's own graded copy back to them, page by page,
@@ -95,11 +96,11 @@ export default function PaperView({
           <PaperMissingNotice mode={mode} />
         ) : (
           <div className="space-y-6">
-            {pages.map((src, i) => (
-              <PaperPage key={src + i} src={src} page={i + 1} totalPages={pages.length} />
-            ))}
+            {pages.map((src, i) => <div key={src + i}><DocumentAnnotator caseId={record.id ?? caseId ?? ''} pageIndex={i} src={src} pageLabel={`Graded page ${i + 1} of ${pages.length}`} /></div>)}
           </div>
         )}
+
+        {record.analysis && <ContextualWhale analysis={record.analysis} />}
 
         <section className="space-y-3">
           <div className="flex items-baseline justify-between">
@@ -151,30 +152,6 @@ export default function PaperView({
     </AppealFlowShell>
   );
 }
-
-const PaperPage: React.FC<{ src: string; page: number; totalPages: number }> = ({ src, page, totalPages }) => {
-  const [zoom, setZoom] = useState(1);
-  return (
-    <motion.figure
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35 }}
-      className="rg-glass-card overflow-hidden"
-    >
-      <div className="flex items-center justify-between gap-3 px-4 py-2 border-b border-hairline text-[11px] uppercase tracking-[0.14em] text-ink-muted">
-        <span>Page {page} of {totalPages}</span>
-        <div className="flex items-center gap-1 normal-case tracking-normal"><button type="button" onClick={() => setZoom((value) => Math.max(.75, value - .25))} disabled={zoom <= .75} className="rg-paper-page-button" aria-label={`Zoom out page ${page}`}>−</button><span className="min-w-9 text-center text-[10px] font-semibold">{Math.round(zoom * 100)}%</span><button type="button" onClick={() => setZoom((value) => Math.min(2, value + .25))} disabled={zoom >= 2} className="rg-paper-page-button" aria-label={`Zoom in page ${page}`}>+</button></div>
-      </div>
-      <div className="max-h-[75vh] overflow-auto"><img
-          src={src}
-          alt={`Graded page ${page}`}
-          className="h-auto max-w-none bg-canvas"
-          style={{ width: `${zoom * 100}%` }}
-          loading={page === 1 ? 'eager' : 'lazy'}
-        /></div>
-    </motion.figure>
-  );
-};
 
 type Annotation = {
   id: string;

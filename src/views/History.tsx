@@ -4,6 +4,7 @@ import { ICONS } from '../constants';
 import BrandSpinner from '../components/BrandSpinner';
 import MarketingEyebrow from '../components/MarketingEyebrow';
 import AnimatedPrimaryButton from '../components/AnimatedPrimaryButton';
+import { MetricCard, Reveal, StatusBadge } from '../components/mobile/MobilePrimitives';
 import { caseService, Case } from '../services/caseService';
 import {
   getPossiblePointsBack,
@@ -12,12 +13,6 @@ import {
   getNextStep,
   formatCaseDate,
 } from '../lib/appealHelpers';
-
-const STATUS_TINT: Record<string, string> = {
-  'draft ready': 'text-amber-800 bg-amber-500/12 border-amber-500/20',
-  'under review': 'text-primary bg-primary/10 border-primary/20',
-  resolved: 'text-emerald-800 bg-emerald-500/12 border-emerald-500/20',
-};
 
 export default function History({
   onStartAppeal,
@@ -43,8 +38,7 @@ export default function History({
     setError(null);
     try {
       setCases(await caseService.getUserCases());
-    } catch (err) {
-      console.error('Failed to load appeal history:', err);
+    } catch {
       setError('Could not load your appeal history. Check your connection and try again.');
       setCases([]);
     } finally {
@@ -95,43 +89,10 @@ export default function History({
 
   return (
     <div className="space-y-8 pb-4">
-      <section className="relative overflow-hidden rounded-[22px] rg-glass-hero px-5 py-8 sm:px-7 sm:py-9 text-center">
-        <div className="absolute -top-16 -right-10 w-48 h-48 rounded-full bg-primary/12 blur-3xl pointer-events-none" aria-hidden />
-        <div className="absolute -bottom-14 -left-8 w-40 h-40 rounded-full bg-violet-400/10 blur-3xl pointer-events-none" aria-hidden />
-        <div className="relative space-y-3">
-          <MarketingEyebrow>your record</MarketingEyebrow>
-          <h1 className="rg-serif text-[clamp(30px,6vw,42px)] text-ink font-semibold">Appeal history.</h1>
-          <p className="rg-lead text-[15px] max-w-sm mx-auto">
-            Points recovered, drafts saved, and outcomes — all in one place.
-          </p>
-        </div>
-      </section>
+      <Reveal><section className="space-y-2 pt-1"><MarketingEyebrow>your record</MarketingEyebrow><h1 className="rg-serif text-[clamp(30px,8vw,42px)] text-ink font-semibold">My history.</h1><p className="text-[13px] leading-relaxed text-ink-muted">Imported exams, completed reviews, saved drafts, and confirmed outcomes.</p></section></Reveal>
 
       {!loading && !error && cases.length > 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="grid grid-cols-2 gap-3"
-        >
-          {[
-            { value: String(cases.length), label: 'appeals', accent: false },
-            { value: totalRecoverable > 0 ? `+${totalRecoverable}` : '—', label: 'pts flagged', accent: true },
-          ].map((stat, i) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, scale: 0.94 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: i * 0.08 }}
-              whileHover={{ y: -3, scale: 1.03 }}
-              className="rg-glass-stat text-center py-5"
-            >
-              <p className={`rg-serif text-3xl font-semibold ${stat.accent ? 'text-primary' : 'text-ink'}`}>
-                {stat.value}
-              </p>
-              <p className="text-[12px] font-medium text-ink mt-0.5">{stat.label}</p>
-            </motion.div>
-          ))}
-        </motion.div>
+        <Reveal className="grid grid-cols-3 gap-2"><MetricCard value={totalRecoverable} label="Points identified" detail="Possible" tone="green" icon={<ICONS.TrendingUp />} /><MetricCard value={cases.filter((item) => Boolean(item.draftEmail)).length} label="Drafts saved" detail="Editable" tone="lavender" icon={<ICONS.Send />} /><MetricCard value={cases.filter((item) => item.status === 'Resolved').length} label="Outcomes" detail="Confirmed" tone="yellow" icon={<ICONS.Verified />} /></Reveal>
       )}
 
       {loading ? (
@@ -178,7 +139,6 @@ export default function History({
             const pts = getPossiblePointsBack(appeal);
             const date = formatCaseDate(appeal.createdAt);
             const statusKey = appeal.status?.toLowerCase() ?? 'under review';
-            const statusTint = STATUS_TINT[statusKey] ?? 'text-ink-muted bg-parchment border-hairline';
             const expanded = expandedId === appeal.id;
 
             return (
@@ -187,7 +147,7 @@ export default function History({
                 initial={{ opacity: 0, y: 14 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: Math.min(idx * 0.04, 0.2) }}
-                className="w-full rounded-xl border border-hairline bg-canvas p-4 text-left"
+                className="rg2-card w-full p-4 text-left"
               >
                 <button type="button" onClick={() => setExpandedId(expanded ? null : appeal.id ?? null)} aria-expanded={expanded} className="flex w-full items-start justify-between gap-3 text-left">
                   <div className="min-w-0 flex-1">
@@ -214,9 +174,7 @@ export default function History({
                 </button>
 
                 <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-hairline">
-                  <span className={`rg-glass-chip px-3 py-1 text-[11px] capitalize font-medium border ${statusTint}`}>
-                    {appeal.status}
-                  </span>
+                  <StatusBadge tone={statusKey === 'resolved' ? 'green' : statusKey === 'draft ready' ? 'yellow' : 'blue'}>{appeal.status}</StatusBadge>
                   <span className="rg-glass-chip px-3 py-1 text-[11px] text-ink-muted">
                     {appeal.progress}% done
                   </span>

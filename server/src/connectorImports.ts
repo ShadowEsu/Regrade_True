@@ -101,7 +101,8 @@ async function itemsFor(uid: string, platformId: typeof SUPPORTED[number], env: 
 
 async function persistImport(uid: string, item: ConnectorImportItem, mode: "automatic" | "manual") {
   const id = crypto.createHash("sha256").update(`${item.platformId}|${item.externalId}`).digest("hex");
-  await admin.firestore().collection("users").doc(uid).collection("imports").doc(id).set({ ...item, mode, status: "ready_for_review", importedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  await admin.firestore().collection("users").doc(uid).collection("imports").doc(id).set({ ...item, mode, status: item.kind === "graded_record" ? "awaiting_returned_file" : "available_to_select", importedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
+  await admin.firestore().collection("users").doc(uid).collection("automationJobs").doc(id).set({ importId: id, platformId: item.platformId, externalId: item.externalId, mode, status: item.kind === "graded_record" ? "awaiting_returned_file" : "available_to_select", title: item.title, updatedAt: admin.firestore.FieldValue.serverTimestamp(), createdAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
   if (item.kind === "graded_record") {
     const caseRef = admin.firestore().collection("cases").doc(`imp_${id.slice(0, 40)}`);
     const existing = await caseRef.get();

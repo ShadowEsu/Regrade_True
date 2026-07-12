@@ -45,6 +45,8 @@ export default function AppealDraftPanel({
     if (!caseId || !text.trim()) return;
     const cleaned = sanitizeUserText(text, 64_000);
     await caseService.updateCase(caseId, { draftEmail: cleaned, progress: 90, status: 'Draft Ready' });
+    const { notificationService } = await import('../services/notificationService');
+    await notificationService.appealReady(caseId, analysis.assignment.title || 'Your exam');
   };
 
   const handleGenerate = useCallback(

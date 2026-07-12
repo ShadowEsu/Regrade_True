@@ -14,6 +14,10 @@ export async function deleteUserAccountCompletely(uid: string): Promise<void> {
 
   for (const [collectionName, ownerField] of [["cases", "userId"], ["aiFeedback", "uid"]] as const) {
     const owned = await db.collection(collectionName).where(ownerField, "==", uid).get();
+    if (collectionName === "cases") {
+      for (const caseDoc of owned.docs) await db.recursiveDelete(caseDoc.ref);
+      continue;
+    }
     for (let i = 0; i < owned.docs.length; i += BATCH_SIZE) {
       const batch = db.batch();
       for (const doc of owned.docs.slice(i, i + BATCH_SIZE)) batch.delete(doc.ref);

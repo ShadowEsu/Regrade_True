@@ -5,6 +5,7 @@ import { familyService, type FamilyLink } from '../services/familyService';
 import type { Case } from '../services/caseService';
 import { isPreviewMode } from '../lib/previewMode';
 import { PREVIEW_ANALYSIS } from '../lib/previewFixtures';
+import { EmptyState, MetricCard, Reveal, StatusBadge, SurfaceCard } from '../components/mobile/MobilePrimitives';
 
 const SUPERVISOR_PREVIEW_LINK: FamilyLink = { id: 'supervisor-preview', status: 'active', counterpartName: 'Alex', canViewSharedWork: true };
 const SUPERVISOR_PREVIEW_CASE: Case = {
@@ -99,37 +100,29 @@ export default function SupervisorHub() {
   };
 
   return <div className="space-y-7 pb-8">
-    <section className="rounded-[24px] rg-glass-hero px-5 py-8 sm:px-7 sm:py-9">
-      <MarketingEyebrow>supervised workspace</MarketingEyebrow>
-      <h1 className="rg-serif mt-2 text-[clamp(32px,7vw,44px)] text-ink font-semibold leading-[1.05]">Learner support.</h1>
-      <p className="mt-3 max-w-2xl text-[14px] sm:text-[15px] leading-relaxed text-ink-muted">Understand where your learner needs help, review possible grading issues, and prepare a teacher message together.</p>
-    </section>
+    <Reveal><section className="space-y-2 pt-1"><MarketingEyebrow>supervised workspace</MarketingEyebrow><h1 className="rg-serif text-[clamp(32px,8vw,44px)] text-ink font-semibold leading-[1.05]">Learner support.</h1><p className="max-w-2xl text-[13px] leading-relaxed text-ink-muted">See only the exam evidence a learner has approved, understand patterns, and prepare a message together.</p></section></Reveal>
 
-    <section className="rg-glass-form-card p-5 space-y-3">
+    <SurfaceCard className="p-5 space-y-3">
       <div><h2 className="text-[16px] font-semibold text-ink">Connect a learner</h2><p className="mt-1 text-[12px] text-ink-muted">Ask the learner to open Profile → Settings &amp; account → Generate pairing code.</p></div>
       <div className="grid w-full min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_auto]"><input value={code} onChange={(event) => setCode(event.target.value.toUpperCase().slice(0, 8))} placeholder="8-character code" className="w-full min-w-0 rounded-xl border border-hairline bg-canvas px-3 py-2.5 font-mono tracking-wider text-ink outline-none focus:border-primary" /><button type="button" disabled={busy || code.replace(/\s/g, '').length !== 8} onClick={() => void redeem()} className="rg-btn-primary w-full px-4 disabled:opacity-45 sm:w-auto">Connect</button></div>
       {error && <p className="text-[12px] text-red-700">{error}</p>}
-    </section>
+    </SurfaceCard>
 
-    {!links.length && <section className="rg-glass-form-card p-6 text-center space-y-3"><div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-primary/10 text-primary"><ICONS.User className="h-6 w-6" /></div><h2 className="rg-serif text-xl text-ink font-semibold">No learner is connected yet.</h2><p className="text-[13px] text-ink-muted">Nothing is shared until the learner approves.</p></section>}
+    {!links.length && <EmptyState icon={<ICONS.User />} title="No learner is connected yet." body="Nothing is shared until the learner generates a code and explicitly approves your access." />}
 
     {links.some((link) => link.status === 'active') && <>
-      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-        <div className="rg-glass-stat p-4"><p className="rg-meta-k">Analyzed work</p><p className="rg-serif mt-1 text-3xl text-ink">{analyzedCount}</p></div>
-        <div className="rg-glass-stat p-4"><p className="rg-meta-k">Worth reviewing</p><p className="rg-serif mt-1 text-3xl text-primary">{reviewCount}</p></div>
-        <div className="rg-glass-stat col-span-2 p-4 sm:col-span-1"><p className="rg-meta-k">Focus areas</p><p className="rg-serif mt-1 text-3xl text-ink">{focus.length}</p></div>
-      </section>
+      <section className="grid grid-cols-3 gap-2"><MetricCard value={analyzedCount} label="Analyzed" detail="Shared work" icon={<ICONS.BookOpen />} /><MetricCard value={reviewCount} label="Review" detail="Possible issues" tone="yellow" icon={<ICONS.Search />} /><MetricCard value={focus.length} label="Focus areas" detail="Evidence based" tone="lavender" icon={<ICONS.Lightbulb />} /></section>
       <section className="rg-glass-form-card p-5 space-y-3">
         <div><MarketingEyebrow>learning patterns</MarketingEyebrow><h2 className="rg-serif mt-1 text-xl text-ink">Where support may help.</h2><p className="mt-1 text-[12px] text-ink-muted">Only patterns supported by the learner’s analyzed exam evidence appear here.</p></div>
         {focus.length ? <div className="grid gap-2 sm:grid-cols-2">{focus.map((item) => <article key={item.label} className="rounded-xl border border-hairline p-3"><div className="flex items-center justify-between gap-3"><p className="text-[13px] font-semibold text-ink">{item.label}</p><span className="text-[10px] font-semibold text-primary">{item.exams} exam{item.exams === 1 ? '' : 's'}</span></div><p className="mt-1.5 text-[11px] leading-relaxed text-ink-muted">{item.evidence}</p></article>)}</div> : <p className="text-[12px] text-ink-muted">No recurring evidence-backed patterns yet.</p>}
       </section>
     </>}
 
-    {links.map((link) => <section key={link.id} className="rg-glass-form-card p-5 space-y-4">
-      <div className="flex items-start justify-between gap-3"><div><MarketingEyebrow>learner</MarketingEyebrow><h2 className="rg-serif mt-1 text-xl text-ink font-semibold">{link.counterpartName}</h2><p className="mt-1 text-[12px] text-ink-muted">{link.status === 'active' ? 'Grades, analyzed exams, and appeal drafts shared with consent.' : 'Waiting for learner approval.'}</p></div><span className={`rounded-full px-3 py-1.5 text-[11px] font-semibold ${link.status === 'active' ? 'bg-emerald-500/10 text-emerald-800' : 'bg-amber-500/10 text-amber-800'}`}>{link.status === 'active' ? 'Consent active' : 'Pending'}</span></div>
+    {links.map((link) => <SurfaceCard key={link.id} className="p-5 space-y-4">
+      <div className="flex items-start justify-between gap-3"><div><MarketingEyebrow>learner</MarketingEyebrow><h2 className="rg-serif mt-1 text-xl text-ink font-semibold">{link.counterpartName}</h2><p className="mt-1 text-[12px] text-ink-muted">{link.status === 'active' ? 'Grades, analyzed exams, and appeal drafts shared with consent.' : 'Waiting for learner approval.'}</p></div><StatusBadge tone={link.status === 'active' ? 'green' : 'yellow'}>{link.status === 'active' ? 'Consent active' : 'Pending'}</StatusBadge></div>
       {link.status === 'active' && <div className="space-y-2">{(cases[link.id] ?? []).map((item) => <article key={item.id} className="rounded-xl border border-hairline p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[13px] font-semibold text-ink">{item.analysis?.assignment.title || item.title}</p><p className="mt-0.5 text-[11px] text-ink-muted">{item.analysis?.assignment.subject || 'Course'} · {item.analysis?.assignment.total_score_display || item.status}</p></div><span className="rounded-full bg-primary/8 px-2.5 py-1 text-[10px] font-semibold capitalize text-primary">{item.analysis?.case_analysis.overall_case_strength?.replace('_', ' ') || 'Review'}</span></div><p className="mt-2 text-[12px] leading-relaxed text-ink-muted">{item.analysis?.case_analysis.case_strength_reason || 'Review the shared marked evidence before deciding what to do next.'}</p><div className="mt-3 flex flex-wrap gap-2"><button type="button" disabled={busy || !item.id} onClick={() => item.id && void suggest(link.id, item.id)} className="rg-btn-secondary px-3 py-2 text-[11px]">Send to learner for review</button><button type="button" onClick={() => prepareEmail(link, item)} className="rg-btn-primary px-3 py-2 text-[11px]"><ICONS.MessageSquare className="h-3.5 w-3.5" />Prepare teacher email</button></div></article>)}{!(cases[link.id] ?? []).length && <p className="text-[12px] text-ink-muted">No analyzed work has been shared yet.</p>}</div>}
       <button type="button" disabled={busy} onClick={() => void unlink(link.id)} className="rg-btn-ghost w-full text-red-600">Unlink</button>
-    </section>)}
+    </SurfaceCard>)}
 
     {selected && <section className="rg-glass-form-card p-5 space-y-4">
       <div className="flex items-start justify-between gap-3"><div><MarketingEyebrow>teacher email</MarketingEyebrow><h2 className="rg-serif mt-1 text-xl text-ink">Review before using.</h2><p className="mt-1 text-[12px] text-ink-muted">This draft uses the shared evidence from {selected.item.analysis?.assignment.title || selected.item.title}.</p></div><button type="button" onClick={() => setSelected(null)} className="rg-header-icon-btn h-8 w-8" aria-label="Close email draft"><ICONS.X className="h-4 w-4" /></button></div>

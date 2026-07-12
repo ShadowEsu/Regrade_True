@@ -5,11 +5,11 @@ import { ICONS } from '../constants';
 import { caseService, type Case } from '../services/caseService';
 import { userService } from '../services/userService';
 import MarketingEyebrow from '../components/MarketingEyebrow';
-import AnimatedPrimaryButton from '../components/AnimatedPrimaryButton';
 import { isPreviewMode, isPreviewSupervisorView } from '../lib/previewMode';
 import { PREVIEW_ANALYSIS } from '../lib/previewFixtures';
 import SupervisorHub from './SupervisorHub';
 import StudyReviewStudio from './StudyReviewStudio';
+import { EmptyState, MetricCard, Reveal } from '../components/mobile/MobilePrimitives';
 
 type StudyPattern = {
   id: string;
@@ -190,28 +190,12 @@ export default function StudyPrep({
 
   return (
     <div className="space-y-7 pb-8">
-      <section className="relative overflow-hidden rounded-[24px] rg-glass-hero px-5 py-8 sm:px-7 sm:py-9">
-        <div className="absolute -top-14 -right-10 w-48 h-48 rounded-full bg-violet-400/15 blur-3xl" aria-hidden />
-        <div className="relative space-y-3 max-w-2xl">
-          <MarketingEyebrow>review · exam evidence only</MarketingEyebrow>
-          <h1 className="rg-serif text-[clamp(32px,7vw,44px)] text-ink font-semibold leading-[1.05]">Exam review.</h1>
-          <p className="text-[14px] sm:text-[15px] leading-relaxed text-ink-muted">See patterns in your marked exams and decide what to practise next.</p>
-        </div>
-      </section>
+      <Reveal><section className="space-y-2 pt-1"><MarketingEyebrow>review · exam evidence only</MarketingEyebrow><h1 className="rg-serif text-[clamp(32px,8vw,44px)] text-ink font-semibold leading-[1.05]">Exam review.</h1><p className="text-[13px] leading-relaxed text-ink-muted">Understand the marked work, capture what to revisit, and build priorities from real evidence.</p></section></Reveal>
 
       {!examCases.length ? (
-        <section className="rg-glass-form-card p-6 text-center space-y-4">
-          <div className="w-12 h-12 mx-auto rounded-2xl bg-primary/10 text-primary flex items-center justify-center"><ICONS.BookOpen className="w-6 h-6" strokeWidth={1.8} /></div>
-          <div><h2 className="rg-serif text-xl text-ink font-semibold">Your Review room starts with one marked exam.</h2><p className="text-[13px] text-ink-muted leading-relaxed mt-2 max-w-sm mx-auto">Upload an exam that shows its score, rubric, or teacher feedback. Once it is analyzed, its visible marks can become your review plan.</p></div>
-          <AnimatedPrimaryButton onClick={onStartAppeal} className="max-w-xs mx-auto">Analyze a marked exam</AnimatedPrimaryButton>
-          {isPreviewMode() && <button type="button" onClick={() => { setExamCases(PREVIEW_EXAMS); setUsingPreviewPlan(true); }} className="text-[13px] font-semibold text-primary hover:underline">View a sample review plan</button>}
-        </section>
+        <section><EmptyState icon={<ICONS.BookOpen />} title="Your Review room starts with one marked exam." body="Upload an exam showing its score, rubric, or teacher feedback. Only analyzed exam evidence shapes your plan." action="Analyze a marked exam" onAction={onStartAppeal} />{isPreviewMode() && <button type="button" onClick={() => { setExamCases(PREVIEW_EXAMS); setUsingPreviewPlan(true); }} className="mt-3 min-h-11 w-full text-[12px] font-semibold text-primary">View a labeled sample plan</button>}</section>
       ) : <>
-        <section className="grid grid-cols-3 gap-3">
-          <div className="rg-glass-stat p-4"><p className="rg-meta-k">Exams</p><p className="rg-serif text-3xl text-ink font-semibold mt-1">{examCases.length}</p></div>
-          <div className="rg-glass-stat p-4"><p className="rg-meta-k">Patterns</p><p className="rg-serif text-3xl text-ink font-semibold mt-1">{patterns.length}</p></div>
-          <div className="rg-glass-stat p-4"><p className="rg-meta-k">Marked pts</p><p className="rg-serif text-3xl text-primary font-semibold mt-1">{markedPoints}</p></div>
-        </section>
+        <section className="grid grid-cols-3 gap-2"><MetricCard value={examCases.length} label="Exams" detail="Analyzed" icon={<ICONS.BookOpen />} /><MetricCard value={patterns.length} label="Priorities" detail="Evidence based" tone="lavender" icon={<ICONS.Lightbulb />} /><MetricCard value={markedPoints} label="Marked points" detail="To revisit" tone="yellow" icon={<ICONS.Edit3 />} /></section>
 
         <section className="rg-glass-form-card p-5 space-y-3">
           <div className="flex items-end justify-between gap-4"><div><MarketingEyebrow>your review progress</MarketingEyebrow><h2 className="rg-serif text-xl text-ink font-semibold mt-1">{complete} of {patterns.length} focus areas reviewed</h2></div><span className="text-lg font-semibold text-primary">{progress}%</span></div>

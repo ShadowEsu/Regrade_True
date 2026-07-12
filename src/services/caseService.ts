@@ -191,6 +191,9 @@ export const caseService = {
     const docRef = doc(db, 'cases', id);
     try {
       const { documentStorageService } = await import('./documentStorageService');
+      const { annotationService } = await import('./annotationService');
+      const annotations = await annotationService.list(id);
+      await Promise.all(annotations.map((annotation) => annotationService.remove(id, annotation.id)));
       await documentStorageService.deleteCasePages(id);
       await deleteDoc(docRef);
     } catch (error) {
@@ -214,7 +217,12 @@ export const caseService = {
     const q = query(collection(db, 'cases'), where('userId', '==', uid));
     try {
       const snap = await getDocs(q);
-      await Promise.all(snap.docs.map((d) => deleteDoc(d.ref)));
+      const { annotationService } = await import('./annotationService');
+      await Promise.all(snap.docs.map(async (caseDoc) => {
+        const annotations = await annotationService.list(caseDoc.id);
+        await Promise.all(annotations.map((annotation) => annotationService.remove(caseDoc.id, annotation.id)));
+        await deleteDoc(caseDoc.ref);
+      }));
     } catch (error) {
       handleFirestoreError(error, OperationType.DELETE, 'cases');
       throw error;
