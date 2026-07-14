@@ -1,6 +1,7 @@
-const { app, BrowserWindow, shell } = require('electron');
+const { app, BrowserWindow, shell, dialog } = require('electron');
 const path = require('path');
 const http = require('http');
+const https = require('https');
 const fs = require('fs');
 const { spawn } = require('child_process');
 
@@ -8,6 +9,10 @@ const isDev = !app.isPackaged;
 const API_PORT = Number(process.env.REGRADE_API_PORT || 8787);
 const API_HOST = process.env.REGRADE_API_HOST || '127.0.0.1';
 const SHELL_PORT = Number(process.env.REGRADE_SHELL_PORT || 3210);
+const UPDATE_FEED =
+  process.env.REGRADE_UPDATE_FEED ||
+  'https://api.github.com/repos/ShadowEsu/Regrade_True/releases/latest';
+const DOWNLOAD_PAGE = 'https://regradeapp.tech/#download';
 
 let mainWindow = null;
 let shellServer = null;
@@ -102,15 +107,13 @@ function startShellServer() {
 }
 
 function maybeStartApi() {
-  // Packaged desktop apps proxy /api to a local or hosted Express process.
-  // Keep the API outside the DMG so Gemini/Firebase Admin secrets are not shipped.
+  // Packaged apps should use the baked VITE_API_BASE_URL (production API).
+  // Local API embedding stays optional for developers who ship a server bundle.
   if (process.env.REGRADE_SKIP_EMBEDDED_API === '1') return;
+  if (!process.resourcesPath) return;
   const serverDir = path.join(process.resourcesPath, 'server');
   const entry = path.join(serverDir, 'dist', 'index.js');
-  if (!fs.existsSync(entry)) {
-    console.warn('[regrade-desktop] Start the API with: npm run dev:api (port ' + API_PORT + ')');
-    return;
-  }
+  if (!fs.existsSync(entry)) return;
   apiChild = spawn(process.execPath, [entry], {
     cwd: serverDir,
     env: {
@@ -124,6 +127,81 @@ function maybeStartApi() {
     console.warn('[regrade-desktop] embedded API exited', code);
     apiChild = null;
   });
+}
+
+function fetchJson(url) {
+  return new Promise((resolve, reject) => {
+    const lib = url.startsWith('https') ? https : http;
+    const req = lib.get(
+      url,
+      {
+        headers: {
+          'User-Agent': 'RegradeDesktop/' + app.getVersion(),
+          Accept: 'application/vnd.github+json',
+        },
+      },
+      (res) => {
+        let body = '';
+        res.on('data', (chunk) => {
+          body += chunk;
+        });
+        res.on('end', () => {
+          if ((res.statusCode || 500) >= 400) {
+            reject(new Error('update check failed: ' + res.statusCode));
+            return;
+          }
+          try {
+            resolve(JSON.parse(body));
+          } catch (error) {
+            reject(error);
+          }
+        });
+      },
+    );
+    req.on('error', reject);
+    req.setTimeout(8000, () => {
+      req.destroy(new Error('update check timed out'));
+    });
+  });
+}
+
+function compareSemver(a, b) {
+  const parse = (value) =>
+    String(value)
+      .replace(/^v/i, '')
+      .split('.')
+      .map((part) => Number.parseInt(part, 10) || 0);
+  const left = parse(a);
+  const right = parse(b);
+  const len = Math.max(left.length, right.length);
+  for (let i = 0; i < len; i += 1) {
+    const diff = (left[i] || 0) - (right[i] || 0);
+    if (diff !== 0) return diff;
+  }
+  return 0;
+}
+
+async function checkForUpdates() {
+  if (isDev || process.env.REGRADE_SKIP_UPDATE_CHECK === '1') return;
+  try {
+    const release = await fetchJson(UPDATE_FEED);
+    const tag = String(release.tag_name || '').replace(/^v/i, '');
+    if (!tag || compareSemver(tag, app.getVersion()) <= 0) return;
+    const result = await dialog.showMessageBox(mainWindow || undefined, {
+      type: 'info',
+      buttons: ['Download update', 'Later'],
+      defaultId: 0,
+      cancelId: 1,
+      title: 'Regrade update available',
+      message: `Version ${tag} is ready`,
+      detail: 'Download the latest installer from regradeapp.tech, then replace this app.',
+    });
+    if (result.response === 0) {
+      await shell.openExternal(release.html_url || DOWNLOAD_PAGE);
+    }
+  } catch (error) {
+    console.warn('[regrade-desktop] update check skipped', error?.message || error);
+  }
 }
 
 async function createWindow() {
@@ -158,8 +236,6 @@ async function createWindow() {
       host === 'appleid.apple.com' ||
       host.endsWith('.apple.com');
 
-    // Firebase Google/Apple signInWithPopup needs a real child window.
-    // Opening every link externally breaks the opener handshake and hangs auth.
     if (oauthHost) {
       return {
         action: 'allow',
@@ -192,6 +268,9 @@ async function createWindow() {
   maybeStartApi();
   const shellUrl = await startShellServer();
   await mainWindow.loadURL(shellUrl);
+  setTimeout(() => {
+    void checkForUpdates();
+  }, 4000);
 }
 
 app.whenReady().then(createWindow);

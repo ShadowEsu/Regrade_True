@@ -31,7 +31,9 @@
     "cap:ios": "npm run cap:sync && npx cap open ios",
     "desktop": "node scripts/desktop-dev.mjs",
     "desktop:pack": "npm run build:desktop && electron-builder --mac --dir",
-    "desktop:dmg": "npm run build:desktop && electron-builder --mac dmg zip",
+    "desktop:dmg": "node scripts/desktop-release.mjs --mac-only",
+    "desktop:win": "node scripts/desktop-release.mjs --win-only",
+    "desktop:release": "node scripts/desktop-release.mjs",
     "test": "vitest run"
   },
   "build": {
@@ -39,7 +41,8 @@
     "productName": "Regrade",
     "copyright": "Copyright 2026 Preston Jay Susanto",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "electron/build"
     },
     "extraMetadata": {
       "main": "electron/main.cjs",
@@ -63,29 +66,65 @@
       }
     ],
     "npmRebuild": false,
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "ShadowEsu",
+        "repo": "Regrade_True",
+        "releaseType": "release"
+      }
+    ],
     "mac": {
       "category": "public.app-category.education",
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": ["arm64", "x64"]
+        },
+        {
+          "target": "zip",
+          "arch": ["arm64", "x64"]
+        }
       ],
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
-      "icon": "public/logo.png"
+      "identity": null,
+      "icon": "electron/build/icon.icns",
+      "artifactName": "${productName}-${version}-${arch}.${ext}"
     },
     "dmg": {
+      "sign": false,
+      "title": "Install Regrade",
       "contents": [
         {
-          "x": 130,
-          "y": 220
+          "x": 140,
+          "y": 180,
+          "type": "file"
         },
         {
-          "x": 410,
-          "y": 220,
+          "x": 400,
+          "y": 180,
           "type": "link",
           "path": "/Applications"
         }
       ]
+    },
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "electron/build/icon.ico",
+      "artifactName": "${productName}-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Regrade"
     }
   },
   "dependencies": {
@@ -116,6 +155,7 @@
     "autoprefixer": "^10.4.21",
     "electron": "^35.7.5",
     "electron-builder": "^26.15.3",
+    "firebase-tools": "^15.23.0",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",

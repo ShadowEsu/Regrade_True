@@ -99,3 +99,7 @@ design-backups/
 docs/internal/*.local.md
 docs/internal/private/
 release/
+
+electron/build/icon.iconset/
+electron/build/icon-1024.png
+.cache/
