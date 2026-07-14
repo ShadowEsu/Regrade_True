@@ -15,7 +15,7 @@ const studentSteps: TourStep[] = [
   { label: 'Connections', title: 'Connect a platform when useful', body: 'Your profile menu is where you search Canvas, Google Classroom, Moodle, and more. Direct upload always works too.', target: 'profile', tab: 'profile', section: 'platform' },
   { label: 'Coach', title: 'Ask Mr Whale', body: 'Use Coach to understand feedback, practise a missed skill, or phrase a respectful question.', target: 'coach', tab: 'chat' },
   { label: 'Review', title: 'Review marked exams', body: 'Review turns analyzed exam evidence into a check-off plan. It does not mix in ordinary homework.', target: 'study', tab: 'study' },
-  { label: 'History', title: 'Return to past work', body: 'History keeps analyses and drafts together so you can revisit them when you need to.', target: 'history', tab: 'history' },
+  { label: 'History', title: 'Return to past work', body: 'Open the account menu to revisit previous analyses, drafts, and outcomes.', target: 'profile', tab: 'history' },
   { label: 'Alerts', title: 'Control notifications', body: 'Use the bell beside the theme control to turn review alerts on or off. Profile contains additional alert details.', target: 'notifications', tab: 'dashboard' },
   { label: 'Settings', title: 'Manage your account', body: 'Settings & account contains your privacy choices, account information, and account deletion controls.', target: 'profile', tab: 'profile', section: 'account' },
   { label: 'Ready', title: 'You are ready to begin', body: 'Start with a marked exam whenever you are ready. Regrade helps you understand the grade, learn from it, and make a respectful appeal when evidence supports one.', target: 'dashboard', tab: 'dashboard' },
@@ -27,7 +27,7 @@ const supervisorSteps: TourStep[] = [
   { label: 'Consent', title: 'Learner consent comes first', body: 'Nothing is visible until the learner accepts. They can remove access at any time.', target: 'study', tab: 'study' },
   { label: 'Appeal', title: 'Support an appeal review', body: 'Use Appeal to help prepare a clarification or draft for the learner to review. Regrade never sends it automatically.', target: 'appeal', tab: 'upload' },
   { label: 'Coach', title: 'Ask Mr Whale about evidence', body: 'Coach can explain feedback and suggest a respectful next step. It does not promise or force a grade change.', target: 'coach', tab: 'chat' },
-  { label: 'History', title: 'Keep approved work organized', body: 'History is for your own work and any learner work explicitly shared with you.', target: 'history', tab: 'history' },
+  { label: 'History', title: 'Keep approved work organized', body: 'Open the account menu to revisit your work and learner work explicitly shared with you.', target: 'profile', tab: 'history' },
   { label: 'Connections', title: 'Manage your own connections', body: 'Connections are in the profile menu. A learner school account is never connected to you automatically.', target: 'profile', tab: 'profile', section: 'platform' },
   { label: 'Alerts', title: 'Choose your notifications', body: 'Use the bell beside the theme control to turn your review alerts on or off. Learner notifications remain attached to the learner account.', target: 'notifications', tab: 'dashboard' },
   { label: 'Settings', title: 'Account and privacy controls', body: 'Settings & account is where you manage your profile and account controls.', target: 'profile', tab: 'profile', section: 'account' },
@@ -83,6 +83,7 @@ export default function ProductTutorial({ role, index: requestedIndex, onNext, o
   const [cardHeight, setCardHeight] = useState(CARD_HEIGHT);
   const cardRef = useRef<HTMLElement | null>(null);
   const [finishing, setFinishing] = useState(false);
+  const [finishError, setFinishError] = useState<string | null>(null);
   const step = steps[index];
   const isLast = index === steps.length - 1;
 
@@ -123,10 +124,12 @@ export default function ProductTutorial({ role, index: requestedIndex, onNext, o
     const user = auth.currentUser;
     if (!user) return;
     setFinishing(true);
+    setFinishError(null);
     try {
       await userService.completeTutorial(user.uid);
       onComplete();
-    } catch {
+    } catch (error) {
+      setFinishError(error instanceof Error ? error.message : 'Could not finish the walkthrough. Try again.');
       setFinishing(false);
     }
   };
@@ -164,6 +167,7 @@ export default function ProductTutorial({ role, index: requestedIndex, onNext, o
       <button data-testid="tutorial-next" type="button" onClick={advance} disabled={finishing} className="rg-btn-cta mt-2.5 w-full py-2 text-[12px] disabled:opacity-45">
         {finishing ? 'Saving…' : isLast ? 'Start using Regrade' : 'Next'}
       </button>
+      {finishError ? <p className="mt-2 text-[11px] leading-relaxed text-red-600">{finishError}</p> : null}
     </section>
   </div>;
 }

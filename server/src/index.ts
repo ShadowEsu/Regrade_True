@@ -22,6 +22,7 @@ import { createAutomationRouter } from "./automation.js";
 import { requireAppCheck } from "./middleware/appCheck.js";
 import { createFamilyRouter } from "./family.js";
 import { createConnectorImportsRouter } from "./connectorImports.js";
+import { createProfileRouter } from "./profile.js";
 import { automaticConnectorJob } from "./jobs.js";
 import admin from "./admin.js";
 
@@ -90,6 +91,7 @@ app.use("/v1/billing", requireFirebaseUser, appCheck, userLimiter, createBilling
 app.use("/v1/automation", requireFirebaseUser, appCheck, userLimiter, createAutomationRouter());
 app.use("/v1/family", requireFirebaseUser, appCheck, userLimiter, createFamilyRouter(env));
 app.use("/v1/imports", requireFirebaseUser, appCheck, userLimiter, createConnectorImportsRouter(env));
+app.use("/v1/profile", requireFirebaseUser, appCheck, userLimiter, createProfileRouter());
 
 app.post("/v1/session/logout", requireFirebaseUser, appCheck, userLimiter, (req, res, next) => {
   void (async () => {

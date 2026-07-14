@@ -1,9 +1,8 @@
 import type React from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { isPreviewMode } from '../../lib/previewMode';
 import CanvasTokenDialog from './CanvasTokenDialog';
 import { createConnectors } from './connectors';
-import { filterPlatforms, getPlatformMeta, type PlatformMeta } from './registry';
+import { filterPlatforms, getConnectorReleaseStatus, getPlatformMeta, type PlatformMeta } from './registry';
 import { canStoreSecurely, listConnections, revokeConnection } from './store';
 import { CONNECT_STRINGS as S } from './strings';
 import { isConnectFailure, type ConnectPlatformId, type Connector, type StoredConnection } from './types';
@@ -22,7 +21,7 @@ export default function ConnectScreen({
   compact = false,
 }: {
   onManualUpload: () => void;
-  /** Lets onboarding advance after a real or preview connection succeeds. */
+  /** Lets onboarding advance after a real connection succeeds. */
   onConnected?: () => void;
   /** Keeps this surface focused when it appears in first-run setup. */
   compact?: boolean;
@@ -44,7 +43,6 @@ export default function ConnectScreen({
   }, []);
 
   const connectors = createConnectors({
-    isPreview: isPreviewMode(),
     serverAvailable: canStoreSecurely(),
     openManualUpload: onManualUpload,
     promptCanvasToken,
@@ -76,7 +74,7 @@ export default function ConnectScreen({
         setConnections(await listConnections());
         setNotes((n) => ({
           ...n,
-          [connector.platformId]: { text: result.simulated ? S.previewSimulatedNote : S.savedSecurely, state: 'success' },
+          [connector.platformId]: { text: S.savedSecurely, state: 'success' },
         }));
         onConnected?.();
       }
@@ -219,12 +217,11 @@ const PlatformCard: React.FC<PlatformCardProps> = ({
   const connectionStatus = note?.state === 'failed'
     ? 'Connection failed'
     : connection
-    ? (connection.simulated ? 'Demo connection' : 'Connected')
-    : meta.authMethod === 'institution_gated'
-      ? 'Coming soon'
-      : connectable || meta.authMethod === 'manual_only'
-        ? 'Available'
-        : 'Needs setup';
+      ? 'Connected'
+      : connectable
+        ? 'Available to configure'
+        : 'Not connected';
+  const releaseStatus = getConnectorReleaseStatus(meta);
   const browse = async () => { setImportBusy(true); setImportNote(null); try { const items = await connectorImportService.list(meta.platformId); setImportItems(items); if (!items.length) setImportNote('No graded records or files were returned.'); } catch (e) { setImportNote(e instanceof Error ? e.message : 'The platform did not respond.'); } finally { setImportBusy(false); } };
   const importOne = async (item: ImportItem) => { setImportBusy(true); setImportNote(null); try { await connectorImportService.importManual(meta.platformId, item.externalId); setImportNote(item.kind === 'graded_record' ? `${item.title} metadata was imported. Add the returned marked file before AI review.` : `${item.title} is available to select. Regrade will not claim an analysis until the actual file is uploaded.`); } catch (e) { setImportNote(e instanceof Error ? e.message : 'Import failed.'); } finally { setImportBusy(false); } };
   const dismissItem = (externalId: string) => setImportItems((items) => items?.filter((item) => item.externalId !== externalId) ?? []);
@@ -248,7 +245,7 @@ const PlatformCard: React.FC<PlatformCardProps> = ({
           <p className="text-[14px] font-semibold text-ink truncate">{meta.displayName}</p>
           {connection ? (
             <p className="text-[12px] text-primary font-medium">
-              {connection.simulated ? S.simulatedBadge : S.connectedBadge}
+              {S.connectedBadge}
               {connection.accountLabel ? ` · ${connection.accountLabel}` : ''}
             </p>
           ) : (
@@ -264,20 +261,12 @@ const PlatformCard: React.FC<PlatformCardProps> = ({
           <span className={`inline-flex rounded-md border px-2 py-1 text-[10px] font-semibold ${connection ? 'border-emerald-500/25 bg-emerald-500/8 text-emerald-800' : 'border-hairline bg-parchment text-ink-muted'}`}>
             {connectionStatus}
           </span>
+          <span className="inline-flex rounded-md border border-hairline bg-parchment px-2 py-1 text-[10px] font-semibold text-ink-muted">
+            {releaseStatus}
+          </span>
           {meta.region && (
             <span className="inline-flex rounded-md border border-hairline bg-parchment px-2 py-1 text-[10px] font-medium text-ink-muted">
               {meta.region}
-            </span>
-          )}
-          {meta.apiStatus && (
-            <span className="inline-flex rounded-md border border-hairline bg-parchment px-2 py-1 text-[10px] font-medium text-ink-muted">
-              {meta.apiStatus === 'live'
-                ? 'Direct connection'
-                : meta.apiStatus === 'public_api'
-                  ? 'School setup required'
-                  : meta.apiStatus === 'partner_api'
-                    ? 'Partner setup required'
-                    : 'File import'}
             </span>
           )}
         </div>

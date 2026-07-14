@@ -43,15 +43,6 @@ function mapFlowError(platformId: ConnectPlatformId, err: unknown): ConnectionRe
   return failure(platformId, 'error', S.oauthGenericError);
 }
 
-async function simulatedSuccess(platformId: ConnectPlatformId): Promise<ConnectionResult> {
-  const saved = await saveConnection({
-    platformId,
-    accountLabel: 'Demo account',
-    secret: 'preview-simulated',
-  });
-  return { ok: true, platformId, accountLabel: saved.accountLabel, simulated: true };
-}
-
 async function storeGrant(
   platformId: ConnectPlatformId,
   secret: string,
@@ -60,7 +51,7 @@ async function storeGrant(
 ): Promise<ConnectionResult> {
   try {
     await saveConnection({ platformId, accountLabel, secret, meta });
-    return { ok: true, platformId, accountLabel, simulated: false };
+    return { ok: true, platformId, accountLabel };
   } catch {
     return failure(platformId, 'error', S.saveFailed);
   }
@@ -71,9 +62,9 @@ export function createConnectors(deps: ConnectorDeps): Connector[] {
   const msClientId = envString('VITE_MS_CLIENT_ID');
 
   // A live OAuth or token flow is only offered when it can both complete and
-  // be stored encrypted. Preview mode simulates the whole path instead.
+  // be stored encrypted.
   const canRunLive = (configured: boolean): boolean =>
-    deps.isPreview || (configured && deps.serverAvailable);
+    configured && deps.serverAvailable;
 
   const oauthAvailability: Partial<Record<ConnectPlatformId, boolean>> = {
     // Google rides on the app's existing Firebase sign-in, so it needs no
@@ -89,7 +80,6 @@ export function createConnectors(deps: ConnectorDeps): Connector[] {
     platformId: ConnectPlatformId,
     scopes: readonly string[]
   ): Promise<ConnectionResult> => {
-    if (deps.isPreview) return simulatedSuccess(platformId);
     try {
       // Lazy import keeps Firebase out of module scope for tests and for
       // screens that never touch Google.
@@ -106,7 +96,6 @@ export function createConnectors(deps: ConnectorDeps): Connector[] {
     clientId: string,
     provider: 'dropbox' | 'microsoft'
   ): Promise<ConnectionResult> => {
-    if (deps.isPreview) return simulatedSuccess(platformId);
     try {
       const cfg = provider === 'dropbox' ? DROPBOX_CONFIG(clientId) : MICROSOFT_CONFIG(clientId);
       const grant = await runPkceFlow(cfg);
@@ -123,7 +112,6 @@ export function createConnectors(deps: ConnectorDeps): Connector[] {
   const connectCanvas = async (): Promise<ConnectionResult> => {
     const input = await deps.promptCanvasToken();
     if (!input) return failure('canvas', 'cancelled', S.oauthCancelled);
-    if (deps.isPreview) return simulatedSuccess('canvas');
     const name = await verifyCanvasToken(input.baseUrl, input.token);
     if (name === null) return failure('canvas', 'error', S.canvasVerifyFailed);
     return storeGrant('canvas', input.token, name || null, { baseUrl: input.baseUrl });

@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { ICONS } from '../constants';
 import { chatWithAdvocate } from '../lib/gemini';
-import { buildCaseContextForAdvocate } from '../lib/appealDraft';
 import { caseService } from '../services/caseService';
 import { sanitizeUserText } from '../lib/sanitize';
 import { scanContentForThreats } from '../lib/securityScanner';
@@ -14,8 +13,9 @@ import ChatMarkdown from '../components/ChatMarkdown';
 import { COACH_HEADING, COACH_SUBHEADING } from '../branding';
 import { auth } from '../lib/firebase';
 import { userService } from '../services/userService';
-import { buildStudentProfileContext } from '../lib/profileContext';
 import { reportAiResponse } from '../services/aiFeedbackService';
+import { familyService } from '../services/familyService';
+import { buildWhaleWorkspaceContext } from '../lib/whaleContext';
 
 type ChatMessage = { role: 'ai' | 'user'; text: string; sentAt?: number };
 type AgentSession = { id: string; title: string; messages: ChatMessage[]; input: string };
@@ -102,7 +102,7 @@ function CoachEmptyState({ sessionTitle }: { sessionTitle: string }) {
       transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
       className="flex flex-col items-center justify-center text-center px-6 py-8 sm:py-10 min-h-[min(42vh,320px)]"
     >
-      <CoachWhale size={104} />
+      <CoachWhale size={104} state="idle" />
       <h1 className="rg-serif text-[clamp(24px,4vw,32px)] text-ink mt-5 tracking-tight leading-[1.1]">
         {sessionTitle}
       </h1>
@@ -183,7 +183,7 @@ export default function Advocate({
     void (async () => {
       if (caseId) {
         const c = await caseService.getCaseById(caseId);
-        if (!cancelled) setCaseContext(c?.analysis ? buildCaseContextForAdvocate(c.analysis) : undefined);
+        if (!cancelled) setCaseContext(c ? buildWhaleWorkspaceContext({ cases: [c], currentCaseId: c.id }) : undefined);
         return;
       }
       const user = auth.currentUser;
@@ -192,15 +192,18 @@ export default function Advocate({
         userService.getProfile(user.uid),
         caseService.getUserCases(),
       ]);
-      const recent = cases.filter((item) => item.analysis).slice(0, 5);
-      const parts = [buildStudentProfileContext(profile)];
-      if (recent.length) {
-        parts.push('--- Recent analyzed work (newest first) ---');
-        recent.forEach((item, index) => {
-          parts.push(`Assessment ${index + 1}:\n${buildCaseContextForAdvocate(item.analysis!).slice(0, 4_000)}`);
-        });
+      if (profile?.accountRole === 'parent' || profile?.accountRole === 'teacher' || profile?.accountRole === 'supervisor') {
+        const family = await familyService.status();
+        const activeLinks = family.links.filter((link) => link.status === 'active');
+        const savedLink = localStorage.getItem('regrade.family.selectedLink');
+        const selected = activeLinks.find((link) => link.id === savedLink) ?? activeLinks[0];
+        if (selected) {
+          const shared = await familyService.sharedCases(selected.id);
+          if (!cancelled) setCaseContext(buildWhaleWorkspaceContext({ cases: shared, learnerName: selected.counterpartName }));
+          return;
+        }
       }
-      if (!cancelled) setCaseContext(parts.filter(Boolean).join('\n\n').slice(0, 24_000) || undefined);
+      if (!cancelled) setCaseContext(buildWhaleWorkspaceContext({ profile, cases }));
     })().catch(() => { if (!cancelled) setCaseContext(undefined); });
     return () => {
       cancelled = true;
@@ -276,7 +279,7 @@ export default function Advocate({
       <div className="rg-agent-workspace">
         <div className="rg-agent-workspace-inner">
           <div className="rg-agent-workspace-brand">
-            <CoachWhale size={22} animate={false} />
+            <CoachWhale size={22} animate={false} state={loading ? 'thinking' : messages.length ? 'explaining' : 'idle'} />
             <div>
               <p>MR. WHALE</p>
               <span>Agent workspace</span>

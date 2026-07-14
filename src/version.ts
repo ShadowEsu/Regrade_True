@@ -8,9 +8,9 @@
  *  - ios/App/App.xcodeproj `MARKETING_VERSION` (when Capacitor is added)
  *  - public/legal/privacy.html "Last updated"
  *  - public/legal/terms.html  "Last updated"
- *  - legal/PRIVACY_POLICY.md  "Last updated"
- *  - legal/TERMS_OF_SERVICE.md "Last updated"
- *  - legal/EULA.md "Last updated"
+ *  - docs/legal/PRIVACY_POLICY.md  "Last updated"
+ *  - docs/legal/TERMS_OF_SERVICE.md "Last updated"
+ *  - docs/legal/EULA.md "Last updated"
  */
 export const APP_VERSION = '1.0.0';
 
@@ -40,7 +40,7 @@ export const APP_DELETE_ACCOUNT_URL = 'https://regradeapp.tech/legal/delete-acco
 export const APP_WEBSITE_URL = 'https://regradeapp.tech';
 
 /** Minimum age shown on sign-in (App Store / Play Families & COPPA). */
-export const APP_MIN_AGE = 13;
+export const APP_MIN_AGE = 8;
 
 /** Disclaimer shown inside the app where AI output is presented. */
 export const APP_DISCLAIMER =

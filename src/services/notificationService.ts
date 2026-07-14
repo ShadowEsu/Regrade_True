@@ -1,7 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { collection, doc, getDocs, query, serverTimestamp, setDoc, updateDoc, where } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
-import { isPreviewMode } from '../lib/previewMode';
 import { userService } from './userService';
 
 export type NotificationType = 'import' | 'review' | 'appeal' | 'parent' | 'subscription' | 'system';
@@ -19,7 +18,6 @@ export interface RegradeNotification {
   archivedAt?: unknown;
 }
 
-const previewKey = 'regrade.preview.notifications.v1';
 const notificationId = () => Math.floor(Date.now() / 1000) % 2_000_000_000;
 const stableId = (value: string) => {
   let hash = 5381;
@@ -27,11 +25,6 @@ const stableId = (value: string) => {
   return `notice-${Math.abs(hash >>> 0).toString(36)}`;
 };
 
-function previewRead(): RegradeNotification[] {
-  try { return JSON.parse(localStorage.getItem(previewKey) ?? '[]') as RegradeNotification[]; }
-  catch { return []; }
-}
-function previewWrite(items: RegradeNotification[]) { localStorage.setItem(previewKey, JSON.stringify(items)); }
 function timestampMs(raw: unknown) {
   if (raw && typeof (raw as { toDate?: () => Date }).toDate === 'function') return (raw as { toDate: () => Date }).toDate().getTime();
   const value = new Date(String(raw ?? 0)).getTime();
@@ -55,7 +48,6 @@ async function record(input: Omit<RegradeNotification, 'id' | 'userId' | 'create
   if (!user) return null;
   const id = stableId(`${user.uid}:${input.groupKey}`);
   const notice: RegradeNotification = { ...input, id, userId: user.uid, createdAt: new Date().toISOString(), readAt: null, archivedAt: null };
-  if (isPreviewMode()) { previewWrite([notice, ...previewRead().filter((item) => item.id !== id)].slice(0, 100)); return notice; }
   await setDoc(doc(db, 'notifications', id), { ...notice, createdAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
   return notice;
 }
@@ -89,16 +81,13 @@ export const notificationService = {
   async list(): Promise<RegradeNotification[]> {
     const user = auth.currentUser;
     if (!user) return [];
-    if (isPreviewMode()) return previewRead().filter((item) => item.userId === user.uid && !item.archivedAt);
     const snapshot = await getDocs(query(collection(db, 'notifications'), where('userId', '==', user.uid)));
     return snapshot.docs.map((item) => ({ id: item.id, ...item.data() } as RegradeNotification)).filter((item) => !item.archivedAt).sort((a, b) => timestampMs(b.createdAt) - timestampMs(a.createdAt));
   },
   async markRead(id: string): Promise<void> {
-    if (isPreviewMode()) { previewWrite(previewRead().map((item) => item.id === id ? { ...item, readAt: new Date().toISOString() } : item)); return; }
     await updateDoc(doc(db, 'notifications', id), { readAt: serverTimestamp(), updatedAt: serverTimestamp() });
   },
   async archive(id: string): Promise<void> {
-    if (isPreviewMode()) { previewWrite(previewRead().map((item) => item.id === id ? { ...item, archivedAt: new Date().toISOString() } : item)); return; }
     await updateDoc(doc(db, 'notifications', id), { archivedAt: serverTimestamp(), updatedAt: serverTimestamp() });
   },
   async automaticImportComplete(count: number): Promise<void> {

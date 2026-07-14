@@ -1,8 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, completeAuthRedirectIfNeeded } from './lib/firebase';
-import { isPreviewMode, isPreviewOnboardingView, isPreviewSignInView, isPreviewSplashView } from './lib/previewMode';
-import PreviewBanner from './components/PreviewBanner';
 import Auth from './views/Auth';
 import BrandSpinner from './components/BrandSpinner';
 import BootSplash from './components/BootSplash';
@@ -22,29 +20,6 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   useEffect(() => {
-    if (isPreviewMode()) {
-      const u = auth.currentUser;
-      setUser(u);
-      setLoading(false);
-      if (!u) {
-        setOnboardingLoading(false);
-        return;
-      }
-      void (async () => {
-        try {
-          await userService.syncProfile(u.uid, { email: u.email || '' });
-          const profile = await userService.getProfile(u.uid);
-          setNeedsOnboarding(profile?.onboardingComplete !== true);
-        } catch (err) {
-          console.error('Preview profile could not load:', err);
-          setNeedsOnboarding(false);
-        } finally {
-          setOnboardingLoading(false);
-        }
-      })();
-      return;
-    }
-
     let unsub: (() => void) | undefined;
     let cancelled = false;
 
@@ -58,7 +33,7 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
         if (u) {
           try {
             await userService.syncProfile(u.uid, {
-              name: u.displayName || '',
+              name: u.displayName?.trim() || u.email?.split('@')[0] || 'Student',
               email: u.email || '',
               avatarUrl: u.photoURL || '',
             });
@@ -85,47 +60,6 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
       unsub?.();
     };
   }, []);
-
-  if (isPreviewMode()) {
-    if (isPreviewSplashView()) return <><PreviewBanner /><BootSplash label="Regrade" /></>;
-    if (isPreviewSignInView()) {
-      return (
-        <>
-          <PreviewBanner />
-          <Auth previewDemo />
-        </>
-      );
-    }
-    if (onboardingLoading) {
-      return <BootSplash />;
-    }
-    if (isPreviewOnboardingView()) {
-      return (
-        <>
-          <PreviewBanner />
-          <WelcomeSurvey onComplete={() => {
-            const url = new URL(window.location.href);
-            url.searchParams.delete('onboarding');
-            window.location.assign(url.toString());
-          }} />
-        </>
-      );
-    }
-    if (needsOnboarding) {
-      return (
-        <>
-          <PreviewBanner />
-          <WelcomeSurvey onComplete={() => setNeedsOnboarding(false)} />
-        </>
-      );
-    }
-    return (
-      <>
-        <PreviewBanner />
-        {children}
-      </>
-    );
-  }
 
   if (loading || (user && onboardingLoading)) {
     return <BootSplash label="Signing you in" />;

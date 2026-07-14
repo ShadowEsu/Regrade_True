@@ -1,3 +1,4 @@
+import { apiFetch } from '../lib/api';
 import {
   doc,
   getDoc,
@@ -6,8 +7,6 @@ import {
   type Timestamp,
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
-import { isPreviewMode } from '../lib/previewMode';
-import { PREVIEW_USER_UID } from '../lib/previewFixtures';
 import type { PlatformGuideId } from '../lib/platformUploadGuides';
 import type { ThemePreference } from '../lib/theme';
 
@@ -15,7 +14,7 @@ export interface UserProfile {
   name: string;
   email: string;
   /** Determines student learning tools versus consent-first supervisor tools. */
-  accountRole?: 'student' | 'supervisor';
+  accountRole?: AccountRole | 'supervisor';
   /** Legacy field; no longer collected in the app. */
   studentId?: string;
   major: string;
@@ -55,6 +54,8 @@ export interface UserProfile {
   studyChecklist?: string[];
 }
 
+export type AccountRole = 'student' | 'parent' | 'teacher';
+
 export type NotificationPreferences = {
   imports: boolean;
   analysisComplete: boolean;
@@ -73,63 +74,15 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   weeklySummary: false,
 };
 
-/** Fresh preview user — empty until they fill Profile or start an appeal. */
-const previewProfile: UserProfile = {
-  name: '',
-  email: 'preview@regradeapp.tech',
-  major: '',
-  school: '',
-  university: '',
-  gradeLevel: '',
-  gpa: '',
-  appealGoal: '',
-  avatarUrl: '',
-  analysisAlerts: true,
-  notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
-  automaticGradeDetection: false,
-};
-const PREVIEW_PROFILE_STORAGE_KEY = 'regrade_preview_profile_v2';
-
-function loadPreviewProfile(): Partial<UserProfile> {
-  if (typeof window === 'undefined') return {};
-  try {
-    const raw = localStorage.getItem(PREVIEW_PROFILE_STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as Partial<UserProfile>) : {};
-  } catch {
-    return {};
-  }
-}
-
-function persistPreviewProfile(): void {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(PREVIEW_PROFILE_STORAGE_KEY, JSON.stringify(previewProfile));
-  } catch {
-    // Preview continues in memory if storage is unavailable.
-  }
-}
-
-if (isPreviewMode()) {
-  Object.assign(previewProfile, loadPreviewProfile());
-}
-
 export const userService = {
   async syncProfile(uid: string, profile: Partial<UserProfile>) {
-    if (isPreviewMode()) {
-      if (uid === PREVIEW_USER_UID) {
-        Object.assign(previewProfile, profile);
-        persistPreviewProfile();
-      }
-      return previewProfile;
-    }
-
     const docRef = doc(db, 'users', uid);
     try {
       const snapshot = await getDoc(docRef);
 
       if (!snapshot.exists()) {
         const newProfile = {
-          name: profile.name || 'Anonymous Student',
+          name: profile.name?.trim() || 'Student',
           email: profile.email || '',
           major: profile.major ?? 'Undeclared',
           school: profile.school ?? '',
@@ -141,6 +94,11 @@ export const userService = {
           avatarUrl: profile.avatarUrl || '',
           analysisAlerts: profile.analysisAlerts ?? true,
           notificationPreferences: profile.notificationPreferences ?? DEFAULT_NOTIFICATION_PREFERENCES,
+          accountRole: profile.accountRole === 'teacher'
+            ? 'teacher'
+            : profile.accountRole === 'parent' || profile.accountRole === 'supervisor'
+              ? 'parent'
+              : 'student',
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         };
@@ -187,10 +145,6 @@ export const userService = {
   },
 
   async getProfile(uid: string) {
-    if (isPreviewMode()) {
-      return uid === PREVIEW_USER_UID ? previewProfile : null;
-    }
-
     const docRef = doc(db, 'users', uid);
     try {
       const snapshot = await getDoc(docRef);
@@ -207,43 +161,7 @@ export const userService = {
    * App Store "explicit consent before sending to third-party AI" gate
    * was satisfied.
    */
-  /** Preview-only: wipe profile to simulate account deletion. */
-  resetPreviewProfile(uid: string) {
-    if (!isPreviewMode() || uid !== PREVIEW_USER_UID) return;
-    Object.assign(previewProfile, {
-      name: '',
-      email: 'preview@regradeapp.tech',
-      major: '',
-      school: '',
-      university: '',
-      gradeLevel: '',
-      gpa: '',
-      appealGoal: '',
-      avatarUrl: '',
-    });
-    delete previewProfile.preferredPlatform;
-    delete previewProfile.aiEngine;
-    delete previewProfile.aiConsentAt;
-    delete previewProfile.theme;
-    delete previewProfile.onboardingComplete;
-    delete previewProfile.tutorialComplete;
-    delete previewProfile.studyChecklist;
-    previewProfile.analysisAlerts = true;
-    previewProfile.notificationPreferences = DEFAULT_NOTIFICATION_PREFERENCES;
-    previewProfile.autoMode = false;
-    previewProfile.automaticGradeDetection = false;
-    if (typeof window !== 'undefined') localStorage.removeItem(PREVIEW_PROFILE_STORAGE_KEY);
-  },
-
   async setThemePreference(uid: string, theme: ThemePreference) {
-    if (isPreviewMode()) {
-      if (uid === PREVIEW_USER_UID) {
-        previewProfile.theme = theme;
-        persistPreviewProfile();
-      }
-      return previewProfile;
-    }
-
     const docRef = doc(db, 'users', uid);
     try {
       await setDoc(
@@ -260,15 +178,6 @@ export const userService = {
 
   /** Records one-time consent without exposing model/provider choices in the UI. */
   async acceptAiConsent(uid: string) {
-    if (isPreviewMode()) {
-      if (uid === PREVIEW_USER_UID) {
-        // Keep legacy aiEngine only for backwards-compatible preview records.
-        previewProfile.aiEngine = 'gemini';
-        persistPreviewProfile();
-      }
-      return previewProfile;
-    }
-
     const docRef = doc(db, 'users', uid);
     try {
       await setDoc(docRef, { aiConsentAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
@@ -279,55 +188,53 @@ export const userService = {
     }
   },
 
-  async completeOnboarding(uid: string, profile: Pick<UserProfile, 'name' | 'school'>) {
-    if (isPreviewMode()) {
-      if (uid === PREVIEW_USER_UID) {
-        Object.assign(previewProfile, profile, { onboardingComplete: true });
-        persistPreviewProfile();
-      }
-      return previewProfile;
+  async completeOnboarding(uid: string, profile: Pick<UserProfile, 'name' | 'school'> & { accountRole?: AccountRole }) {
+    const response = await apiFetch('/v1/profile/onboarding', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: profile.name,
+        school: profile.school ?? '',
+        accountRole: profile.accountRole ?? 'student',
+        complete: true,
+      }),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+      throw new Error(data?.error?.message ?? 'Could not finish setup.');
     }
+  },
 
-    const docRef = doc(db, 'users', uid);
-    try {
-      await setDoc(
-        docRef,
-        { ...profile, onboardingComplete: true, updatedAt: serverTimestamp() },
-        { merge: true },
-      );
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${uid}`);
-      throw error;
+  async saveOnboardingDetails(
+    uid: string,
+    profile: Pick<UserProfile, 'name' | 'school'> & { accountRole: AccountRole },
+  ) {
+    const response = await apiFetch('/v1/profile/onboarding', {
+      method: 'POST',
+      body: JSON.stringify({
+        name: profile.name,
+        school: profile.school ?? '',
+        accountRole: profile.accountRole,
+        complete: false,
+      }),
+    });
+    if (!response.ok) {
+      const data = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+      throw new Error(data?.error?.message ?? 'Could not save your school details.');
     }
+    return response.json();
   },
 
   /** Saves completion only after every required first-use walkthrough step is viewed. */
   async completeTutorial(uid: string) {
-    if (isPreviewMode()) {
-      if (uid === PREVIEW_USER_UID) {
-        previewProfile.tutorialComplete = true;
-        persistPreviewProfile();
-      }
-      return previewProfile;
+    const response = await apiFetch('/v1/profile/tutorial-complete', { method: 'POST', body: '{}' });
+    if (!response.ok) {
+      const data = await response.json().catch(() => null) as { error?: { message?: string } } | null;
+      throw new Error(data?.error?.message ?? 'Could not finish the walkthrough.');
     }
-
-    const docRef = doc(db, 'users', uid);
-    try {
-      await setDoc(docRef, { tutorialComplete: true, updatedAt: serverTimestamp() }, { merge: true });
-      return { tutorialComplete: true };
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${uid}`);
-      throw error;
-    }
+    return { tutorialComplete: true as const };
   },
 
   async setAnalysisAlerts(uid: string, analysisAlerts: boolean) {
-    if (isPreviewMode()) {
-      if (uid === PREVIEW_USER_UID) previewProfile.analysisAlerts = analysisAlerts;
-      persistPreviewProfile();
-      return previewProfile;
-    }
-
     const docRef = doc(db, 'users', uid);
     try {
       await setDoc(docRef, { analysisAlerts, updatedAt: serverTimestamp() }, { merge: true });
@@ -339,11 +246,6 @@ export const userService = {
   },
 
   async setNotificationPreferences(uid: string, notificationPreferences: NotificationPreferences) {
-    if (isPreviewMode()) {
-      if (uid === PREVIEW_USER_UID) previewProfile.notificationPreferences = { ...notificationPreferences };
-      persistPreviewProfile();
-      return previewProfile;
-    }
     const docRef = doc(db, 'users', uid);
     try {
       await setDoc(docRef, { notificationPreferences, updatedAt: serverTimestamp() }, { merge: true });
@@ -355,22 +257,12 @@ export const userService = {
   },
 
   async setAutoMode(uid: string, autoMode: boolean) {
-    if (isPreviewMode()) {
-      if (uid === PREVIEW_USER_UID) previewProfile.autoMode = autoMode;
-      persistPreviewProfile();
-      return previewProfile;
-    }
     const docRef = doc(db, 'users', uid);
     await setDoc(docRef, { autoMode, updatedAt: serverTimestamp() }, { merge: true });
     return { autoMode };
   },
 
   async setAutomaticGradeDetection(uid: string, automaticGradeDetection: boolean) {
-    if (isPreviewMode()) {
-      if (uid === PREVIEW_USER_UID) previewProfile.automaticGradeDetection = automaticGradeDetection;
-      persistPreviewProfile();
-      return previewProfile;
-    }
     const docRef = doc(db, 'users', uid);
     await setDoc(docRef, { automaticGradeDetection, updatedAt: serverTimestamp() }, { merge: true });
     return { automaticGradeDetection };
@@ -378,12 +270,6 @@ export const userService = {
 
   async setStudyChecklist(uid: string, studyChecklist: string[]) {
     const safeList = [...new Set(studyChecklist)].slice(0, 12);
-    if (isPreviewMode()) {
-      if (uid === PREVIEW_USER_UID) previewProfile.studyChecklist = safeList;
-      persistPreviewProfile();
-      return previewProfile;
-    }
-
     const docRef = doc(db, 'users', uid);
     try {
       await setDoc(docRef, { studyChecklist: safeList, updatedAt: serverTimestamp() }, { merge: true });

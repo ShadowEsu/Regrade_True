@@ -12,7 +12,6 @@ export const CONNECT_STRINGS = {
   manualAlwaysWorks: 'Manual upload always works for this platform.',
   connectAction: 'Connect',
   connectedBadge: 'Connected',
-  simulatedBadge: 'Demo connection',
   disconnectAction: 'Disconnect',
   disconnectConfirm:
     'Disconnecting deletes the saved credential right away. You can reconnect any time, and manual upload keeps working.',
@@ -61,9 +60,6 @@ export const CONNECT_STRINGS = {
     "Canvas didn't accept that token. Tokens are long, so a missed character is common. Copy it fresh and try once more.",
   canvasSaveAction: 'Connect Canvas',
   canvasCancelAction: 'Not now',
-
-  previewSimulatedNote:
-    'Preview mode: this connection is simulated so you can see the flow. No real account was touched.',
 } as const;
 
 export type ConnectStringKey = keyof typeof CONNECT_STRINGS;

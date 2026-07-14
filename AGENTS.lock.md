@@ -4,7 +4,7 @@ Rule for every agent: **You may only create or edit files inside your declared t
 If you believe you need to edit a file outside it, stop and report to the Orchestrator in
 your BLOCKED line. Do not edit it.**
 
-Adapted to the real repo layout (see docs/CURRENT_STATE.md). Feature agents never import
+Adapted to the real repo layout (see docs/planning/CURRENT_STATE.md). Feature agents never import
 from each other; they import only from `src/contracts` and `src/theme`.
 
 | Agent | ID | Exclusive territory (create/edit) | May read (never write) |

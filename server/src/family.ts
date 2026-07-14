@@ -12,6 +12,7 @@ const CodeSchema = z.object({ code: z.string().trim().toUpperCase().regex(/^[ABC
 const LinkParam = z.object({ linkId: z.string().uuid() });
 const CaseParam = z.object({ linkId: z.string().uuid(), caseId: z.string().min(1).max(128).regex(/^[a-zA-Z0-9_-]+$/) });
 const SuggestionParam = z.object({ linkId: z.string().uuid(), suggestionId: z.string().regex(/^[a-f0-9]{64}$/) });
+const PermissionSchema = z.object({ viewExams: z.boolean(), viewAiFindings: z.boolean(), viewAppealDrafts: z.boolean(), receiveNotifications: z.boolean() });
 const CODE_TTL_MS = 10 * 60_000;
 const LINK_TTL_MS = 24 * 60 * 60_000;
 const ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -32,10 +33,11 @@ function newCode(): string {
 
 async function roleOf(uid: string): Promise<"student" | "supervisor"> {
   const snap = await admin.firestore().doc(`users/${uid}`).get();
-  return snap.data()?.accountRole === "supervisor" ? "supervisor" : "student";
+  const role = snap.data()?.accountRole;
+  return role === "parent" || role === "teacher" || role === "supervisor" ? "supervisor" : "student";
 }
 
-type LinkRecord = { learnerUid: string; supervisorUid: string; status: "pending" | "active"; expiresAt?: Timestamp };
+type LinkRecord = { learnerUid: string; supervisorUid: string; status: "pending" | "active"; expiresAt?: Timestamp; shareGrades?: boolean; shareAppealFindings?: boolean; shareDrafts?: boolean; receiveNotifications?: boolean };
 
 export function createFamilyRouter(env: Env): Router {
   const router = Router();
@@ -59,7 +61,23 @@ export function createFamilyRouter(env: Env): Router {
         const suggestions = role === "student"
           ? (await doc.ref.collection("suggestions").where("status", "==", "pending").get()).docs.map((item) => ({ id: item.id, caseId: item.data().caseId, title: item.data().title || "Marked work" }))
           : [];
-        return { id: doc.id, status: data.status, counterpartName: profile.data()?.name || "Regrade member", canViewSharedWork: data.status === "active", suggestions };
+        const person = profile.data();
+        return {
+          id: doc.id,
+          status: data.status,
+          counterpartName: person?.name || "Regrade member",
+          counterpartAvatarUrl: person?.avatarUrl || "",
+          gradeLevel: person?.gradeLevel || "",
+          school: person?.school || person?.university || "",
+          canViewSharedWork: data.status === "active" && data.shareGrades !== false,
+          permissions: {
+            viewExams: data.shareGrades !== false,
+            viewAiFindings: data.shareAppealFindings !== false,
+            viewAppealDrafts: data.shareDrafts !== false,
+            receiveNotifications: data.receiveNotifications !== false,
+          },
+          suggestions,
+        };
       }));
       res.json({ role, links: rows });
     })().catch(next);
@@ -95,6 +113,7 @@ export function createFamilyRouter(env: Env): Router {
         tx.create(admin.firestore().collection("supervisionLinks").doc(linkId), {
           learnerUid: record.learnerUid, supervisorUid, status: "pending",
           shareGrades: true, shareAppealFindings: true, shareDrafts: true,
+          receiveNotifications: true,
           createdAt: admin.firestore.FieldValue.serverTimestamp(),
           expiresAt: admin.firestore.Timestamp.fromMillis(Date.now() + LINK_TTL_MS),
         });
@@ -131,16 +150,36 @@ export function createFamilyRouter(env: Env): Router {
     })().catch(next);
   });
 
+  router.patch("/links/:linkId/permissions", validate(LinkParam, "params"), validate(PermissionSchema, "body"), (req, res, next) => {
+    void (async () => {
+      const learnerUid = uidOf(req);
+      const ref = admin.firestore().collection("supervisionLinks").doc((req.params as z.infer<typeof LinkParam>).linkId);
+      const snap = await ref.get();
+      const link = snap.data() as LinkRecord | undefined;
+      if (!link || link.learnerUid !== learnerUid || link.status !== "active") throw new ApiError({ status: 403, code: "FORBIDDEN", message: "Only the linked learner can change these permissions." });
+      const permissions = req.body as z.infer<typeof PermissionSchema>;
+      await ref.update({
+        shareGrades: permissions.viewExams,
+        shareAppealFindings: permissions.viewAiFindings,
+        shareDrafts: permissions.viewAppealDrafts,
+        receiveNotifications: permissions.receiveNotifications,
+        permissionsUpdatedBy: learnerUid,
+        permissionsUpdatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      res.json({ updated: true });
+    })().catch(next);
+  });
+
   router.get("/links/:linkId/cases", validate(LinkParam, "params"), (req, res, next) => {
     void (async () => {
       const uid = uidOf(req);
       const snap = await admin.firestore().collection("supervisionLinks").doc((req.params as z.infer<typeof LinkParam>).linkId).get();
       const link = snap.data() as LinkRecord | undefined;
-      if (!link || link.supervisorUid !== uid || link.status !== "active") throw new ApiError({ status: 403, code: "FORBIDDEN", message: "Learner consent is required." });
+      if (!link || link.supervisorUid !== uid || link.status !== "active" || link.shareGrades === false) throw new ApiError({ status: 403, code: "FORBIDDEN", message: "Learner permission to view exams is required." });
       const cases = await admin.firestore().collection("cases").where("userId", "==", link.learnerUid).get();
       res.json({ cases: cases.docs.map((doc) => {
         const data = doc.data();
-        return { id: doc.id, title: data.title, status: data.status, updatedAt: data.updatedAt, analysis: data.analysis ?? null, draftEmail: data.draftEmail ?? null };
+        return { id: doc.id, title: data.title, status: data.status, updatedAt: data.updatedAt, analysis: link.shareAppealFindings === false ? null : data.analysis ?? null, draftEmail: link.shareDrafts === false ? null : data.draftEmail ?? null };
       }) });
     })().catch(next);
   });

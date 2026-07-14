@@ -1,6 +1,4 @@
 import { apiFetch } from './api';
-import { isPreviewMode } from './previewMode';
-import { PREVIEW_ANALYSIS } from './previewFixtures';
 import type { AnalysisResult } from '../types';
 import { userFacingError } from './userFacingError';
 
@@ -23,11 +21,6 @@ export async function performComprehensiveAnalysis(
   feedbackData: string,
   options?: { inlineImages?: InlineImagePart[] },
 ) {
-  if (isPreviewMode()) {
-    await new Promise((r) => setTimeout(r, 900));
-    return { ...PREVIEW_ANALYSIS };
-  }
-
   try {
     const res = await apiFetch('/v1/gemini/analyze', {
       method: 'POST',
@@ -55,20 +48,6 @@ export async function chatWithAdvocate(
   history: { role: 'user' | 'model'; text: string }[],
   options?: { caseContext?: string },
 ) {
-  if (isPreviewMode()) {
-    await new Promise((r) => setTimeout(r, 400));
-    if (options?.caseContext) {
-      return (
-        'Preview mode: your appeal assistant would use worksheet analysis here. ' +
-        'Ask me to polish your draft, explain a finding, or suggest what to say to your professor.'
-      );
-    }
-    return (
-      'Preview mode: this is a sample reply. In the full app, the appeal assistant uses your case context and course uploads. ' +
-      `You asked: “${message.slice(0, 120)}${message.length > 120 ? '…' : ''}”`
-    );
-  }
-
   try {
     const res = await apiFetch('/v1/gemini/advocate', {
       method: 'POST',

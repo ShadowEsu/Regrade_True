@@ -56,8 +56,6 @@ export type ConnectionResult =
       ok: true;
       platformId: ConnectPlatformId;
       accountLabel: string | null;
-      /** True when preview mode simulated the flow instead of a live grant. */
-      simulated: boolean;
     }
   | {
       ok: false;
@@ -91,12 +89,10 @@ export interface StoredConnection {
   platformId: ConnectPlatformId;
   accountLabel: string | null;
   connectedAt: string; // ISO 8601
-  simulated: boolean;
 }
 
 /** Dependencies injected into the connector factory so flows stay testable. */
 export interface ConnectorDeps {
-  isPreview: boolean;
   /** True when the API server can store credentials encrypted at rest. */
   serverAvailable: boolean;
   /** Opens the manual upload flow. Every card can call this. */

@@ -5,7 +5,7 @@ import { ICONS, DEFAULT_AVATAR_SRC } from '../constants';
 import { auth, loginWithGoogle } from '../lib/firebase';
 import { secureSignOut } from '../services/sessionService';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { userService, UserProfile, DEFAULT_NOTIFICATION_PREFERENCES, type NotificationPreferences } from '../services/userService';
+import { userService, UserProfile, DEFAULT_NOTIFICATION_PREFERENCES, type NotificationPreferences, type AccountRole } from '../services/userService';
 import { scanContentForThreats } from '../lib/securityScanner';
 import {
   AI_TRADEMARK_FOOTER,
@@ -17,7 +17,6 @@ import {
   APP_TERMS_URL,
   APP_VERSION,
 } from '../version';
-import { isPreviewMode } from '../lib/previewMode';
 import { accountService } from '../services/accountService';
 import BrandSpinner from '../components/BrandSpinner';
 import ContinueWithGoogleButton from '../components/ContinueWithGoogleButton';
@@ -25,10 +24,20 @@ import { ConnectScreen } from '../features/connect';
 import DeleteAccountDialog from '../components/DeleteAccountDialog';
 import MarketingEyebrow from '../components/MarketingEyebrow';
 import { PLAN_CATALOG, subscriptionService, type SubscriptionSnapshot } from '../services/subscriptionService';
+import {
+  CURRENCY_OPTIONS,
+  formatMoney,
+  loadUsdRates,
+  readStoredCurrency,
+  storeCurrency,
+  type DisplayCurrency,
+} from '../services/currencyService';
 import { automationService } from '../services/automationService';
 import { isNativeStore } from '../services/storePurchaseService';
 import LearnerPairingPanel from '../components/LearnerPairingPanel';
 import { notificationService } from '../services/notificationService';
+import ThemePicker from '../components/ThemePicker';
+import { useTheme } from '../context/ThemeContext';
 
 interface ProfileProps {
   onShowAbout?: () => void;
@@ -132,13 +141,16 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreferences>(DEFAULT_NOTIFICATION_PREFERENCES);
   const [autoMode, setAutoMode] = useState(false);
   const [automaticGradeDetection, setAutomaticGradeDetection] = useState(false);
-  const [accountRole, setAccountRole] = useState<'student' | 'supervisor'>('student');
+  const [accountRole, setAccountRole] = useState<AccountRole>('student');
   const [subscription, setSubscription] = useState<SubscriptionSnapshot | null>(null);
   const [billingError, setBillingError] = useState<string | null>(null);
   const [automationError, setAutomationError] = useState<string | null>(null);
   const [billingBusy, setBillingBusy] = useState(false);
   const [nativePrices, setNativePrices] = useState<Partial<Record<'student' | 'pro', string>>>({});
+  const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>(() => readStoredCurrency());
+  const [fxRates, setFxRates] = useState<Record<string, number>>({ USD: 1 });
   const nativePurchases = isNativeStore();
+  const { preference: themePreference, setPreference: setThemePreference } = useTheme();
   const [alertsSaving, setAlertsSaving] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>(() => (
     typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
@@ -171,7 +183,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
             setNotificationPreferences({ ...DEFAULT_NOTIFICATION_PREFERENCES, ...data.notificationPreferences });
             setAutoMode(data.autoMode === true);
             setAutomaticGradeDetection(data.automaticGradeDetection === true);
-            setAccountRole(data.accountRole === 'supervisor' ? 'supervisor' : 'student');
+            setAccountRole(data.accountRole === 'teacher' ? 'teacher' : data.accountRole === 'parent' || data.accountRole === 'supervisor' ? 'parent' : 'student');
           } else {
             setForm({
               ...EMPTY_FORM,
@@ -195,6 +207,30 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
     if (nativePurchases) void subscriptionService.getNativePrices().then(setNativePrices).catch(() => setNativePrices({}));
   }, [user, nativePurchases]);
 
+  useEffect(() => {
+    let cancelled = false;
+    void loadUsdRates().then((rates) => {
+      if (!cancelled) setFxRates(rates);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const onCurrencyChange = (code: DisplayCurrency) => {
+    setDisplayCurrency(code);
+    storeCurrency(code);
+  };
+
+  const priceLabel = (planId: keyof typeof PLAN_CATALOG): string => {
+    const usd = PLAN_CATALOG[planId].price;
+    if (usd === 0) return formatMoney(0, displayCurrency, fxRates);
+    if (nativePurchases && (planId === 'student' || planId === 'pro') && nativePrices[planId]) {
+      return nativePrices[planId] as string;
+    }
+    return formatMoney(usd, displayCurrency, fxRates);
+  };
+
   const updateAutoMode = async () => {
     if (!user || !subscription?.limits.autoMode) {
       setActiveTab('subscription');
@@ -205,7 +241,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
     setAutoMode(next);
     try {
       await automationService.update({ autoPrepare: next });
-      if (isPreviewMode()) await userService.setAutoMode(user.uid, next);
+      await userService.setAutoMode(user.uid, next);
       if (next && notificationPermission !== 'granted') {
         const permission = await notificationService.requestPermission();
         setNotificationPermission(permission);
@@ -226,7 +262,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
     setAutomaticGradeDetection(next);
     try {
       await automationService.update({ automaticGradeDetection: next });
-      if (isPreviewMode()) await userService.setAutomaticGradeDetection(user.uid, next);
+      await userService.setAutomaticGradeDetection(user.uid, next);
     } catch {
       setAutomaticGradeDetection(!next);
       setAutomationError('Automatic grade detection could not be updated. Check your connection and try again.');
@@ -263,7 +299,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
     setAnalysisAlerts(next);
     try {
       await automationService.update({ notifications: next });
-      if (isPreviewMode()) await userService.setAnalysisAlerts(user.uid, next);
+      await userService.setAnalysisAlerts(user.uid, next);
     } catch (err) {
       setAnalysisAlerts(!next);
       setAutomationError('Notification settings could not be updated. Check your connection and try again.');
@@ -370,11 +406,6 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
       await accountService.deleteAccount();
       setShowDeleteDialog(false);
       setForm(EMPTY_FORM);
-      if (isPreviewMode()) {
-        setToastMessage('Account deleted (preview simulation)');
-        setShowSavedToast(true);
-        setTimeout(() => setShowSavedToast(false), 2800);
-      }
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : 'Could not delete account. Try again or email support.');
     } finally {
@@ -477,6 +508,18 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               exit={{ opacity: 0, y: -4 }}
               className="space-y-4"
             >
+              <div className="rg-glass-card p-4">
+                <p className="rg-meta-k text-primary">Account role</p>
+                <div className="mt-3 grid grid-cols-3 gap-2" role="radiogroup" aria-label="Account role">
+                  {(['student', 'parent', 'teacher'] as AccountRole[]).map((role) => <button key={role} type="button" role="radio" aria-checked={accountRole === role} onClick={() => {
+                    if (!user || role === accountRole) return;
+                    const previous = accountRole;
+                    setAccountRole(role);
+                    void userService.syncProfile(user.uid, { accountRole: role }).then(() => window.dispatchEvent(new CustomEvent('regrade:role-changed', { detail: role }))).catch(() => setAccountRole(previous));
+                  }} className={`rounded-xl border px-2 py-3 text-[12px] font-semibold capitalize ${accountRole === role ? 'border-primary bg-primary/8 text-primary' : 'border-hairline bg-canvas text-ink-muted'}`}>{role === 'parent' ? 'Parent' : role}</button>)}
+                </div>
+                <p className="mt-2 text-[11px] leading-relaxed text-ink-muted">Parents and teachers can link multiple learners without signing into each learner account.</p>
+              </div>
               <details className="rg3-profile-details" open={profileEditOpen} onToggle={(event) => setProfileEditOpen(event.currentTarget.open)}>
                 <summary><span><ICONS.User /><span><strong>Edit profile details</strong><small>Name, institution, tone, and focus</small></span></span><ICONS.ChevronDown /></summary>
                 <div className="space-y-4 pt-4">
@@ -700,6 +743,27 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
 
           {activeTab === 'subscription' && (
             <motion.div key="subscription" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }} className="space-y-4">
+              <div className="rg-glass-form-card p-4 sm:p-5">
+                <label htmlFor="regrade-currency" className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-ink-muted">
+                  Currency
+                </label>
+                <select
+                  id="regrade-currency"
+                  value={displayCurrency}
+                  onChange={(event) => onCurrencyChange(event.target.value as DisplayCurrency)}
+                  className="mt-2 w-full rounded-xl border border-hairline bg-parchment px-3 py-2.5 text-[14px] font-medium text-ink outline-none focus:border-primary/40"
+                >
+                  {CURRENCY_OPTIONS.map((option) => (
+                    <option key={option.code} value={option.code}>
+                      {option.region} · {option.label} ({option.code})
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-[11px] text-ink-muted">
+                  Plan prices convert from USD for display. Checkout still charges in the store or Stripe currency when you subscribe.
+                </p>
+              </div>
+
               <div className="rg-glass-form-card p-5 sm:p-6 space-y-4">
                 <div className="flex items-start justify-between gap-4">
                   <div>
@@ -710,9 +774,21 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
                     </p>
                   </div>
                   <span className="rounded-lg bg-primary/10 px-3 py-1.5 text-[12px] font-semibold text-primary">
-                    {subscription ? `${subscription.plan === 'free' ? '$0.00' : nativePrices[subscription.plan] ?? `$${PLAN_CATALOG[subscription.plan].price.toFixed(2)}`}/month` : '$0.00/month'}
+                    {subscription?.isIntroTrial
+                      ? 'Plus trial'
+                      : subscription
+                        ? `${priceLabel(subscription.plan)}/month`
+                        : `${formatMoney(0, displayCurrency, fxRates)}/month`}
                   </span>
                 </div>
+                {subscription?.isIntroTrial && subscription.trialEndsAt && (
+                  <p className="text-[12px] text-ink-muted">
+                    Your free Plus trial ends {new Date(subscription.trialEndsAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}. No card required.
+                  </p>
+                )}
+                {subscription?.status === 'trial_ended' && (
+                  <p className="text-[12px] text-ink-muted">Your Plus trial has ended. Choose Plus or Pro to keep the higher limits.</p>
+                )}
                 {subscription && <div className="grid grid-cols-2 gap-3">
                   {[{ label: 'Exam reviews', used: subscription.usage.exams, limit: subscription.limits.exams }, { label: 'Mr. Whale messages', used: subscription.usage.messages, limit: subscription.limits.messages }].map((item) => <div key={item.label} className="rounded-xl border border-hairline bg-parchment p-3">
                     <p className="text-[11px] text-ink-muted">{item.label}</p><p className="mt-1 text-lg font-semibold text-ink">{item.used} <span className="text-[12px] font-normal text-ink-muted">of {item.limit}</span></p>
@@ -726,14 +802,25 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
 
               <div className="grid gap-3 sm:grid-cols-3">
                 {(Object.entries(PLAN_CATALOG) as Array<[keyof typeof PLAN_CATALOG, (typeof PLAN_CATALOG)[keyof typeof PLAN_CATALOG]]>).map(([id, plan]) => <div key={id} className={`rg-glass-card p-4 space-y-3 ${subscription?.plan === id ? 'border-primary/40' : ''}`}>
-                  <div><p className="text-[15px] font-semibold text-ink">{plan.name}</p><p className="text-xl font-semibold text-primary mt-1">{id === 'free' ? '$0.00' : nativePrices[id] ?? `$${plan.price.toFixed(2)}`}<span className="text-[11px] font-normal text-ink-muted"> / month</span></p></div>
-                  <ul className="space-y-1 text-[11px] text-ink-muted"><li>{plan.exams} exam reviews</li><li>{plan.messages} Mr. Whale messages</li><li>{plan.autoMode ? 'Auto Mode included' : 'Manual reviews'}</li></ul>
+                  <div>
+                    <p className="text-[15px] font-semibold text-ink">{plan.name}</p>
+                    <p className="text-xl font-semibold text-primary mt-1">
+                      {priceLabel(id)}
+                      <span className="text-[11px] font-normal text-ink-muted"> / month</span>
+                    </p>
+                  </div>
+                  <ul className="space-y-1 text-[11px] text-ink-muted">
+                    <li>{plan.exams} exam reviews</li>
+                    <li>{plan.messages} Mr. Whale messages</li>
+                    <li>{plan.autoMode ? 'Auto Mode included' : 'Manual reviews'}</li>
+                    {id === 'student' && <li>2 months free when you start</li>}
+                  </ul>
                   {id !== 'free' && subscription?.plan !== id && <button type="button" disabled={billingBusy} onClick={() => void startPlan(id)} className="rg-btn-primary w-full text-[12px]">Choose {plan.name}</button>}
-                  {subscription?.plan === id && <span className="text-[11px] font-semibold text-primary">Current plan</span>}
+                  {subscription?.plan === id && <span className="text-[11px] font-semibold text-primary">{subscription.isIntroTrial ? 'Current trial' : 'Current plan'}</span>}
                 </div>)}
               </div>
               {billingError && <p className="rounded-xl border border-red-500/20 bg-red-500/5 p-3 text-[12px] text-red-700">{billingError}</p>}
-              <p className="text-[11px] text-ink-muted">Payment renews monthly until cancelled. Usage resets at the displayed billing-period end. Paid access begins only after {nativePurchases ? 'the App Store verifies the purchase' : 'payment verification'}.</p>
+              <p className="text-[11px] text-ink-muted">New accounts get Plus free for 2 months. After that, payment renews monthly until cancelled. Usage resets at the displayed billing-period end. Paid access begins only after {nativePurchases ? 'the App Store verifies the purchase' : 'payment verification'}.</p>
               {nativePurchases && <p className="text-[11px] leading-relaxed text-ink-muted">Purchases are charged to your Apple or Google account. Manage or cancel in your store subscription settings. By subscribing, you agree to the <a href={APP_TERMS_URL} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">Terms of Service</a> and <a href={APP_PRIVACY_URL} target="_blank" rel="noopener noreferrer" className="font-semibold text-primary underline">Privacy Policy</a>.</p>}
             </motion.div>
           )}
@@ -826,16 +913,12 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               className="space-y-4"
             >
               <div className="rg-glass-card p-5">
-                <p className="text-[10px] font-mono uppercase tracking-wider text-primary">Appearance</p>
-                <div className="mt-3 flex items-center justify-between gap-4 rounded-xl border border-hairline bg-parchment px-4 py-3">
-                  <div><p className="text-[13px] font-semibold text-ink">Regrade Light</p><p className="mt-0.5 text-[11px] text-ink-muted">The approved Regrade 2.0 experience.</p></div>
-                  <span className="rg2-status rg2-status-blue">Active</span>
-                </div>
+                <ThemePicker value={themePreference} onChange={(next) => void setThemePreference(next)} />
               </div>
               <div className="rg-glass-card p-5 space-y-3">
                 <p className="text-[10px] font-mono uppercase tracking-wider text-primary">Legal</p>
                 <p className="text-[13px] text-muted leading-relaxed">
-                  For users {APP_MIN_AGE}+ · v{APP_VERSION}
+                  Built for students {APP_MIN_AGE}+ · Parent or teacher guidance recommended for younger students · v{APP_VERSION}
                 </p>
                 <div className="space-y-2">
                   <a
@@ -900,15 +983,13 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
                   </p>
                 </div>
 
-                {!isPreviewMode() && (
-                  <button
-                    type="button"
-                    onClick={() => void secureSignOut()}
-                    className="rg-btn-ghost w-full py-3 text-[14px]"
-                  >
-                    Sign out
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => void secureSignOut()}
+                  className="rg-btn-ghost w-full py-3 text-[14px]"
+                >
+                  Sign out
+                </button>
 
                 <div className="rounded-xl bg-red-500/[0.06] border border-red-500/15 p-4 space-y-3 text-center">
                   <ICONS.ShieldAlert className="w-8 h-8 text-red-600/70 mx-auto" strokeWidth={1.5} />

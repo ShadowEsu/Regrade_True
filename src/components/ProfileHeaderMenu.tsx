@@ -3,7 +3,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import { DEFAULT_AVATAR_SRC, ICONS } from '../constants';
 import { auth } from '../lib/firebase';
 import { secureSignOut } from '../services/sessionService';
-import { isPreviewMode } from '../lib/previewMode';
 import type { ProfileSection } from '../views/Profile';
 
 const SECTIONS: { id: ProfileSection; label: string }[] = [
@@ -98,20 +97,16 @@ export default function ProfileHeaderMenu({
                 </button>
               );
             })}
-            {!isPreviewMode() && (
-              <>
-                <div className="rg-profile-menu-divider" role="separator" />
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={handleSignOut}
-                  className="rg-profile-menu-item rg-profile-menu-item-danger"
-                >
-                  <ICONS.LogOut className="w-4 h-4 shrink-0" strokeWidth={1.75} />
-                  <span>Sign out</span>
-                </button>
-              </>
-            )}
+            <div className="rg-profile-menu-divider" role="separator" />
+            <button
+              type="button"
+              role="menuitem"
+              onClick={handleSignOut}
+              className="rg-profile-menu-item rg-profile-menu-item-danger"
+            >
+              <ICONS.LogOut className="w-4 h-4 shrink-0" strokeWidth={1.75} />
+              <span>Sign out</span>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

@@ -13,7 +13,9 @@ export function isRemoteApiConfigured(): boolean {
 export function isApiLikelyAvailable(): boolean {
   if (import.meta.env.DEV) return true;
   if (isRemoteApiConfigured()) return true;
-  // Capacitor production builds have no /api proxy — require VITE_API_BASE_URL.
+  // Electron desktop shell serves the UI and proxies /api to the local Express API.
+  if (import.meta.env.VITE_DESKTOP_SHELL === 'true') return true;
+  // Capacitor / static hosting without a proxy need VITE_API_BASE_URL.
   return false;
 }
 

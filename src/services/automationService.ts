@@ -1,5 +1,4 @@
 import { apiFetch } from '../lib/api';
-import { isPreviewMode } from '../lib/previewMode';
 import { listConnections } from '../features/connect/store';
 import { connectorImportService, IMPORTABLE_PLATFORMS } from './connectorImportService';
 import { auth } from '../lib/firebase';
@@ -14,7 +13,6 @@ export type AutomationPreferences = {
 
 export const automationService = {
   async update(preferences: AutomationPreferences): Promise<void> {
-    if (isPreviewMode()) return;
     const response = await apiFetch('/v1/automation/preferences', {
       method: 'PATCH',
       body: JSON.stringify(preferences),
@@ -25,7 +23,6 @@ export const automationService = {
     }
   },
   async runGradeDetection(): Promise<void> {
-    if (isPreviewMode()) return;
     const user = auth.currentUser;
     if (!user) return;
     const profile = await userService.getProfile(user.uid);

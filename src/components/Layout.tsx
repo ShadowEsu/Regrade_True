@@ -4,6 +4,9 @@ import { NAV_TAB_ICONS } from './BottomNavIcons';
 import type { ProfileSection } from '../views/Profile';
 import { caseService } from '../services/caseService';
 import { automationService } from '../services/automationService';
+import AppHeaderMenu from './AppHeaderMenu';
+import ThemeQuickToggle from './ThemeQuickToggle';
+import NotificationQuickToggle from './NotificationQuickToggle';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -11,13 +14,14 @@ interface LayoutProps {
   onTabChange: (tab: string) => void;
   profileSection: ProfileSection;
   onProfileSectionChange: (section: ProfileSection) => void;
+  onShowHelp: () => void;
 }
 
 const tabs = [
   { id: 'dashboard', label: 'Home' },
   { id: 'study', label: 'Review' },
+  { id: 'chat', label: 'Mr Whale' },
   { id: 'upload', label: 'Appeal' },
-  { id: 'history', label: 'History' },
   { id: 'profile', label: 'Profile' },
 ] as const;
 
@@ -25,6 +29,8 @@ export default function Layout({
   children,
   activeTab,
   onTabChange,
+  onProfileSectionChange,
+  onShowHelp,
 }: LayoutProps) {
   const isChat = activeTab === 'chat';
   const [unread, setUnread] = useState<Record<string, number>>({ chat: 0, study: 0, history: 0 });
@@ -65,6 +71,11 @@ export default function Layout({
   return (
     <div className="rg-app-bg selection:bg-primary/15">
       <main className="flex flex-col flex-1 min-h-0 pb-[calc(4.25rem+env(safe-area-inset-bottom))]">
+        <div className="rg-app-shell flex shrink-0 items-center justify-end gap-2 px-1 pt-[max(0.55rem,env(safe-area-inset-top))]">
+          <NotificationQuickToggle />
+          <ThemeQuickToggle />
+          <AppHeaderMenu onTabChange={selectTab} onProfileSectionChange={onProfileSectionChange} onShowHelp={onShowHelp} />
+        </div>
         <motion.div
           key={activeTab}
           initial={{ opacity: 0, y: 4 }}
@@ -94,8 +105,8 @@ export default function Layout({
                 key={tab.id}
                 type="button"
                 onClick={() => selectTab(tab.id)}
-                className="rg-nav-item relative flex flex-col items-center gap-1 flex-1 min-w-0 py-0.5"
-                data-tour={tab.id === 'upload' ? 'appeal' : tab.id}
+                className={`rg-nav-item relative flex flex-col items-center gap-1 flex-1 min-w-0 py-0.5 ${tab.id === 'chat' ? 'rg-nav-item-whale' : ''}`}
+                data-tour={tab.id === 'upload' ? 'appeal' : tab.id === 'chat' ? 'coach' : tab.id}
               >
                 <div
                   className="relative flex h-10 w-10 items-center justify-center"

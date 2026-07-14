@@ -63,7 +63,7 @@ These fonts are not redistributed by Regrade; they are served by Google Fonts un
 
 ### AI model usage
 
-The Regrade backend may call **Google Gemini** and **Anthropic Claude** models via their respective SDKs. Use of those models is subject to each provider's Terms of Service and acceptable-use policies. Regrade does not redistribute model weights.
+The Regrade backend may call **Google Gemini** models through Google's SDK. Use of those models is subject to Google's terms and acceptable-use policies. Regrade does not redistribute model weights.
 
 For the full text of each third party license, see the respective component's repository or distribution.
 
@@ -71,7 +71,7 @@ For the full text of each third party license, see the respective component's re
 
 "Canvas", "Gradescope", "Blackboard", "Moodle", "D2L Brightspace", "Schoology", "Microsoft Teams", "Google Classroom", "Turnitin", and other learning-platform names referenced in the application are trademarks of their respective owners. Regrade is not affiliated with, endorsed by, or sponsored by any of these companies. References are descriptive only.
 
-"Gemini" is a trademark of Google LLC. "Claude" and "Anthropic" are trademarks of Anthropic PBC.
+"Gemini" is a trademark of Google LLC.
 
 ## Source file header
 

@@ -1,6 +1,5 @@
 import type { AnalysisResult } from '../types';
 import { chatWithAdvocate } from './gemini';
-import { isPreviewMode } from './previewMode';
 
 export function buildCaseContextForAdvocate(analysis: AnalysisResult): string {
   const a = analysis.assignment;
@@ -52,20 +51,6 @@ export async function generateAppealDraft(
   analysis: AnalysisResult,
   options?: { reviseFrom?: string },
 ): Promise<string> {
-  if (isPreviewMode()) {
-    await new Promise((r) => setTimeout(r, 600));
-    const title = analysis.assignment.title || 'my recent assignment';
-    return (
-      `Subject: Request for grade review — ${title}\n\n` +
-      `Dear Professor,\n\n` +
-      `I hope you are doing well. I am writing to respectfully request a review of my grade on ${title}. ` +
-      `After reviewing the rubric and feedback, I noticed a few areas where I believe points may have been deducted without explanation or where the scoring may not align with the rubric.\n\n` +
-      `${analysis.case_analysis.strongest_appeal_points?.[0] ?? 'I would appreciate clarification on how my work was evaluated against the rubric criteria.'}\n\n` +
-      `I would be grateful for any clarification or reconsideration you can offer. Thank you for your time.\n\n` +
-      `Best regards,\n[Your Name]`
-    );
-  }
-
   const message = options?.reviseFrom
     ? `Revise this appeal email using the case context. Keep a respectful, professional tone.\n\nCurrent draft:\n${options.reviseFrom}`
     : DRAFT_INSTRUCTION;

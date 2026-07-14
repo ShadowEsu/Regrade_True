@@ -107,7 +107,7 @@ export default function About({ onBack }: AboutProps) {
           Your data
         </h2>
         <p className="text-sm text-on-surface-variant leading-relaxed">
-          {APP_NAME} is for users {APP_MIN_AGE} and older. You can delete your account and all
+          {APP_NAME} is built for students {APP_MIN_AGE} and older. Younger students should use it with a parent, guardian, or teacher. You can delete your account and all
           associated data from <strong className="font-medium text-primary">Profile → Account → Delete account</strong>,
           or email {APP_SUPPORT_EMAIL}. Deletion removes your profile, appeals, and drafts permanently.
         </p>

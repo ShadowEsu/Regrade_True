@@ -10,17 +10,16 @@ interface LogoProps {
 }
 
 const HEIGHT_PX: Record<Exclude<NonNullable<LogoProps['size']>, 'nav'>, number> = {
-  xs: 40,
-  sm: 52,
-  md: 64,
-  lg: 80,
-  xl: 112,
-  hero: 144,
+  xs: 36,
+  sm: 44,
+  md: 56,
+  lg: 72,
+  xl: 96,
+  hero: 128,
 };
 
-/** Header wordmark — scales up aggressively on larger screens */
-const NAV_HEIGHT_CLASS =
-  'h-14 sm:h-16 md:h-[5.5rem] lg:h-[6.5rem] max-w-[min(100%,24rem)] sm:max-w-[min(100%,28rem)] md:max-w-[min(100%,34rem)] lg:max-w-[min(100%,40rem)]';
+/** Header mark — square brand symbol */
+const NAV_HEIGHT_CLASS = 'h-10 sm:h-11 md:h-12 lg:h-14 w-auto';
 
 const Logo: React.FC<LogoProps> = ({
   className = '',

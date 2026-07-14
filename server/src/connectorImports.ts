@@ -130,7 +130,7 @@ async function persistImport(uid: string, item: ConnectorImportItem, mode: "auto
 async function ensureAutomation(uid: string): Promise<void> {
   const profile = await admin.firestore().doc(`users/${uid}`).get();
   if (profile.data()?.automaticGradeDetection !== true) throw new ApiError({ status: 403, code: "FORBIDDEN", message: "Turn on automatic grade detection in Settings first." });
-  if (!(await hasAutomationEntitlement(uid))) throw new ApiError({ status: 403, code: "FORBIDDEN", message: "Automatic grade detection requires Student or Pro." });
+  if (!(await hasAutomationEntitlement(uid))) throw new ApiError({ status: 403, code: "FORBIDDEN", message: "Automatic grade detection requires Plus or Pro." });
 }
 
 export async function runAutomaticImportsForUser(uid: string, env: Env): Promise<{ imported: number; ignoredOlderCount: number }> {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { User } from 'firebase/auth';
 import { sendEmailVerification } from '../lib/firebase';
 import { secureSignOut } from '../services/sessionService';
+import { userFacingError } from '../lib/userFacingError';
 import BrandSpinner from './BrandSpinner';
 import Logo from './Logo';
 
@@ -11,6 +12,7 @@ interface VerifyEmailPromptProps {
 
 const VerifyEmailPrompt: React.FC<VerifyEmailPromptProps> = ({ user }) => {
   const [sending, setSending] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -22,9 +24,26 @@ const VerifyEmailPrompt: React.FC<VerifyEmailPromptProps> = ({ user }) => {
       await sendEmailVerification(user);
       setMessage('Verification email sent. Check your inbox and spam folder.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not send verification email.');
+      setError(userFacingError(err, 'Could not send verification email.'));
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    setError(null);
+    try {
+      await user.reload();
+      if (user.emailVerified) {
+        window.location.reload();
+        return;
+      }
+      setError('Email is not verified yet. Open the link from your inbox, then try again.');
+    } catch (err) {
+      setError(userFacingError(err, 'Could not refresh verification status.'));
+    } finally {
+      setRefreshing(false);
     }
   };
 
@@ -48,7 +67,7 @@ const VerifyEmailPrompt: React.FC<VerifyEmailPromptProps> = ({ user }) => {
           <button
             type="button"
             onClick={() => void handleResend()}
-            disabled={sending}
+            disabled={sending || refreshing}
             className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-white disabled:opacity-60"
           >
             {sending ? (
@@ -61,10 +80,11 @@ const VerifyEmailPrompt: React.FC<VerifyEmailPromptProps> = ({ user }) => {
           </button>
           <button
             type="button"
-            onClick={() => void user.reload().then(() => window.location.reload())}
-            className="w-full rounded-xl border border-primary/15 px-4 py-3 text-sm font-medium text-primary"
+            onClick={() => void handleRefresh()}
+            disabled={sending || refreshing}
+            className="w-full rounded-xl border border-primary/15 px-4 py-3 text-sm font-medium text-primary disabled:opacity-60"
           >
-            I verified — refresh
+            {refreshing ? 'Checking…' : 'I verified — refresh'}
           </button>
           <button
             type="button"

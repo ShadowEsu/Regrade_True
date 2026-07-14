@@ -26,11 +26,9 @@ export function applyTheme(resolved: 'light' | 'dark'): void {
 }
 
 export function bootstrapTheme(): ThemePreference {
-  // Regrade 2.0 intentionally ships one approved light experience. Applying it
-  // synchronously prevents a saved legacy dark preference from flashing before
-  // React mounts.
-  persistTheme('light');
-  return 'light';
+  const preference = getStoredTheme();
+  applyTheme(resolveTheme(preference));
+  return preference;
 }
 
 export function persistTheme(preference: ThemePreference): void {

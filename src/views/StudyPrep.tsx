@@ -5,8 +5,6 @@ import { ICONS } from '../constants';
 import { caseService, type Case } from '../services/caseService';
 import { userService } from '../services/userService';
 import MarketingEyebrow from '../components/MarketingEyebrow';
-import { isPreviewMode, isPreviewSupervisorView } from '../lib/previewMode';
-import { PREVIEW_ANALYSIS } from '../lib/previewFixtures';
 import SupervisorHub from './SupervisorHub';
 import StudyReviewStudio from './StudyReviewStudio';
 import { EmptyState, MetricCard, PageHeader, Reveal } from '../components/mobile/MobilePrimitives';
@@ -20,17 +18,6 @@ type StudyPattern = {
   points: number;
   examples: string[];
 };
-
-const PREVIEW_EXAMS: Case[] = [
-  {
-    id: 'study-demo-1', title: 'Thermodynamics Midterm', description: 'Preview study evidence', ref: 'DEMO-EXAM-1', status: 'Draft Ready', progress: 100, evidenceLogged: true, facultyReview: false, userId: 'preview-user', createdAt: new Date(), updatedAt: new Date(),
-    analysis: { ...PREVIEW_ANALYSIS, assignment: { ...PREVIEW_ANALYSIS.assignment, title: 'Thermodynamics Midterm', assignment_type: 'exam', total_score_display: '82 / 100' } },
-  },
-  {
-    id: 'study-demo-2', title: 'Physics Final Practice', description: 'Preview study evidence', ref: 'DEMO-EXAM-2', status: 'Draft Ready', progress: 100, evidenceLogged: true, facultyReview: false, userId: 'preview-user', createdAt: new Date(Date.now() - 86_400_000), updatedAt: new Date(),
-    analysis: { ...PREVIEW_ANALYSIS, assignment: { ...PREVIEW_ANALYSIS.assignment, title: 'Physics Final Practice', assignment_type: 'exam', total_score_display: '76 / 100' }, questions: PREVIEW_ANALYSIS.questions.map((question) => question.question_id === 'Q2' ? { ...question, points_lost: 5, professor_comments: [{ comment_text: 'Check units and show the conversion.', location: 'on_submission' as const, references_specific_part: true }] } : question) },
-  },
-];
 
 const PATTERN_RULES: Array<{ id: string; label: string; practice: string; match: RegExp }> = [
   { id: 'calculation', label: 'Recheck calculations', practice: 'Redo one problem slowly, then verify each operation with a second method.', match: /calcul|arithmetic|algebra|equation|numeric|number|formula/i },
@@ -122,7 +109,6 @@ export default function StudyPrep({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [loadAttempt, setLoadAttempt] = useState(0);
   const [showEvidence, setShowEvidence] = useState(true);
-  const [usingPreviewPlan, setUsingPreviewPlan] = useState(false);
   const [accountRole, setAccountRole] = useState<'student' | 'supervisor'>('student');
   const [reviewExam, setReviewExam] = useState<Case | null>(null);
   const [examSearch, setExamSearch] = useState('');
@@ -139,7 +125,7 @@ export default function StudyPrep({
       try {
         const [cases, profile] = await Promise.all([caseService.getUserCases(), userService.getProfile(user.uid)]);
         if (cancelled) return;
-        setAccountRole(isPreviewSupervisorView() || profile?.accountRole === 'supervisor' ? 'supervisor' : 'student');
+        setAccountRole(profile?.accountRole === 'parent' || profile?.accountRole === 'teacher' || profile?.accountRole === 'supervisor' ? 'supervisor' : 'student');
         setExamCases(cases.filter((item) => item.analysis?.assignment.assignment_type === 'exam'));
         setChecked(profile?.studyChecklist ?? []);
       } catch {
@@ -193,7 +179,7 @@ export default function StudyPrep({
       <Reveal><PageHeader eyebrow="Study · Review" title="Your exams" subtitle="Understand every mark and decide what to practise next." action={<ICONS.Search />} /></Reveal>
 
       {!examCases.length ? (
-        <section><EmptyState icon={<ICONS.BookOpen />} title="Your review room starts here" body="Add one marked exam with its score, rubric, or teacher feedback." action="Analyze a marked exam" onAction={onStartAppeal} />{isPreviewMode() && <button type="button" onClick={() => { setExamCases(PREVIEW_EXAMS); setUsingPreviewPlan(true); }} className="mt-3 min-h-11 w-full text-[12px] font-semibold text-primary">Open sample exams</button>}</section>
+        <section><EmptyState icon={<ICONS.BookOpen />} title="Your review room starts here" body="Add one marked exam with its score, rubric, or teacher feedback." action="Analyze a marked exam" onAction={onStartAppeal} /></section>
       ) : <>
         <section className="rg3-review-metrics grid grid-cols-3 gap-2"><MetricCard value={examCases.length} label="Exams" detail="Analyzed" icon={<ICONS.BookOpen />} /><MetricCard value={patterns.length} label="Priorities" detail="Evidence based" tone="lavender" icon={<ICONS.Lightbulb />} /><MetricCard value={markedPoints} label="Marked points" detail="To revisit" tone="yellow" icon={<ICONS.Edit3 />} /></section>
 
@@ -274,7 +260,6 @@ export default function StudyPrep({
           )}
         </section>
 
-        {usingPreviewPlan && <p className="rounded-xl border border-primary/15 bg-primary/[0.04] px-3 py-2 text-[11px] text-primary">Preview sample — no real student work is shown or saved.</p>}
         <p className="text-[12px] text-ink-muted leading-relaxed px-1">This plan is a study aid, not a judgment about you or your ability. Use the original exam, course notes, and your instructor’s guidance as the source of truth.</p>
       </>}
     </div>

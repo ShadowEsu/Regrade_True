@@ -5,10 +5,6 @@ import { defineConfig } from 'vite';
 
 export default defineConfig(({ mode }) => ({
   plugins: [react(), tailwindcss()],
-  define:
-    mode === 'preview'
-      ? { 'import.meta.env.VITE_PREVIEW_MODE': JSON.stringify('true') }
-      : {},
   resolve: {
     alias: {
       '@': path.resolve(__dirname, '.'),

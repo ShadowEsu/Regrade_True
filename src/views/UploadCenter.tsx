@@ -4,7 +4,6 @@ import { ICONS } from '../constants';
 import UploadGuidePanel from '../components/UploadGuidePanel';
 import AppealFlowShell from '../components/AppealFlowShell';
 import { caseService } from '../services/caseService';
-import { isPreviewMode } from '../lib/previewMode';
 import { scanContentForThreats } from '../lib/securityScanner';
 import { sanitizeUserText } from '../lib/sanitize';
 import {
@@ -391,12 +390,9 @@ export default function UploadCenter({
           rubric: rubricPaste,
           feedback: '',
         },
-        // Preview mode keeps the page images inline so History can show the
-        // graded copy back later. Real mode strips them until Storage is wired.
-        ...(isPreviewMode() && inlineImages.length ? { pageImages: inlineImages } : {}),
       });
 
-      if (!isPreviewMode() && inlineImages.length && docRef.id) {
+      if (inlineImages.length && docRef.id) {
         setLoadingDetail('Saving your graded copy securely…');
         const { documentStorageService } = await import('../services/documentStorageService');
         const pageImageUrls = await documentStorageService.uploadCasePages(docRef.id, inlineImages);

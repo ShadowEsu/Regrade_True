@@ -93,7 +93,7 @@ service cloud.firestore {
              (!('notificationPreferences' in data) || isValidNotificationPreferences(data.notificationPreferences)) &&
              (!('autoMode' in data) || data.autoMode is bool) &&
              (!('automaticGradeDetection' in data) || data.automaticGradeDetection is bool) &&
-             (!('accountRole' in data) || (data.accountRole is string && data.accountRole in ['student', 'supervisor'])) &&
+             (!('accountRole' in data) || (data.accountRole is string && data.accountRole in ['student', 'parent', 'teacher', 'supervisor'])) &&
              (!('studyChecklist' in data) || isValidStudyChecklist(data.studyChecklist)) &&
              (!('appealTone' in data) || isValidChipList(data.appealTone)) &&
              (!('appealFocus' in data) || isValidChipList(data.appealFocus)) &&
@@ -247,7 +247,8 @@ service cloud.firestore {
         boundedString(request.resource.data.url, 2048) && boundedString(request.resource.data.groupKey, 180);
       allow update: if isSignedIn() && resource.data.userId == request.auth.uid &&
         request.resource.data.userId == resource.data.userId &&
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt', 'archivedAt', 'updatedAt', 'title', 'body', 'url', 'type', 'groupKey', 'caseId', 'createdAt']);
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readAt', 'archivedAt', 'updatedAt']);
       allow delete: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
   }

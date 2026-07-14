@@ -26,10 +26,8 @@ if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   exit 0
 fi
 
-echo "==> Files git would track right now:"
 tracked="$(git ls-files --cached --others --exclude-standard)"
-echo "$tracked" | sed 's/^/    /'
-echo ""
+echo "==> Scanning $(printf '%s\n' "$tracked" | sed '/^$/d' | wc -l | tr -d ' ') files Git would publish..."
 
 echo "==> Scanning for files that must NEVER be tracked..."
 
@@ -51,6 +49,8 @@ patterns=(
   '\.mobileprovision$'
   'credentials.*\.json$'
   'secrets\.json$'
+  '\.(sqlite|sqlite3|db)$'
+  '(^|/)uploads?/'
 )
 
 allowlist_regex='(^|/)(\.env\.example|\.env\.production\.example)$'
@@ -102,6 +102,12 @@ if [ -n "$candidates" ]; then
   hits=$(echo "$candidates" | xargs grep -lH '"type"[[:space:]]*:[[:space:]]*"service_account"' 2>/dev/null || true)
   if [ -n "$hits" ]; then
     note_finding "Service account JSON found in tracked content:"
+    echo "$hits" | sed 's/^/      /'
+  fi
+
+  hits=$(echo "$candidates" | xargs grep -lEH '(/Users/[^/]+/|C:\\Users\\[^\\]+\\)' 2>/dev/null | grep -v '^scripts/check-secrets\.sh$' || true)
+  if [ -n "$hits" ]; then
+    note_finding "Personal filesystem path found in publishable content:"
     echo "$hits" | sed 's/^/      /'
   fi
 fi

@@ -17,6 +17,8 @@ export const PLAN_LIMITS: Record<PlanId, { exams: number; messages: number; auto
   pro: { exams: 20, messages: 100, autoMode: true },
 };
 
+const INTRO_PLUS_TRIAL_MONTHS = 2;
+
 type BillingRecord = {
   plan?: PlanId;
   status?: string;
@@ -25,8 +27,9 @@ type BillingRecord = {
   currentPeriodStart?: string;
   currentPeriodEnd?: string;
   cancelAtPeriodEnd?: boolean;
-  source?: "stripe" | "app_store";
+  source?: "stripe" | "app_store" | "intro_trial";
   managementUrl?: string | null;
+  trialGrantedAt?: string;
 };
 
 function uidOf(req: Request): string {
@@ -42,12 +45,31 @@ function monthWindow(now = new Date()): { start: Date; end: Date } {
   };
 }
 
+function addMonthsUtc(date: Date, months: number): Date {
+  return new Date(Date.UTC(
+    date.getUTCFullYear(),
+    date.getUTCMonth() + months,
+    date.getUTCDate(),
+    date.getUTCHours(),
+    date.getUTCMinutes(),
+    date.getUTCSeconds(),
+  ));
+}
+
+function periodStillOpen(record: BillingRecord | undefined): boolean {
+  if (!record?.currentPeriodEnd) return true;
+  const end = new Date(record.currentPeriodEnd);
+  return Number.isFinite(end.getTime()) && end.getTime() > Date.now();
+}
+
 function activePlan(record: BillingRecord | undefined): PlanId {
   if (!record || !["active", "trialing"].includes(record.status ?? "")) return "free";
+  if (!periodStillOpen(record)) return "free";
   return record.plan === "student" || record.plan === "pro" ? record.plan : "free";
 }
 
 export async function hasAutomationEntitlement(uid: string): Promise<boolean> {
+  await ensureIntroTrial(uid);
   const snap = await admin.firestore().collection("users").doc(uid).collection("billing").doc("current").get();
   return PLAN_LIMITS[activePlan(snap.exists ? snap.data() as BillingRecord : undefined)].autoMode;
 }
@@ -59,7 +81,33 @@ function period(record: BillingRecord | undefined): { start: Date; end: Date } {
   return Number.isFinite(start.getTime()) && Number.isFinite(end.getTime()) ? { start, end } : fallback;
 }
 
+/** One-time Plus trial (2 months) the first time billing is touched. */
+async function ensureIntroTrial(uid: string): Promise<void> {
+  const billingRef = admin.firestore().collection("users").doc(uid).collection("billing").doc("current");
+  await admin.firestore().runTransaction(async (tx) => {
+    const snap = await tx.get(billingRef);
+    const record = snap.exists ? (snap.data() as BillingRecord) : undefined;
+    if (record?.trialGrantedAt) return;
+    if (record?.source === "stripe" || record?.source === "app_store") return;
+    if (record && ["active", "trialing"].includes(record.status ?? "") && (record.plan === "student" || record.plan === "pro") && periodStillOpen(record)) {
+      return;
+    }
+    const now = new Date();
+    tx.set(billingRef, {
+      plan: "student",
+      status: "trialing",
+      source: "intro_trial",
+      trialGrantedAt: now.toISOString(),
+      currentPeriodStart: now.toISOString(),
+      currentPeriodEnd: addMonthsUtc(now, INTRO_PLUS_TRIAL_MONTHS).toISOString(),
+      cancelAtPeriodEnd: true,
+      updatedAt: now.toISOString(),
+    }, { merge: true });
+  });
+}
+
 async function snapshot(uid: string) {
+  await ensureIntroTrial(uid);
   const billingRef = admin.firestore().collection("users").doc(uid).collection("billing").doc("current");
   const billingSnap = await billingRef.get();
   const record = billingSnap.exists ? (billingSnap.data() as BillingRecord) : undefined;
@@ -69,20 +117,26 @@ async function snapshot(uid: string) {
   const usageRef = billingRef.collection("periods").doc(usageId);
   const usageSnap = await usageRef.get();
   const usage = usageSnap.exists ? usageSnap.data() as { exams?: number; messages?: number } : {};
+  const isIntroTrial = record?.source === "intro_trial" && plan === "student" && record.status === "trialing";
   return {
     plan,
-    status: plan === "free" ? "active" : record?.status ?? "inactive",
+    status: plan === "free"
+      ? (record?.source === "intro_trial" && !periodStillOpen(record) ? "trial_ended" : "active")
+      : record?.status ?? "inactive",
     limits: PLAN_LIMITS[plan],
     usage: { exams: usage.exams ?? 0, messages: usage.messages ?? 0 },
     periodStart: window.start.toISOString(),
     periodEnd: window.end.toISOString(),
     cancelAtPeriodEnd: record?.cancelAtPeriodEnd === true,
     hasBillingAccount: Boolean(record?.stripeCustomerId || record?.source === "app_store"),
+    isIntroTrial,
+    trialEndsAt: isIntroTrial ? (record?.currentPeriodEnd ?? null) : null,
   };
 }
 
 export async function consumeUsage(req: Request, kind: UsageKind): Promise<void> {
   const uid = uidOf(req);
+  await ensureIntroTrial(uid);
   const billingRef = admin.firestore().collection("users").doc(uid).collection("billing").doc("current");
   await admin.firestore().runTransaction(async (tx) => {
     const billingSnap = await tx.get(billingRef);

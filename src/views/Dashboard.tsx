@@ -2,12 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { ICONS } from '../constants';
 import { auth } from '../lib/firebase';
-import { isPreviewMode } from '../lib/previewMode';
 import { caseService, type Case } from '../services/caseService';
 import { userService } from '../services/userService';
 import { listConnections } from '../features/connect/store';
 import CoachWhale from '../components/CoachWhale';
-import NotificationQuickToggle from '../components/NotificationQuickToggle';
 import { getClassName, getPossiblePointsBack, getScoreDisplay } from '../lib/appealHelpers';
 import {
   ActivityGrid,
@@ -56,7 +54,6 @@ export default function Dashboard({
   onStartAppeal,
   onOpenChat,
   onOpenAppeal,
-  onOpenSampleVerdict,
   onOpenPlatforms,
   onOpenStudy,
   onOpenProfile,
@@ -64,13 +61,12 @@ export default function Dashboard({
   onStartAppeal: () => void;
   onOpenChat: () => void;
   onOpenAppeal?: (caseId: string) => void;
-  onOpenSampleVerdict?: () => void;
   onOpenPlatforms?: () => void;
   onOpenStudy: () => void;
   onOpenProfile: () => void;
 }) {
   const user = auth.currentUser;
-  const fallbackName = user?.displayName?.split(' ')[0] || (isPreviewMode() ? 'Preview' : user?.email?.split('@')[0]) || null;
+  const fallbackName = user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || null;
   const [firstName, setFirstName] = useState<string | null>(fallbackName);
   const [cases, setCases] = useState<Case[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,15 +117,15 @@ export default function Dashboard({
     <div className="rg2-home">
       <Reveal className="rg2-home-hello rg2-span-full">
         <div>
-          <h1>{greeting}{firstName ? `, ${firstName}` : ''} <span aria-hidden>👋</span></h1>
+          <h1>{greeting}{firstName ? `, ${firstName}` : ''}</h1>
           <p>Let&apos;s get those points back.</p>
         </div>
-        <div className="rg3-home-actions"><NotificationQuickToggle /><button type="button" onClick={onOpenProfile} className="rg3-avatar-button" aria-label="Open profile">{user?.photoURL ? <img src={user.photoURL} alt="" /> : <span>{firstName?.[0]?.toUpperCase() ?? 'R'}</span>}</button></div>
+        <button type="button" onClick={onOpenChat} className="rg3-whale-ask" aria-label="Ask Mr Whale"><CoachWhale size={44} /><span>Ask Mr Whale</span></button>
       </Reveal>
 
       {loadError && <div className="rg-notice rg2-span-full" role="alert"><p className="flex-1">{loadError}</p><button type="button" className="rg-text-button" onClick={() => setLoadAttempt((value) => value + 1)}>Retry</button></div>}
 
-      <Reveal className="rg2-span-full">
+      <Reveal className="rg2-span-half">
         <SurfaceCard className="rg2-streak">
           <button type="button" onClick={() => setStreakOpen((open) => !open)} aria-expanded={streakOpen}>
             <div className="rg2-streak-head">
@@ -137,12 +133,12 @@ export default function Dashboard({
               <motion.span className="rg2-streak-flame" animate={stats.streak > 0 ? { scale: [1, 1.07, 1] } : undefined} transition={{ duration: 2.4, repeat: Infinity }}><ICONS.Zap aria-hidden /></motion.span>
             </div>
             <ActivityGrid active={activeDays} />
-            <ExpandablePanel open={streakOpen}><div className="rg2-streak-detail"><ActivityGrid active={activeDays} expanded /><p className="mt-4">Every analyzed exam adds a real review day. Regrade never fills this calendar with simulated activity.</p></div></ExpandablePanel>
+            <ExpandablePanel open={streakOpen}><div className="rg2-streak-detail"><ActivityGrid active={activeDays} expanded /><p className="mt-4">Every completed exam review adds a day to this calendar.</p></div></ExpandablePanel>
           </button>
         </SurfaceCard>
       </Reveal>
 
-      <Reveal className="rg2-span-full" delay={.03}>
+      <Reveal className="rg2-span-half" delay={.03}>
         <SectionHeading eyebrow="Focus" title="Needs your attention" action={attention.length ? `${attention.length} open` : undefined} />
         <div className="mt-3">
           {loading ? <div className="rg2-card h-44 rg-shimmer" aria-label="Loading attention cards" /> : attention.length ? (
@@ -160,7 +156,7 @@ export default function Dashboard({
         </div>
       </Reveal>
 
-      <Reveal delay={.05}>
+      <Reveal delay={.05} className="rg2-span-main">
         <SectionHeading eyebrow="Progress" title="Your progress" />
         <div className="rg2-metrics mt-3">
           <MetricCard value={stats.reviewed} label="Exams reviewed" detail="Evidence reads finished" icon={<ICONS.BookOpen />} />
@@ -170,10 +166,10 @@ export default function Dashboard({
         </div>
       </Reveal>
 
-      <Reveal delay={.08}>
-        <SectionHeading eyebrow="System" title="Regrade status" />
+      <Reveal delay={.08} className="rg2-span-side">
+        <SectionHeading eyebrow="Account" title="Connections" />
         <div className="mt-3 grid gap-2">
-          <SurfaceCard className="rg2-system-card" onClick={onOpenPlatforms} label="Open connected platforms"><span><ICONS.Library /></span><div className="min-w-0 flex-1"><strong>{connectionCount ? `${connectionCount} connected platform${connectionCount === 1 ? '' : 's'}` : 'Connect a platform'}</strong><small>{connectionCount ? 'Import access is ready where supported.' : 'Search supported school tools.'}</small></div><StatusBadge tone={connectionCount ? 'green' : 'neutral'}>{connectionCount ? 'Connected' : 'Set up'}</StatusBadge></SurfaceCard>
+          <SurfaceCard className="rg2-system-card" onClick={onOpenPlatforms} label="Open connected platforms"><span><ICONS.Library /></span><div className="min-w-0 flex-1"><strong>School platforms</strong><small>{connectionCount ? `${connectionCount} connected` : 'None connected'}</small></div><StatusBadge tone={connectionCount ? 'green' : 'neutral'}>{connectionCount || 'Set up'}</StatusBadge></SurfaceCard>
           <SurfaceCard className="rg2-system-card" onClick={onOpenPlatforms} label="Open Auto Mode settings"><span><ICONS.Zap /></span><div className="min-w-0 flex-1"><strong>Auto Mode</strong><small>{autoMode ? 'Watching configured import sources.' : 'Off until you choose to enable it.'}</small></div><StatusBadge tone={autoMode ? 'blue' : 'neutral'}>{autoMode ? 'On' : 'Off'}</StatusBadge></SurfaceCard>
         </div>
       </Reveal>
@@ -185,16 +181,15 @@ export default function Dashboard({
         </div>
       </Reveal>
 
-      <Reveal delay={.12}>
+      <Reveal delay={.12} className="rg2-span-main">
         <SectionHeading eyebrow="Timeline" title="Recent AI activity" />
         <SurfaceCard className="rg2-activity-list mt-3">
           {activity.length ? activity.map((item) => <button type="button" key={item.id ?? item.ref} className="rg2-activity-row w-full text-left" onClick={() => item.id && onOpenAppeal?.(item.id)}><time>{timeLabel(item.updatedAt)}</time><i /><span><strong>{item.analysis ? 'AI review completed' : 'Exam imported'}</strong><small>{item.analysis?.assignment.title ?? item.title}</small></span></button>) : <div className="p-5 text-center text-[12px] text-ink-muted">Your real import and review activity will appear here.</div>}
         </SurfaceCard>
       </Reveal>
 
-      <Reveal delay={.14}>
-        <SurfaceCard className="rg2-whale-card" onClick={onOpenChat} label="Ask Mr Whale"><div><h3>Mr Whale is here <span aria-hidden>🐋</span></h3><p>Ask about a marked question, evidence for an appeal, or what to practise next.</p></div><CoachWhale size={68} /></SurfaceCard>
-        {onOpenSampleVerdict && <button type="button" onClick={onOpenSampleVerdict} className="mt-2 min-h-11 w-full text-[11px] font-semibold text-primary">Open the labeled preview example</button>}
+      <Reveal delay={.14} className="rg2-span-side">
+        <SurfaceCard className="rg2-whale-card" onClick={onOpenChat} label="Ask Mr Whale"><div><h3>Mr Whale is here</h3><p>Ask about a marked question, evidence for an appeal, or what to practise next.</p></div><CoachWhale size={68} /></SurfaceCard>
       </Reveal>
     </div>
   );

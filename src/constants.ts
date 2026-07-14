@@ -49,7 +49,9 @@ import {
   ExternalLink,
   Sun,
   Moon,
-  Monitor
+  Monitor,
+  Settings,
+  HelpCircle
 } from 'lucide-react';
 
 export const ICONS = {
@@ -104,6 +106,8 @@ export const ICONS = {
   Sun,
   Moon,
   Monitor,
+  Settings,
+  HelpCircle,
   // Aliases for historical compatibility
   Bank: Landmark,
   Trending: TrendingUp,

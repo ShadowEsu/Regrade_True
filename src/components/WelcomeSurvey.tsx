@@ -6,6 +6,9 @@ import { notificationService } from '../services/notificationService';
 import { ConnectScreen } from '../features/connect';
 import { ICONS } from '../constants';
 import { BRAND_ICON_SRC } from '../branding';
+import { userFacingError } from '../lib/userFacingError';
+import CoachWhale from './CoachWhale';
+import type { AccountRole } from '../services/userService';
 
 type Step = 'intro' | 'role' | 'name' | 'institution' | 'connector' | 'notifications' | 'complete';
 
@@ -21,7 +24,7 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
   const user = auth.currentUser;
   const [step, setStep] = useState<Step>('intro');
   const [introIndex, setIntroIndex] = useState(0);
-  const [role, setRole] = useState<'student' | 'supervisor'>('student');
+  const [role, setRole] = useState<AccountRole>('student');
   const [name, setName] = useState(user?.displayName ?? '');
   const [institution, setInstitution] = useState('');
   const [saving, setSaving] = useState(false);
@@ -40,15 +43,15 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
     setSaving(true);
     setError(null);
     try {
-      await userService.syncProfile(user.uid, {
+      await userService.saveOnboardingDetails(user.uid, {
         name: name.trim(),
-        email: user.email ?? '',
         school: institution.trim(),
         accountRole: role,
       });
       setStep('connector');
-    } catch {
-      setError('We could not save that yet. Please try again.');
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('Welcome survey save failed', err);
+      setError(userFacingError(err, 'We could not save that yet. Please try again.'));
     } finally {
       setSaving(false);
     }
@@ -63,10 +66,12 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
       await userService.completeOnboarding(user.uid, {
         name: name.trim(),
         school: institution.trim(),
+        accountRole: role,
       });
       setStep('complete');
-    } catch {
-      setError('We could not finish setup. Please try again.');
+    } catch (err) {
+      if (import.meta.env.DEV) console.error('Welcome survey finish failed', err);
+      setError(userFacingError(err, 'We could not finish setup. Please try again.'));
     } finally {
       setSaving(false);
     }
@@ -123,19 +128,33 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
           </motion.button>
           <motion.button
             type="button"
-            onClick={() => setRole('supervisor')}
+            onClick={() => setRole('parent')}
             whileTap={{ scale: 0.985 }}
-            animate={{ y: role === 'supervisor' ? -1 : 0 }}
-            className={`rg-survey-role-card ${role === 'supervisor' ? 'rg-survey-role-card-active' : ''}`}
+            animate={{ y: role === 'parent' ? -1 : 0 }}
+            className={`rg-survey-role-card ${role === 'parent' ? 'rg-survey-role-card-active' : ''}`}
           >
             <span className="rg-survey-role-icon">
               <ICONS.User className="h-5 w-5" strokeWidth={1.9} />
             </span>
             <span>
-              <strong>Teacher or parent</strong>
-              <small>Support a learner who invites you.</small>
+              <strong>Parent or guardian</strong>
+              <small>Support one or more children and approve sensitive actions.</small>
             </span>
-            {role === 'supervisor' && <ICONS.Check className="ml-auto h-4 w-4 text-primary" strokeWidth={2.5} />}
+            {role === 'parent' && <ICONS.Check className="ml-auto h-4 w-4 text-primary" strokeWidth={2.5} />}
+          </motion.button>
+          <motion.button
+            type="button"
+            onClick={() => setRole('teacher')}
+            whileTap={{ scale: 0.985 }}
+            animate={{ y: role === 'teacher' ? -1 : 0 }}
+            className={`rg-survey-role-card ${role === 'teacher' ? 'rg-survey-role-card-active' : ''}`}
+          >
+            <span className="rg-survey-role-icon"><ICONS.Landmark className="h-5 w-5" strokeWidth={1.9} /></span>
+            <span>
+              <strong>Teacher</strong>
+              <small>Manage linked learners and help explain marked feedback.</small>
+            </span>
+            {role === 'teacher' && <ICONS.Check className="ml-auto h-4 w-4 text-primary" strokeWidth={2.5} />}
           </motion.button>
         </div>
         <button type="button" onClick={() => setStep('name')} className="rg-auth-cta w-full">
@@ -147,7 +166,7 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
         <div>
           <p className="rg-welcome-eyebrow">About you</p>
           <h1 className="rg-welcome-title">What should we call you?</h1>
-          <p className="rg-welcome-hint">First name is fine, that's what appears on your drafts.</p>
+          <p className="rg-welcome-hint">First name is fine. Mr Whale will use it when guiding you.</p>
         </div>
         <label className="rg-auth-field">
           <span>Name</span>
@@ -174,8 +193,8 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
       <div className="space-y-7">
         <div>
           <p className="rg-welcome-eyebrow">Your school</p>
-          <h1 className="rg-welcome-title">Where do you study?</h1>
-          <p className="rg-welcome-hint">Optional. It helps Mr Whale write appeals in your school's tone.</p>
+          <h1 className="rg-welcome-title">{role === 'student' ? 'Where do you study?' : 'Which school are you supporting?'}</h1>
+          <p className="rg-welcome-hint">Optional. It helps keep learner work and school context organized.</p>
         </div>
         <label className="rg-auth-field">
           <span>School or university</span>
@@ -214,7 +233,7 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
           <ConnectScreen onManualUpload={() => setStep('notifications')} onConnected={() => setStep('notifications')} compact />
         ) : (
           <div className="rounded-2xl border border-hairline bg-parchment px-4 py-4 text-[13px] leading-relaxed text-ink-muted">
-            Invite a learner after setup to view only the information they choose to share.
+            Link learners after setup. Each learner must approve access before any private work appears.
           </div>
         )}
         {error && (
@@ -277,6 +296,7 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
         transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
         className="rg-welcome-card"
       >
+        {step !== 'complete' && <div className="rg-onboarding-whale" aria-hidden><CoachWhale size={58} /><span>Hi, I&apos;m Mr Whale.</span></div>}
         {step !== 'complete' && step !== 'intro' && (
           <>
             <div className="rg-welcome-head">

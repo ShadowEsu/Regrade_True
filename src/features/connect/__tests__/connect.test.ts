@@ -10,7 +10,7 @@ vi.mock('../store', () => ({
   canStoreSecurely: vi.fn().mockReturnValue(true),
 }));
 
-import { filterPlatforms, PLATFORM_LIBRARY, PLATFORMS } from '../registry';
+import { filterPlatforms, getConnectorReleaseStatus, PLATFORM_LIBRARY, PLATFORMS } from '../registry';
 import { createConnectors } from '../connectors';
 import { buildAuthorizeUrl, DROPBOX_CONFIG, MICROSOFT_CONFIG } from '../flows/pkce';
 import { looksLikeCanvasToken, normalizeCanvasBaseUrl } from '../flows/urlGuards';
@@ -18,7 +18,6 @@ import { isConnectFailure, type ConnectorDeps } from '../types';
 
 function deps(overrides: Partial<ConnectorDeps> = {}): ConnectorDeps {
   return {
-    isPreview: false,
     serverAvailable: true,
     openManualUpload: vi.fn(),
     promptCanvasToken: vi.fn().mockResolvedValue(null),
@@ -84,6 +83,26 @@ describe('platform registry', () => {
     }
     expect(PLATFORM_LIBRARY.find((platform) => platform.platformId === 'canvas')?.logo).toBe('/platforms/canvas-new.png');
   });
+
+  it('gives every connector a truthful release status independent of API marketing', () => {
+    for (const platform of PLATFORMS) {
+      const status = getConnectorReleaseStatus(platform);
+      expect([
+        'Live',
+        'Needs live verification',
+        'Manual import only',
+        'School authorization required',
+        'Vendor approval required',
+        'Coming soon',
+        'Unsupported',
+      ]).toContain(status);
+      if (platform.authMethod === 'oauth' || platform.authMethod === 'personal_access_token') {
+        expect(status).toBe('Needs live verification');
+      }
+      if (platform.authMethod === 'manual_only') expect(status).toBe('Manual import only');
+      if (platform.apiStatus === 'partner_api') expect(status).toBe('Vendor approval required');
+    }
+  });
 });
 
 describe('connectors', () => {
@@ -132,13 +151,6 @@ describe('connectors', () => {
     const connectors = createConnectors(deps({ serverAvailable: false }));
     for (const id of ['google_classroom', 'google_drive', 'canvas', 'onedrive', 'dropbox'] as const) {
       expect(connectors.find((x) => x.platformId === id)?.isAvailable()).toBe(false);
-    }
-  });
-
-  it('preview mode makes connectable platforms available with simulated flows', () => {
-    const connectors = createConnectors(deps({ isPreview: true, serverAvailable: false }));
-    for (const id of ['canvas', 'google_classroom', 'google_drive', 'onedrive', 'dropbox'] as const) {
-      expect(connectors.find((x) => x.platformId === id)?.isAvailable()).toBe(true);
     }
   });
 

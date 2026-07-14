@@ -25,7 +25,7 @@ export function createAutomationRouter(): Router {
       const input = req.body as z.infer<typeof PreferencesSchema>;
       const paidAutomation = await hasAutomationEntitlement(uid);
       if (!paidAutomation && (input.autoPrepare === true || input.automaticGradeDetection === true)) {
-        throw new ApiError({ status: 403, code: "FORBIDDEN", message: "Automatic workflows require a Student or Pro plan." });
+        throw new ApiError({ status: 403, code: "FORBIDDEN", message: "Automatic workflows require a Plus or Pro plan." });
       }
       const updates: Record<string, unknown> = { updatedAt: admin.firestore.FieldValue.serverTimestamp() };
       if (input.autoPrepare !== undefined) updates.autoMode = input.autoPrepare;

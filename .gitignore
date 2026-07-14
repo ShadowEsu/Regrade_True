@@ -76,8 +76,26 @@ coverage/
 *.tsbuildinfo
 .tmp/
 tmp/
+*.log
+*.sqlite
+*.sqlite3
+*.db
+*.bak
+*.swp
+*.tmp
+uploads/
+uploaded-exams/
+test-results/
+playwright-report/
+artifacts/
 
 # --- Temp UI capture output ---
 tmp-ui-screenshots/
 deliverables/
 design-backups/
+
+# The tracked internal note is a public-safe template. Real operator notes
+# must use a .local.md suffix or the private subdirectory.
+docs/internal/*.local.md
+docs/internal/private/
+release/

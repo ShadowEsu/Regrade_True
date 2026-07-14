@@ -1,6 +1,4 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { PREVIEW_CASE_ID } from './lib/previewFixtures';
-import { isPreviewMode, isPreviewSupervisorView } from './lib/previewMode';
 import { caseService } from './services/caseService';
 import { auth } from './lib/firebase';
 import { userService } from './services/userService';
@@ -25,6 +23,7 @@ const Advocate = lazy(() => import('./views/Advocate'));
 const About = lazy(() => import('./views/About'));
 const StudyPrep = lazy(() => import('./views/StudyPrep'));
 const PaperView = lazy(() => import('./views/PaperView'));
+const SupervisorHub = lazy(() => import('./views/SupervisorHub'));
 
 function ScreenLoader() {
   return <div className="min-h-[45vh] flex flex-col items-center justify-center gap-3 text-sm text-ink-muted"><BrandSpinner size={28} /><span>Opening your workspace…</span></div>;
@@ -35,7 +34,7 @@ const APP_TABS = new Set(['dashboard', 'upload', 'chat', 'study', 'history', 'pr
 function initialTab(): string {
   const requested = new URLSearchParams(window.location.search).get('tab');
   if (requested && APP_TABS.has(requested)) return requested;
-  return isPreviewSupervisorView() ? 'study' : 'dashboard';
+  return 'dashboard';
 }
 
 export default function App() {
@@ -51,6 +50,7 @@ export default function App() {
   const [needsTutorial, setNeedsTutorial] = useState(false);
   const [tutorialRole, setTutorialRole] = useState<'student' | 'supervisor'>('student');
   const [tutorialStep, setTutorialStep] = useState(0);
+  const [isSupervisorAccount, setIsSupervisorAccount] = useState(false);
 
   useEffect(() => {
     const tourRequested = new URLSearchParams(window.location.search).get('tour') === '1';
@@ -63,7 +63,9 @@ export default function App() {
     void (async () => {
       try {
         const profile = await userService.getProfile(user.uid);
-        setTutorialRole(profile?.accountRole === 'supervisor' ? 'supervisor' : 'student');
+        const supervisor = profile?.accountRole === 'parent' || profile?.accountRole === 'teacher' || profile?.accountRole === 'supervisor';
+        setTutorialRole(supervisor ? 'supervisor' : 'student');
+        setIsSupervisorAccount(supervisor);
         setNeedsTutorial(tourRequested || profile?.tutorialComplete !== true);
         setTutorialStep(0);
       } catch {
@@ -76,6 +78,14 @@ export default function App() {
   }, []);
 
   useEffect(() => { void notificationService.initializeDeepLinks(); }, []);
+  useEffect(() => {
+    const updateRole = (event: Event) => {
+      const role = (event as CustomEvent<string>).detail;
+      setIsSupervisorAccount(role === 'parent' || role === 'teacher' || role === 'supervisor');
+    };
+    window.addEventListener('regrade:role-changed', updateRole);
+    return () => window.removeEventListener('regrade:role-changed', updateRole);
+  }, []);
 
   const handleStartAppeal = () => {
     setCurrentCaseId(null);
@@ -256,6 +266,8 @@ export default function App() {
       return <Advocate caseId={appealFlowActive ? currentCaseId : undefined} />;
     }
 
+    if (isSupervisorAccount) return <SupervisorHub />;
+
     return (
       <Dashboard
         onStartAppeal={handleStartAppeal}
@@ -267,16 +279,6 @@ export default function App() {
         }}
         onOpenStudy={() => setActiveTab('study')}
         onOpenProfile={() => setActiveTab('profile')}
-        onOpenSampleVerdict={
-          isPreviewMode()
-            ? () => {
-                setCurrentCaseId(PREVIEW_CASE_ID);
-                setAppealFlowActive(true);
-                setActiveTab('upload');
-                setFlowStep('verdict');
-              }
-            : undefined
-        }
       />
     );
   };
@@ -286,6 +288,7 @@ export default function App() {
       activeTab={activeTab}
       profileSection={profileSection}
       onProfileSectionChange={setProfileSection}
+      onShowHelp={() => setShowAbout(true)}
       onTabChange={(tab) => {
         setActiveTab(tab);
         setShowAbout(false);

@@ -1,8 +1,8 @@
-/** Full app icon (navy tile) — favicon, store, etc. */
-export const BRAND_ICON_SRC = '/brand/regrade-icon.jpeg';
+/** App icon (black tile) — favicon, store, boot splash. */
+export const BRAND_ICON_SRC = '/brand/regrade-icon.png';
 
-/** Transparent wordmark for in-app UI (script only, no background). */
-export const BRAND_LOGO_SRC = '/brand/regrade-wordmark.png';
+/** Transparent brand mark for in-app UI. */
+export const BRAND_LOGO_SRC = '/brand/regrade-mark.png';
 
 /** Pixel whale mascot — Mr Whale */
 export const COACH_WHALE_SRC = '/brand/mr-whale-pixel.png';

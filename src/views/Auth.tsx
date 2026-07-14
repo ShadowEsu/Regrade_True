@@ -16,10 +16,11 @@ import ContinueWithAppleButton from '../components/ContinueWithAppleButton';
 import { APP_DELETE_ACCOUNT_URL, APP_MIN_AGE, APP_EULA_URL, APP_PRIVACY_URL, APP_TERMS_URL } from '../version';
 import { BRAND_ICON_SRC } from '../branding';
 import { userFacingError } from '../lib/userFacingError';
+import CoachWhale from '../components/CoachWhale';
 
 type Mode = 'signin' | 'signup' | 'forgot';
 
-const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
+const Auth: React.FC = () => {
   const [mode, setMode] = useState<Mode>('signin');
   const [showEmail, setShowEmail] = useState(false);
   const [email, setEmail] = useState('');
@@ -32,10 +33,6 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
   const busy = loading || googleLoading || appleLoading;
 
   const handleProviderLogin = async (provider: 'google' | 'apple') => {
-    if (previewDemo) {
-      setError('Preview mode, connect Firebase to use Apple or Google sign-in.');
-      return;
-    }
     setError(null);
     if (provider === 'google') setGoogleLoading(true);
     else setAppleLoading(true);
@@ -45,9 +42,11 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
     } catch (err: unknown) {
       const e = err as { code?: string; message?: string };
       if (e.code === 'auth/popup-closed-by-user' || e.message?.includes('popup-closed-by-user')) return;
-      if (e.code === 'auth/unauthorized-domain') setError('Sign-in is not available from this address. Open Regrade from the official app or website.');
-      else setError(userFacingError(err, 'Sign-in could not be completed. Try again.'));
-    } finally {
+      if (e.code === 'auth/unauthorized-domain') {
+        setError('Google sign-in is blocked on this address. Open http://localhost:3000 in Chrome, or use Continue with email.');
+      } else {
+        setError(userFacingError(err, 'Google sign-in could not finish. Try Chrome, or use Continue with email.'));
+      }    } finally {
       if (provider === 'google') setGoogleLoading(false);
       else setAppleLoading(false);
     }
@@ -55,10 +54,6 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (previewDemo) {
-      setError('Preview mode, connect Firebase to sign in with email.');
-      return;
-    }
     setError(null);
     setLoading(true);
     try {
@@ -106,6 +101,11 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
             <img src={BRAND_ICON_SRC} alt="" draggable={false} />
           </div>
           <p className="rg-auth-wordmark">Regrade</p>
+        </div>
+
+        <div className="rg-auth-whale-guide" aria-hidden>
+          <span>Hi, I&apos;m Mr Whale.</span>
+          <CoachWhale size={72} />
         </div>
 
         <div className="rg-auth-heading">
@@ -245,7 +245,7 @@ const Auth: React.FC<{ previewDemo?: boolean }> = ({ previewDemo }) => {
         </div>
 
         <p className="rg-auth-fineprint">
-          For students {APP_MIN_AGE}+. By continuing you agree to our{' '}
+          Built for students {APP_MIN_AGE}+. Younger students should use Regrade with a parent, guardian, or teacher. By continuing you agree to our{' '}
           <a href={APP_TERMS_URL} target="_blank" rel="noopener noreferrer">Terms</a>,{' '}
           <a href={APP_PRIVACY_URL} target="_blank" rel="noopener noreferrer">Privacy</a>, and{' '}
           <a href={APP_EULA_URL} target="_blank" rel="noopener noreferrer">EULA</a>.

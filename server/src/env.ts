@@ -12,7 +12,7 @@ const EnvSchema = z
      */
     GEMINI_API_KEY: z.string().default(""),
     GEMINI_MODEL: z.string().min(3).default("gemini-3.5-flash"),
-    /** Stripe Billing is optional in local preview and required before paid plans can activate. */
+    /** Stripe Billing is optional in local development and required before web paid plans can activate. */
     STRIPE_SECRET_KEY: z.string().optional(),
     STRIPE_WEBHOOK_SECRET: z.string().optional(),
     STRIPE_STUDENT_PRICE_ID: z.string().optional(),

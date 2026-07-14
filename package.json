@@ -12,14 +12,15 @@
     "url": "mailto:regradeteam@gmail.com"
   },
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite --port=3000 --host localhost",
-    "dev:preview": "vite --port=3000 --host localhost --mode preview",
     "start": "vite --port=3000 --host localhost",
     "dev:api": "npm --prefix server run dev",
     "build": "vite build",
+    "build:desktop": "VITE_DESKTOP_SHELL=true vite build",
     "preview": "vite preview",
-    "clean": "rm -rf dist server/dist android/.gradle android/build android/app/build tmp tmp-ui-screenshots",
+    "clean": "rm -rf dist server/dist android/.gradle android/build android/app/build tmp tmp-ui-screenshots release",
     "clean:install": "rm -rf node_modules server/node_modules && npm ci && npm --prefix server ci",
     "lint": "tsc -p tsconfig.app.json --noEmit",
     "licenses": "npx --yes license-checker --production --json > THIRD_PARTY_LICENSES.json",
@@ -28,7 +29,64 @@
     "deploy:regradeapp.tech": "bash scripts/deploy-regradeapp-tech.sh",
     "cap:sync": "npm run build && node scripts/prepare-capacitor.mjs && npx cap sync",
     "cap:ios": "npm run cap:sync && npx cap open ios",
+    "desktop": "node scripts/desktop-dev.mjs",
+    "desktop:pack": "npm run build:desktop && electron-builder --mac --dir",
+    "desktop:dmg": "npm run build:desktop && electron-builder --mac dmg zip",
     "test": "vitest run"
+  },
+  "build": {
+    "appId": "app.regrade.desktop",
+    "productName": "Regrade",
+    "copyright": "Copyright 2026 Preston Jay Susanto",
+    "directories": {
+      "output": "release"
+    },
+    "extraMetadata": {
+      "main": "electron/main.cjs",
+      "dependencies": {}
+    },
+    "files": [
+      "electron/**/*",
+      "package.json",
+      "!node_modules/**/*",
+      "!server/**/*",
+      "!src/**/*",
+      "!ios/**/*",
+      "!android/**/*",
+      "!docs/**/*",
+      "!dist/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "dist",
+        "to": "app-dist"
+      }
+    ],
+    "npmRebuild": false,
+    "mac": {
+      "category": "public.app-category.education",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "icon": "public/logo.png"
+    },
+    "dmg": {
+      "contents": [
+        {
+          "x": 130,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    }
   },
   "dependencies": {
     "@capacitor-community/apple-sign-in": "^7.1.0",
@@ -56,6 +114,8 @@
     "@testing-library/react": "^16.3.2",
     "@types/node": "^22.14.0",
     "autoprefixer": "^10.4.21",
+    "electron": "^35.7.5",
+    "electron-builder": "^26.15.3",
     "jsdom": "^29.1.1",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",

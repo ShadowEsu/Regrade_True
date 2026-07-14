@@ -37,6 +37,32 @@ export interface PlatformMeta {
   brandMark?: string;
 }
 
+export type ConnectorReleaseStatus =
+  | 'Live'
+  | 'Needs live verification'
+  | 'Manual import only'
+  | 'School authorization required'
+  | 'Vendor approval required'
+  | 'Coming soon'
+  | 'Unsupported';
+
+/**
+ * Product-release truth is deliberately separate from API availability.
+ * A published API is not the same thing as a connector Regrade has verified
+ * end to end with persisted production data.
+ */
+export function getConnectorReleaseStatus(meta: PlatformMeta): ConnectorReleaseStatus {
+  if (meta.authMethod === 'manual_only' || meta.apiStatus === 'file_import') {
+    return 'Manual import only';
+  }
+  if (meta.authMethod === 'oauth' || meta.authMethod === 'personal_access_token') {
+    return 'Needs live verification';
+  }
+  if (meta.apiStatus === 'partner_api') return 'Vendor approval required';
+  if (meta.authMethod === 'institution_gated') return 'School authorization required';
+  return 'Unsupported';
+}
+
 /** Case-insensitive search over name, id, and keywords. */
 export function filterPlatforms(query: string): PlatformMeta[] {
   const q = query.trim().toLowerCase();
