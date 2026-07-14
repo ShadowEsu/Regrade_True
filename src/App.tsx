@@ -2,6 +2,7 @@ import { lazy, Suspense, useEffect, useState } from 'react';
 import { caseService } from './services/caseService';
 import { auth } from './lib/firebase';
 import { userService } from './services/userService';
+import { clearPendingTutorialComplete, hasPendingTutorialComplete } from './lib/tutorialCompletion';
 import Layout from './components/Layout';
 import ProductTutorial from './components/ProductTutorial';
 import BrandSpinner from './components/BrandSpinner';
@@ -66,8 +67,18 @@ export default function App() {
         const supervisor = profile?.accountRole === 'parent' || profile?.accountRole === 'teacher' || profile?.accountRole === 'supervisor';
         setTutorialRole(supervisor ? 'supervisor' : 'student');
         setIsSupervisorAccount(supervisor);
-        setNeedsTutorial(tourRequested || profile?.tutorialComplete !== true);
+        // A locally recorded completion counts: the final step already ran but
+        // the server write failed, so the walkthrough must not reappear.
+        const pendingComplete = hasPendingTutorialComplete(user.uid);
+        setNeedsTutorial(tourRequested || (profile?.tutorialComplete !== true && !pendingComplete));
         setTutorialStep(0);
+        if (profile?.tutorialComplete === true) {
+          clearPendingTutorialComplete(user.uid);
+        } else if (pendingComplete) {
+          // Retry the deferred server write in the background; failures wait
+          // for the next launch.
+          void userService.completeTutorial(user.uid).catch(() => {});
+        }
       } catch {
         // A temporary profile read failure must never block the app.
         setNeedsTutorial(false);

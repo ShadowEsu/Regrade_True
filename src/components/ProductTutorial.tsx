@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { auth } from '../lib/firebase';
 import { userService } from '../services/userService';
+import { markPendingTutorialComplete } from '../lib/tutorialCompletion';
 import type { ProfileSection } from '../views/Profile';
 
 type Role = 'student' | 'supervisor';
@@ -83,7 +84,6 @@ export default function ProductTutorial({ role, index: requestedIndex, onNext, o
   const [cardHeight, setCardHeight] = useState(CARD_HEIGHT);
   const cardRef = useRef<HTMLElement | null>(null);
   const [finishing, setFinishing] = useState(false);
-  const [finishError, setFinishError] = useState<string | null>(null);
   const step = steps[index];
   const isLast = index === steps.length - 1;
 
@@ -120,18 +120,23 @@ export default function ProductTutorial({ role, index: requestedIndex, onNext, o
     return () => observer.disconnect();
   }, [index]);
 
+  // Finishing must never trap the user behind the full-screen overlay. When the
+  // server write fails (offline, expired session, permission denied) the
+  // completion is remembered locally and retried on the next launch instead.
   const finishTutorial = async () => {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user) {
+      // A signed-out replay (?tour=1) has nothing to persist.
+      onComplete();
+      return;
+    }
     setFinishing(true);
-    setFinishError(null);
     try {
       await userService.completeTutorial(user.uid);
-      onComplete();
-    } catch (error) {
-      setFinishError(error instanceof Error ? error.message : 'Could not finish the walkthrough. Try again.');
-      setFinishing(false);
+    } catch {
+      markPendingTutorialComplete(user.uid);
     }
+    onComplete();
   };
 
   // Keep the normal path synchronous. It makes the state transition reliable on
@@ -167,7 +172,6 @@ export default function ProductTutorial({ role, index: requestedIndex, onNext, o
       <button data-testid="tutorial-next" type="button" onClick={advance} disabled={finishing} className="rg-btn-cta mt-2.5 w-full py-2 text-[12px] disabled:opacity-45">
         {finishing ? 'Saving…' : isLast ? 'Start using Regrade' : 'Next'}
       </button>
-      {finishError ? <p className="mt-2 text-[11px] leading-relaxed text-red-600">{finishError}</p> : null}
     </section>
   </div>;
 }

@@ -7,6 +7,7 @@ import {
   type Timestamp,
 } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
+import { clearPendingTutorialComplete } from '../lib/tutorialCompletion';
 import type { PlatformGuideId } from '../lib/platformUploadGuides';
 import type { ThemePreference } from '../lib/theme';
 
@@ -231,6 +232,7 @@ export const userService = {
       const data = await response.json().catch(() => null) as { error?: { message?: string } } | null;
       throw new Error(data?.error?.message ?? 'Could not finish the walkthrough.');
     }
+    clearPendingTutorialComplete(uid);
     return { tutorialComplete: true as const };
   },
 
