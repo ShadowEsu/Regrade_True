@@ -36,8 +36,6 @@ import { automationService } from '../services/automationService';
 import { isNativeStore } from '../services/storePurchaseService';
 import LearnerPairingPanel from '../components/LearnerPairingPanel';
 import { notificationService } from '../services/notificationService';
-import ThemePicker from '../components/ThemePicker';
-import { useTheme } from '../context/ThemeContext';
 
 interface ProfileProps {
   onShowAbout?: () => void;
@@ -150,7 +148,6 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
   const [displayCurrency, setDisplayCurrency] = useState<DisplayCurrency>(() => readStoredCurrency());
   const [fxRates, setFxRates] = useState<Record<string, number>>({ USD: 1 });
   const nativePurchases = isNativeStore();
-  const { preference: themePreference, setPreference: setThemePreference } = useTheme();
   const [alertsSaving, setAlertsSaving] = useState(false);
   const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>(() => (
     typeof Notification === 'undefined' ? 'unsupported' : Notification.permission
@@ -499,7 +496,7 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
       )}
 
       <form onSubmit={(e) => void handleSave(e)} className="space-y-5">
-        <AnimatePresence mode="wait">
+        {/* Exit-gated swaps removed: mode="wait" hangs were observed live. */}
           {activeTab === 'you' && (
             <motion.div
               key="you"
@@ -912,9 +909,6 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               exit={{ opacity: 0, y: -4 }}
               className="space-y-4"
             >
-              <div className="rg-glass-card p-5">
-                <ThemePicker value={themePreference} onChange={(next) => void setThemePreference(next)} />
-              </div>
               <div className="rg-glass-card p-5 space-y-3">
                 <p className="text-[10px] font-mono uppercase tracking-wider text-primary">Legal</p>
                 <p className="text-[13px] text-muted leading-relaxed">
@@ -1015,7 +1009,6 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
 
         {securityError && (
           <p className="text-[12px] text-red-700 bg-red-50 border border-red-200/70 rounded-xl px-4 py-3">

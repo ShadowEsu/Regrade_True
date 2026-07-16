@@ -25,6 +25,7 @@
     "lint": "tsc -p tsconfig.app.json --noEmit",
     "licenses": "npx --yes license-checker --production --json > THIRD_PARTY_LICENSES.json",
     "deploy:hosting": "npm run build && firebase deploy --only hosting:regrade-75d1a",
+    "deploy:web": "bash scripts/deploy-web-app.sh",
     "deploy:rules": "firebase deploy --only firestore:rules",
     "deploy:regradeapp.tech": "bash scripts/deploy-regradeapp-tech.sh",
     "cap:sync": "npm run build && node scripts/prepare-capacitor.mjs && npx cap sync",
@@ -34,7 +35,9 @@
     "desktop:dmg": "node scripts/desktop-release.mjs --mac-only",
     "desktop:win": "node scripts/desktop-release.mjs --win-only",
     "desktop:release": "node scripts/desktop-release.mjs",
-    "test": "vitest run"
+    "verify:beta": "node scripts/verify-beta.mjs",
+    "test:firebase-rules": "firebase emulators:exec --project demo-regrade-isolation --only auth,firestore \"node scripts/firebase-isolation-test.mjs\"",
+    "test": "NODE_OPTIONS=--no-experimental-webstorage vitest run"
   },
   "build": {
     "appId": "app.regrade.desktop",
@@ -79,11 +82,17 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         },
         {
           "target": "zip",
-          "arch": ["arm64", "x64"]
+          "arch": [
+            "arm64",
+            "x64"
+          ]
         }
       ],
       "hardenedRuntime": true,
@@ -113,7 +122,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "electron/build/icon.ico",

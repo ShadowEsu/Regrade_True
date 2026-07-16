@@ -98,7 +98,7 @@ design-backups/
 # must use a .local.md suffix or the private subdirectory.
 docs/internal/*.local.md
 docs/internal/private/
-release/
+/release/
 
 electron/build/icon.iconset/
 electron/build/icon-1024.png

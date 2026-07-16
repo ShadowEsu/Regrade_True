@@ -5,6 +5,7 @@ import { auth } from '../lib/firebase';
 import { caseService, type Case } from '../services/caseService';
 import { userService } from '../services/userService';
 import { listConnections } from '../features/connect/store';
+import { subscriptionService, type SubscriptionSnapshot } from '../services/subscriptionService';
 import CoachWhale from '../components/CoachWhale';
 import { getClassName, getPossiblePointsBack, getScoreDisplay } from '../lib/appealHelpers';
 import {
@@ -75,6 +76,9 @@ export default function Dashboard({
   const [streakOpen, setStreakOpen] = useState(false);
   const [connectionCount, setConnectionCount] = useState(0);
   const [autoMode, setAutoMode] = useState(false);
+  const [subscription, setSubscription] = useState<SubscriptionSnapshot | null>(null);
+  const [rewardBusy, setRewardBusy] = useState(false);
+  const [rewardMessage, setRewardMessage] = useState<string | null>(null);
   const hour = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
 
@@ -85,10 +89,12 @@ export default function Dashboard({
       caseService.getUserCases(),
       user?.uid ? userService.getProfile(user.uid) : Promise.resolve(null),
       listConnections().catch(() => []),
-    ]).then(([items, profile, connections]) => {
+      user ? subscriptionService.recordActivity().catch(() => null) : Promise.resolve(null),
+    ]).then(([items, profile, connections, subscriptionStatus]) => {
       setCases(items);
       setConnectionCount(connections.length);
       setAutoMode(profile?.automaticGradeDetection === true);
+      setSubscription(subscriptionStatus);
       const savedName = profile?.name?.trim().split(/\s+/)[0];
       if (savedName) setFirstName(savedName);
     }).catch(() => setLoadError('Your dashboard could not be loaded. Check your connection and try again.')).finally(() => setLoading(false));
@@ -99,14 +105,28 @@ export default function Dashboard({
     const improved = cases.filter((item) => item.status === 'Resolved');
     const identified = reviewed.reduce((sum, item) => sum + getPossiblePointsBack(item), 0);
     return {
-      streak: currentReviewStreak(cases),
+      streak: subscription?.rewards.currentStreak ?? currentReviewStreak(cases),
       reviewed: reviewed.length,
       improved: improved.length,
       identified,
       complete: reviewed.length,
       pending: cases.filter((item) => !item.analysis || item.progress < 80).length,
     };
-  }, [cases]);
+  }, [cases, subscription]);
+
+  const redeemReward = async () => {
+    setRewardBusy(true);
+    setRewardMessage(null);
+    try {
+      const next = await subscriptionService.redeemReward();
+      setSubscription(next);
+      setRewardMessage(`${next.rewards.rewardPlusDays} Plus days added to your reward access.`);
+    } catch (error) {
+      setRewardMessage(error instanceof Error ? error.message : 'Your Plus days could not be redeemed.');
+    } finally {
+      setRewardBusy(false);
+    }
+  };
 
   const activeDays = useMemo(() => new Set(cases.map((item) => dayKey(item.updatedAt ?? item.createdAt)).filter(Boolean) as string[]), [cases]);
   const attention = useMemo(() => cases.filter((item) => !item.analysis || getPossiblePointsBack(item) > 0).slice(0, 5), [cases]);
@@ -127,14 +147,21 @@ export default function Dashboard({
 
       <Reveal className="rg2-span-half">
         <SurfaceCard className="rg2-streak">
-          <button type="button" onClick={() => setStreakOpen((open) => !open)} aria-expanded={streakOpen}>
+          <button type="button" className="rg2-streak-toggle" onClick={() => setStreakOpen((open) => !open)} aria-expanded={streakOpen}>
             <div className="rg2-streak-head">
-              <div><small>Your review streak</small><div className="rg2-streak-value">{stats.streak}<span>{stats.streak === 1 ? 'day' : 'days'}</span></div></div>
+              <div><small>Your activity streak</small><div className="rg2-streak-value">{stats.streak}<span>{stats.streak === 1 ? 'day' : 'days'}</span></div></div>
               <motion.span className="rg2-streak-flame" animate={stats.streak > 0 ? { scale: [1, 1.07, 1] } : undefined} transition={{ duration: 2.4, repeat: Infinity }}><ICONS.Zap aria-hidden /></motion.span>
             </div>
-            <ActivityGrid active={activeDays} />
-            <ExpandablePanel open={streakOpen}><div className="rg2-streak-detail"><ActivityGrid active={activeDays} expanded /><p className="mt-4">Every completed exam review adds a day to this calendar.</p></div></ExpandablePanel>
+            <div className="rg2-reward-progress" aria-label={`${subscription?.rewards.progressDays ?? 0} of 30 active days`}><span style={{ width: `${Math.min(100, ((subscription?.rewards.progressDays ?? 0) / (subscription?.rewards.rewardCycleDays ?? 30)) * 100)}%` }} /></div>
           </button>
+          <ExpandablePanel open={streakOpen}><div className="rg2-streak-detail">
+              <p>Open Regrade on 30 different days to earn 5 days of Plus. Rewards accumulate and are only activated when you redeem them.</p>
+              <div className="rg2-reward-status"><span>{subscription?.rewards.progressDays ?? 0}/{subscription?.rewards.rewardCycleDays ?? 30} active days</span><strong>{subscription?.rewards.bonusDaysBalance ?? 0} Plus days ready</strong></div>
+              {(subscription?.rewards.bonusDaysBalance ?? 0) >= (subscription?.rewards.rewardPlusDays ?? 5) && <button type="button" className="rg2-reward-redeem" disabled={rewardBusy} onClick={() => void redeemReward()}>{rewardBusy ? 'Redeeming…' : `Redeem ${subscription?.rewards.rewardPlusDays ?? 5} Plus days`}</button>}
+              {rewardMessage && <p className="rg2-reward-message" role="status">{rewardMessage}</p>}
+              {subscription?.rewards.bonusAccessUntil && <p className="rg2-reward-message">Reward access available until {new Date(subscription.rewards.bonusAccessUntil).toLocaleDateString()}.</p>}
+              <div className="mt-4"><ActivityGrid active={activeDays} expanded /></div><p className="mt-2">The calendar below shows completed review days; your reward counter also counts days you sign in.</p>
+            </div></ExpandablePanel>
         </SurfaceCard>
       </Reveal>
 

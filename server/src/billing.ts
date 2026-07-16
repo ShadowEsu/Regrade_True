@@ -3,6 +3,7 @@ import { Router } from "express";
 import admin from "./admin.js";
 import Stripe from "stripe";
 import crypto from "node:crypto";
+import { readFileSync } from "node:fs";
 import { z } from "zod";
 import type { Env } from "./env.js";
 import { ApiError } from "./http/errors.js";
@@ -11,13 +12,56 @@ import { validate } from "./middleware/validate.js";
 export type PlanId = "free" | "student" | "pro";
 export type UsageKind = "exam" | "message";
 
+const PlanCatalogSchema = z.object({
+  trialMonths: z.number().int().positive(),
+  plans: z.object({
+    free: z.object({
+      name: z.string().min(1),
+      monthlyPriceUsd: z.number().nonnegative(),
+      exams: z.number().int().positive(),
+      messages: z.number().int().positive(),
+      autoMode: z.boolean(),
+    }),
+    student: z.object({
+      name: z.string().min(1),
+      monthlyPriceUsd: z.number().nonnegative(),
+      exams: z.number().int().positive(),
+      messages: z.number().int().positive(),
+      autoMode: z.boolean(),
+    }),
+    pro: z.object({
+      name: z.string().min(1),
+      monthlyPriceUsd: z.number().nonnegative(),
+      exams: z.number().int().positive(),
+      messages: z.number().int().positive(),
+      autoMode: z.boolean(),
+    }),
+  }),
+});
+
+function loadPlanCatalog() {
+  const candidates = [
+    new URL("../../shared/planCatalog.json", import.meta.url),
+    new URL("./planCatalog.json", import.meta.url),
+  ];
+  for (const candidate of candidates) {
+    try {
+      return PlanCatalogSchema.parse(JSON.parse(readFileSync(candidate, "utf8")));
+    } catch (error) {
+      if (candidate === candidates.at(-1)) throw error;
+    }
+  }
+  throw new Error("Plan catalog is unavailable.");
+}
+
+export const PLAN_CATALOG = loadPlanCatalog();
 export const PLAN_LIMITS: Record<PlanId, { exams: number; messages: number; autoMode: boolean }> = {
-  free: { exams: 3, messages: 25, autoMode: false },
-  student: { exams: 10, messages: 50, autoMode: true },
-  pro: { exams: 20, messages: 100, autoMode: true },
+  free: PLAN_CATALOG.plans.free,
+  student: PLAN_CATALOG.plans.student,
+  pro: PLAN_CATALOG.plans.pro,
 };
 
-const INTRO_PLUS_TRIAL_MONTHS = 2;
+const INTRO_PLUS_TRIAL_MONTHS = PLAN_CATALOG.trialMonths;
 
 type BillingRecord = {
   plan?: PlanId;
@@ -30,7 +74,23 @@ type BillingRecord = {
   source?: "stripe" | "app_store" | "intro_trial";
   managementUrl?: string | null;
   trialGrantedAt?: string;
+  /** Promotional Plus access earned in-app. This is deliberately separate
+   * from the App Store/Google Play subscription and never mutates renewal. */
+  bonusAccessStartedAt?: string;
+  bonusAccessUntil?: string;
 };
+
+export type RewardRecord = {
+  activeDays?: number;
+  currentStreak?: number;
+  lastActiveDay?: string;
+  earnedBlocks?: number;
+  redeemedBlocks?: number;
+  bonusDaysBalance?: number;
+};
+
+const REWARD_CYCLE_DAYS = 30;
+const REWARD_PLUS_DAYS = 5;
 
 function uidOf(req: Request): string {
   const uid = (req as Request & { firebase?: { uid?: string } }).firebase?.uid;
@@ -62,10 +122,17 @@ function periodStillOpen(record: BillingRecord | undefined): boolean {
   return Number.isFinite(end.getTime()) && end.getTime() > Date.now();
 }
 
+function bonusStillOpen(record: BillingRecord | undefined): boolean {
+  if (!record?.bonusAccessUntil) return false;
+  const end = new Date(record.bonusAccessUntil);
+  return Number.isFinite(end.getTime()) && end.getTime() > Date.now();
+}
+
 function activePlan(record: BillingRecord | undefined): PlanId {
-  if (!record || !["active", "trialing"].includes(record.status ?? "")) return "free";
-  if (!periodStillOpen(record)) return "free";
-  return record.plan === "student" || record.plan === "pro" ? record.plan : "free";
+  if (record && ["active", "trialing"].includes(record.status ?? "") && periodStillOpen(record)) {
+    if (record.plan === "student" || record.plan === "pro") return record.plan;
+  }
+  return bonusStillOpen(record) ? "student" : "free";
 }
 
 export async function hasAutomationEntitlement(uid: string): Promise<boolean> {
@@ -76,9 +143,114 @@ export async function hasAutomationEntitlement(uid: string): Promise<boolean> {
 
 function period(record: BillingRecord | undefined): { start: Date; end: Date } {
   const fallback = monthWindow();
+  if (bonusStillOpen(record) && !(["active", "trialing"].includes(record?.status ?? "") && periodStillOpen(record))) {
+    const start = record?.bonusAccessStartedAt ? new Date(record.bonusAccessStartedAt) : new Date();
+    const end = new Date(record?.bonusAccessUntil ?? fallback.end);
+    return Number.isFinite(start.getTime()) && Number.isFinite(end.getTime()) ? { start, end } : fallback;
+  }
   const start = record?.currentPeriodStart ? new Date(record.currentPeriodStart) : fallback.start;
   const end = record?.currentPeriodEnd ? new Date(record.currentPeriodEnd) : fallback.end;
   return Number.isFinite(start.getTime()) && Number.isFinite(end.getTime()) ? { start, end } : fallback;
+}
+
+function utcDay(date = new Date()): string {
+  return date.toISOString().slice(0, 10);
+}
+
+function addDaysUtc(date: Date, days: number): Date {
+  const result = new Date(date);
+  result.setUTCDate(result.getUTCDate() + days);
+  return result;
+}
+
+export function rewardSummary(record: RewardRecord = {}) {
+  const activeDays = Math.max(0, Math.floor(record.activeDays ?? 0));
+  const earnedBlocks = Math.max(Math.floor(activeDays / REWARD_CYCLE_DAYS), Math.floor(record.earnedBlocks ?? 0));
+  return {
+    activeDays,
+    currentStreak: Math.max(0, Math.floor(record.currentStreak ?? 0)),
+    progressDays: activeDays % REWARD_CYCLE_DAYS,
+    daysUntilReward: REWARD_CYCLE_DAYS - (activeDays % REWARD_CYCLE_DAYS),
+    earnedBlocks,
+    redeemedBlocks: Math.max(0, Math.floor(record.redeemedBlocks ?? 0)),
+    bonusDaysBalance: Math.max(0, Math.floor(record.bonusDaysBalance ?? 0)),
+    rewardCycleDays: REWARD_CYCLE_DAYS,
+    rewardPlusDays: REWARD_PLUS_DAYS,
+  };
+}
+
+async function rewardSnapshot(uid: string) {
+  const billingRef = admin.firestore().collection("users").doc(uid).collection("billing").doc("current");
+  const [billingSnap, rewardSnap] = await Promise.all([
+    billingRef.get(),
+    billingRef.collection("rewards").doc("activity").get(),
+  ]);
+  const billing = billingSnap.exists ? billingSnap.data() as BillingRecord : undefined;
+  const reward = rewardSnap.exists ? rewardSnap.data() as RewardRecord : undefined;
+  return {
+    ...rewardSummary(reward),
+    bonusAccessUntil: billing?.bonusAccessUntil ?? null,
+    hasBonusAccess: bonusStillOpen(billing),
+  };
+}
+
+async function recordRewardActivity(uid: string): Promise<void> {
+  const billingRef = admin.firestore().collection("users").doc(uid).collection("billing").doc("current");
+  const rewardRef = billingRef.collection("rewards").doc("activity");
+  const today = utcDay();
+  const dayRef = rewardRef.collection("days").doc(today);
+  await admin.firestore().runTransaction(async (tx) => {
+    const [daySnap, rewardSnap] = await Promise.all([tx.get(dayRef), tx.get(rewardRef)]);
+    if (daySnap.exists) return;
+    const current = rewardSnap.exists ? rewardSnap.data() as RewardRecord : {};
+    const previous = new Date(`${today}T00:00:00.000Z`);
+    previous.setUTCDate(previous.getUTCDate() - 1);
+    const currentStreak = current.lastActiveDay === utcDay(previous)
+      ? Math.max(0, current.currentStreak ?? 0) + 1
+      : 1;
+    const activeDays = Math.max(0, current.activeDays ?? 0) + 1;
+    const priorBlocks = Math.max(0, current.earnedBlocks ?? 0);
+    const earnedBlocks = Math.floor(activeDays / REWARD_CYCLE_DAYS);
+    const newlyEarned = Math.max(0, earnedBlocks - priorBlocks);
+    tx.set(dayRef, { day: today, createdAt: admin.firestore.FieldValue.serverTimestamp() });
+    tx.set(rewardRef, {
+      activeDays,
+      currentStreak,
+      lastActiveDay: today,
+      earnedBlocks,
+      bonusDaysBalance: Math.max(0, current.bonusDaysBalance ?? 0) + newlyEarned * REWARD_PLUS_DAYS,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
+}
+
+async function redeemReward(uid: string): Promise<void> {
+  const billingRef = admin.firestore().collection("users").doc(uid).collection("billing").doc("current");
+  const rewardRef = billingRef.collection("rewards").doc("activity");
+  await admin.firestore().runTransaction(async (tx) => {
+    const [billingSnap, rewardSnap] = await Promise.all([tx.get(billingRef), tx.get(rewardRef)]);
+    const reward = rewardSnap.exists ? rewardSnap.data() as RewardRecord : {};
+    if ((reward.bonusDaysBalance ?? 0) < REWARD_PLUS_DAYS) {
+      throw new ApiError({ status: 409, code: "BAD_REQUEST", message: "No Plus days are ready to redeem yet." });
+    }
+    const billing = billingSnap.exists ? billingSnap.data() as BillingRecord : {};
+    const now = new Date();
+    const candidates = [now, billing.bonusAccessUntil ? new Date(billing.bonusAccessUntil) : now];
+    if (["active", "trialing"].includes(billing.status ?? "") && periodStillOpen(billing) && billing.currentPeriodEnd) {
+      candidates.push(new Date(billing.currentPeriodEnd));
+    }
+    const base = candidates.reduce((latest, value) => value.getTime() > latest.getTime() ? value : latest, now);
+    tx.set(billingRef, {
+      bonusAccessStartedAt: base.toISOString(),
+      bonusAccessUntil: addDaysUtc(base, REWARD_PLUS_DAYS).toISOString(),
+      updatedAt: now.toISOString(),
+    }, { merge: true });
+    tx.set(rewardRef, {
+      bonusDaysBalance: (reward.bonusDaysBalance ?? 0) - REWARD_PLUS_DAYS,
+      redeemedBlocks: Math.max(0, reward.redeemedBlocks ?? 0) + 1,
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    }, { merge: true });
+  });
 }
 
 /** One-time Plus trial (2 months) the first time billing is touched. */
@@ -118,6 +290,7 @@ async function snapshot(uid: string) {
   const usageSnap = await usageRef.get();
   const usage = usageSnap.exists ? usageSnap.data() as { exams?: number; messages?: number } : {};
   const isIntroTrial = record?.source === "intro_trial" && plan === "student" && record.status === "trialing";
+  const rewards = await rewardSnapshot(uid);
   return {
     plan,
     status: plan === "free"
@@ -131,6 +304,8 @@ async function snapshot(uid: string) {
     hasBillingAccount: Boolean(record?.stripeCustomerId || record?.source === "app_store"),
     isIntroTrial,
     trialEndsAt: isIntroTrial ? (record?.currentPeriodEnd ?? null) : null,
+    bonusAccessUntil: record?.bonusAccessUntil ?? null,
+    rewards,
   };
 }
 
@@ -178,6 +353,16 @@ export function createBillingRouter(env: Env): Router {
   const stripe = env.STRIPE_SECRET_KEY ? new Stripe(env.STRIPE_SECRET_KEY) : null;
 
   router.get("/status", (req, res, next) => void snapshot(uidOf(req)).then((value) => res.json(value)).catch(next));
+
+  router.post("/reward-activity", (req, res, next) => {
+    const uid = uidOf(req);
+    void recordRewardActivity(uid).then(() => snapshot(uid)).then((value) => res.json(value)).catch(next);
+  });
+
+  router.post("/redeem-reward", (req, res, next) => {
+    const uid = uidOf(req);
+    void redeemReward(uid).then(() => snapshot(uid)).then((value) => res.json(value)).catch(next);
+  });
 
   router.post("/sync-native", (req, res, next) => {
     void syncRevenueCat(uidOf(req), env).then(() => snapshot(uidOf(req))).then((value) => res.json(value)).catch(next);

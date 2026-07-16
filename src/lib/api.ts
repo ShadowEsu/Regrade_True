@@ -45,12 +45,11 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   if (typeof navigator !== 'undefined' && navigator.onLine === false) {
     throw new Error('You appear to be offline. Reconnect and try again.');
   }
-  const token = await user.getIdToken();
   const headers = new Headers(init.headers);
   if (!headers.has('Content-Type') && init.body) {
     headers.set('Content-Type', 'application/json');
   }
-  headers.set('Authorization', `Bearer ${token}`);
+  headers.set('Authorization', `Bearer ${await user.getIdToken()}`);
   if (appCheck) {
     const appCheckToken = await getToken(appCheck, false);
     headers.set('X-Firebase-AppCheck', appCheckToken.token);
@@ -61,8 +60,28 @@ export async function apiFetch(path: string, init: RequestInit = {}): Promise<Re
   const abortFromExternal = () => controller.abort();
   externalSignal?.addEventListener('abort', abortFromExternal, { once: true });
   try {
-    return await fetch(apiUrl(path), { ...init, headers, signal: controller.signal });
+    let response = await fetch(apiUrl(path), { ...init, headers, signal: controller.signal });
+    // A persisted Firebase session can briefly hold an ID token minted before
+    // an emulator/server restart or token revocation check. A 401 means the
+    // server did not execute the requested mutation, so one forced refresh is
+    // safe even for POST/PATCH requests.
+    if (response.status === 401 && auth.currentUser?.uid === user.uid) {
+      try {
+        headers.set('Authorization', `Bearer ${await user.getIdToken(true)}`);
+      } catch {
+        await auth.signOut().catch(() => undefined);
+        throw new Error('SESSION_EXPIRED');
+      }
+      response = await fetch(apiUrl(path), { ...init, headers, signal: controller.signal });
+      if (response.status === 401) {
+        await auth.signOut().catch(() => undefined);
+      }
+    }
+    return response;
   } catch (error) {
+    if (error instanceof Error && error.message === 'SESSION_EXPIRED') {
+      throw new Error('Your session expired. Sign in again to continue.');
+    }
     if (controller.signal.aborted) throw new Error('The request timed out. Check your connection and try again.');
     throw new Error('Regrade could not reach the service. Check your connection and try again.');
   } finally {

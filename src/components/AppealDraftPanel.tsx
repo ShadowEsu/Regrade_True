@@ -139,7 +139,7 @@ export default function AppealDraftPanel({
 
   return (
     <div className="space-y-3">
-      <AnimatePresence mode="wait">
+      {/* Exit-gated swaps removed: mode="wait" hangs were observed live. */}
         {loading && !draft.trim() ? (
           <motion.div
             key="loading"
@@ -221,7 +221,6 @@ export default function AppealDraftPanel({
             </p>
           </motion.div>
         ) : null}
-      </AnimatePresence>
 
       <button
         type="button"

@@ -1,16 +1,15 @@
 import { apiFetch } from '../lib/api';
 import { isNativeStore, storePurchaseService } from './storePurchaseService';
+import planCatalog from '../../shared/planCatalog.json';
 
 export type PlanId = 'free' | 'student' | 'pro';
 
-export const PLAN_CATALOG = {
-  free: { name: 'Free', price: 0, exams: 3, messages: 25, autoMode: false },
-  student: { name: 'Plus', price: 6.99, exams: 10, messages: 50, autoMode: true },
-  pro: { name: 'Pro', price: 11.99, exams: 20, messages: 100, autoMode: true },
-} as const;
+export const PLAN_CATALOG = Object.fromEntries(
+  Object.entries(planCatalog.plans).map(([id, plan]) => [id, { ...plan, price: plan.monthlyPriceUsd }]),
+) as Record<PlanId, (typeof planCatalog.plans)[PlanId] & { price: number }>;
 
 /** Intro offer granted once when a user first hits billing. */
-export const INTRO_PLUS_TRIAL_MONTHS = 2;
+export const INTRO_PLUS_TRIAL_MONTHS = planCatalog.trialMonths;
 
 export interface SubscriptionSnapshot {
   plan: PlanId;
@@ -23,6 +22,20 @@ export interface SubscriptionSnapshot {
   hasBillingAccount: boolean;
   isIntroTrial?: boolean;
   trialEndsAt?: string | null;
+  bonusAccessUntil?: string | null;
+  rewards: {
+    activeDays: number;
+    currentStreak: number;
+    progressDays: number;
+    daysUntilReward: number;
+    earnedBlocks: number;
+    redeemedBlocks: number;
+    bonusDaysBalance: number;
+    rewardCycleDays: number;
+    rewardPlusDays: number;
+    bonusAccessUntil: string | null;
+    hasBonusAccess: boolean;
+  };
 }
 
 export const subscriptionService = {
@@ -30,6 +43,21 @@ export const subscriptionService = {
     const response = await apiFetch('/v1/billing/status');
     if (!response.ok) throw new Error('Could not load subscription status.');
     return response.json() as Promise<SubscriptionSnapshot>;
+  },
+
+  /** Records at most one active day using the server's UTC date. Repeated app
+   * opens are idempotent, so the client cannot inflate the reward counter. */
+  async recordActivity(): Promise<SubscriptionSnapshot> {
+    const response = await apiFetch('/v1/billing/reward-activity', { method: 'POST' });
+    if (!response.ok) throw new Error('Your activity reward could not be updated yet.');
+    return response.json() as Promise<SubscriptionSnapshot>;
+  },
+
+  async redeemReward(): Promise<SubscriptionSnapshot> {
+    const response = await apiFetch('/v1/billing/redeem-reward', { method: 'POST' });
+    const data = await response.json() as SubscriptionSnapshot & { error?: { message?: string } };
+    if (!response.ok) throw new Error(data.error?.message ?? 'Your Plus days could not be redeemed.');
+    return data;
   },
 
   async startCheckout(plan: Exclude<PlanId, 'free'>): Promise<void> {

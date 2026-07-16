@@ -1,7 +1,5 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { auth } from '../lib/firebase';
-import { applyTheme, getStoredTheme, persistTheme, resolveTheme, type ThemePreference } from '../lib/theme';
-import { userService } from '../services/userService';
+import React, { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
+import { applyTheme, persistTheme, type ThemePreference } from '../lib/theme';
 
 type ThemeContextValue = {
   preference: ThemePreference;
@@ -12,30 +10,15 @@ type ThemeContextValue = {
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [preference, setPreferenceState] = useState<ThemePreference>(getStoredTheme);
-  const [resolved, setResolved] = useState<'light' | 'dark'>(() => resolveTheme(getStoredTheme()));
-
   useEffect(() => {
-    const update = () => {
-      const next = resolveTheme(preference);
-      setResolved(next);
-      applyTheme(next);
-    };
-    update();
-    if (preference !== 'system') return;
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    media.addEventListener('change', update);
-    return () => media.removeEventListener('change', update);
-  }, [preference]);
-
-  const setPreference = useCallback(async (next: ThemePreference, options?: { persistRemote?: boolean }) => {
-    setPreferenceState(next);
-    persistTheme(next);
-    if (options?.persistRemote === false) return;
-    if (auth.currentUser) await userService.setThemePreference(auth.currentUser.uid, next);
+    applyTheme('light');
   }, []);
 
-  const value = useMemo<ThemeContextValue>(() => ({ preference, resolved, setPreference }), [preference, resolved, setPreference]);
+  const setPreference = useCallback(async (_next: ThemePreference) => {
+    persistTheme('light');
+  }, []);
+
+  const value = useMemo<ThemeContextValue>(() => ({ preference: 'light', resolved: 'light', setPreference }), [setPreference]);
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 

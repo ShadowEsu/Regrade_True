@@ -3,25 +3,22 @@ export type ThemePreference = 'light' | 'dark' | 'system';
 export const THEME_STORAGE_KEY = 'regrade-theme';
 
 export function getStoredTheme(): ThemePreference {
-  if (typeof window === 'undefined') return 'system';
-  const raw = localStorage.getItem(THEME_STORAGE_KEY);
-  if (raw === 'light' || raw === 'dark' || raw === 'system') return raw;
-  return 'system';
+  // Regrade's beta ships with one verified visual mode. Keep the wider type for
+  // backwards-compatible profile reads, but never activate an old dark/system
+  // preference in the release client.
+  return 'light';
 }
 
-export function resolveTheme(preference: ThemePreference): 'light' | 'dark' {
-  if (preference === 'system') {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-  return preference;
+export function resolveTheme(_preference: ThemePreference): 'light' {
+  return 'light';
 }
 
-export function applyTheme(resolved: 'light' | 'dark'): void {
-  document.documentElement.dataset.theme = resolved;
-  document.documentElement.style.colorScheme = resolved;
+export function applyTheme(_resolved: 'light' | 'dark'): void {
+  document.documentElement.dataset.theme = 'light';
+  document.documentElement.style.colorScheme = 'light';
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) {
-    meta.setAttribute('content', resolved === 'dark' ? '#070b12' : '#dce8ff');
+    meta.setAttribute('content', '#dce8ff');
   }
 }
 
@@ -32,6 +29,6 @@ export function bootstrapTheme(): ThemePreference {
 }
 
 export function persistTheme(preference: ThemePreference): void {
-  localStorage.setItem(THEME_STORAGE_KEY, preference);
+  localStorage.setItem(THEME_STORAGE_KEY, 'light');
   applyTheme(resolveTheme(preference));
 }

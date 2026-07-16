@@ -1,0 +1,26 @@
+{
+  "trialMonths": 2,
+  "plans": {
+    "free": {
+      "name": "Free",
+      "monthlyPriceUsd": 0,
+      "exams": 3,
+      "messages": 25,
+      "autoMode": false
+    },
+    "student": {
+      "name": "Plus",
+      "monthlyPriceUsd": 6.99,
+      "exams": 10,
+      "messages": 50,
+      "autoMode": true
+    },
+    "pro": {
+      "name": "Pro",
+      "monthlyPriceUsd": 11.99,
+      "exams": 20,
+      "messages": 100,
+      "autoMode": true
+    }
+  }
+}

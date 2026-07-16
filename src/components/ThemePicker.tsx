@@ -24,14 +24,14 @@ export default function ThemePicker({
 }) {
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <div>
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
           <p className="text-[11px] font-mono uppercase tracking-[0.14em] text-primary">Appearance</p>
-          <p className="text-[13px] text-ink-muted mt-1 leading-relaxed">
-            Light, dark, or match your device. You can also tap the moon/sun icon in the top bar.
+          <p className="max-w-[46ch] text-[13px] text-ink-muted mt-1 leading-relaxed">
+            Choose light, dark, or your device setting.
           </p>
         </div>
-        <span className="rg-theme-badge shrink-0">{value}</span>
+        <span className="rg-theme-badge w-fit shrink-0">{value}</span>
       </div>
 
       <div className="rg-theme-picker" role="radiogroup" aria-label="Color theme">

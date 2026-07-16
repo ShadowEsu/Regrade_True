@@ -1,11 +1,5 @@
 import { apiFetch } from '../lib/api';
-import {
-  doc,
-  getDoc,
-  setDoc,
-  serverTimestamp,
-  type Timestamp,
-} from 'firebase/firestore';
+import { doc, getDoc, type Timestamp } from 'firebase/firestore';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { clearPendingTutorialComplete } from '../lib/tutorialCompletion';
 import type { PlatformGuideId } from '../lib/platformUploadGuides';
@@ -75,74 +69,35 @@ export const DEFAULT_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   weeklySummary: false,
 };
 
+async function profileRequest<T>(path: string, method: 'POST' | 'PATCH', body: Record<string, unknown>): Promise<T> {
+  const response = await apiFetch(`/v1/profile${path}`, {
+    method,
+    body: JSON.stringify(body),
+  });
+  const data = await response.json().catch(() => null) as (T & { error?: { message?: string } }) | null;
+  if (!response.ok) throw new Error(data?.error?.message ?? 'Could not save your changes.');
+  return data as T;
+}
+
 export const userService = {
-  async syncProfile(uid: string, profile: Partial<UserProfile>) {
-    const docRef = doc(db, 'users', uid);
-    try {
-      const snapshot = await getDoc(docRef);
-
-      if (!snapshot.exists()) {
-        const newProfile = {
-          name: profile.name?.trim() || 'Student',
-          email: profile.email || '',
-          major: profile.major ?? 'Undeclared',
-          school: profile.school ?? '',
-          university: profile.university ?? '',
-          gradeLevel: profile.gradeLevel ?? '',
-          gpa: profile.gpa ?? '',
-          appealGoal: profile.appealGoal ?? '',
-          preferredPlatform: profile.preferredPlatform,
-          avatarUrl: profile.avatarUrl || '',
-          analysisAlerts: profile.analysisAlerts ?? true,
-          notificationPreferences: profile.notificationPreferences ?? DEFAULT_NOTIFICATION_PREFERENCES,
-          accountRole: profile.accountRole === 'teacher'
-            ? 'teacher'
-            : profile.accountRole === 'parent' || profile.accountRole === 'supervisor'
-              ? 'parent'
-              : 'student',
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        };
-        await setDoc(docRef, newProfile);
-        return newProfile;
-      } else {
-        const updates: Record<string, unknown> = {
-          updatedAt: serverTimestamp(),
-        };
-
-        const fields = [
-          'name',
-          'email',
-          'major',
-          'school',
-          'university',
-          'gradeLevel',
-          'gpa',
-          'appealGoal',
-          'preferredPlatform',
-          'avatarUrl',
-          'theme',
-          'onboardingComplete',
-          'tutorialComplete',
-          'analysisAlerts',
-          'notificationPreferences',
-          'autoMode',
-          'automaticGradeDetection',
-          'studyChecklist',
-          'accountRole',
-        ] as const;
-        for (const key of fields) {
-          if (profile[key] !== undefined) updates[key] = profile[key];
-        }
-
-        await setDoc(docRef, updates, { merge: true });
-        const existing = snapshot.data() as Record<string, unknown>;
-        return { ...existing, ...updates };
-      }
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${uid}`);
-      throw error;
+  /**
+   * `passive: true` is for boot-time sync (AuthGate): it fills identity
+   * fields only when they are missing and never overwrites what the user
+   * chose during onboarding or in Profile.
+   */
+  async syncProfile(uid: string, profile: Partial<UserProfile>, options?: { passive?: boolean }) {
+    // The authenticated token determines ownership server-side. Keep uid in
+    // the public signature so existing callers remain stable, but never send it.
+    if (options?.passive) {
+      return profileRequest('/sync', 'POST', {
+        name: profile.name,
+        avatarUrl: profile.avatarUrl,
+        passive: true,
+      });
     }
+    const { email: _email, aiConsentAt: _consent, onboardingComplete: _onboarding, tutorialComplete: _tutorial, ...safe } = profile;
+    void uid; void _email; void _consent; void _onboarding; void _tutorial;
+    return profileRequest('/settings', 'PATCH', safe as Record<string, unknown>);
   },
 
   async getProfile(uid: string) {
@@ -163,30 +118,14 @@ export const userService = {
    * was satisfied.
    */
   async setThemePreference(uid: string, theme: ThemePreference) {
-    const docRef = doc(db, 'users', uid);
-    try {
-      await setDoc(
-        docRef,
-        { theme, updatedAt: serverTimestamp() },
-        { merge: true },
-      );
-      return { theme };
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${uid}`);
-      throw error;
-    }
+    void uid;
+    return profileRequest<{ theme: ThemePreference }>('/settings', 'PATCH', { theme });
   },
 
   /** Records one-time consent without exposing model/provider choices in the UI. */
   async acceptAiConsent(uid: string) {
-    const docRef = doc(db, 'users', uid);
-    try {
-      await setDoc(docRef, { aiConsentAt: serverTimestamp(), updatedAt: serverTimestamp() }, { merge: true });
-      return { aiConsentAt: true };
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${uid}`);
-      throw error;
-    }
+    void uid;
+    return profileRequest<{ aiConsentAt: true }>('/ai-consent', 'POST', {});
   },
 
   async completeOnboarding(uid: string, profile: Pick<UserProfile, 'name' | 'school'> & { accountRole?: AccountRole }) {
@@ -237,48 +176,28 @@ export const userService = {
   },
 
   async setAnalysisAlerts(uid: string, analysisAlerts: boolean) {
-    const docRef = doc(db, 'users', uid);
-    try {
-      await setDoc(docRef, { analysisAlerts, updatedAt: serverTimestamp() }, { merge: true });
-      return { analysisAlerts };
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${uid}`);
-      throw error;
-    }
+    void uid;
+    return profileRequest<{ analysisAlerts: boolean }>('/settings', 'PATCH', { analysisAlerts });
   },
 
   async setNotificationPreferences(uid: string, notificationPreferences: NotificationPreferences) {
-    const docRef = doc(db, 'users', uid);
-    try {
-      await setDoc(docRef, { notificationPreferences, updatedAt: serverTimestamp() }, { merge: true });
-      return { notificationPreferences };
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${uid}`);
-      throw error;
-    }
+    void uid;
+    return profileRequest<{ notificationPreferences: NotificationPreferences }>('/settings', 'PATCH', { notificationPreferences });
   },
 
   async setAutoMode(uid: string, autoMode: boolean) {
-    const docRef = doc(db, 'users', uid);
-    await setDoc(docRef, { autoMode, updatedAt: serverTimestamp() }, { merge: true });
-    return { autoMode };
+    void uid;
+    return profileRequest<{ autoMode: boolean }>('/settings', 'PATCH', { autoMode });
   },
 
   async setAutomaticGradeDetection(uid: string, automaticGradeDetection: boolean) {
-    const docRef = doc(db, 'users', uid);
-    await setDoc(docRef, { automaticGradeDetection, updatedAt: serverTimestamp() }, { merge: true });
-    return { automaticGradeDetection };
+    void uid;
+    return profileRequest<{ automaticGradeDetection: boolean }>('/settings', 'PATCH', { automaticGradeDetection });
   },
 
   async setStudyChecklist(uid: string, studyChecklist: string[]) {
     const safeList = [...new Set(studyChecklist)].slice(0, 12);
-    const docRef = doc(db, 'users', uid);
-    try {
-      await setDoc(docRef, { studyChecklist: safeList, updatedAt: serverTimestamp() }, { merge: true });
-      return { studyChecklist: safeList };
-    } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, `users/${uid}`);
-      throw error;
-    }
+    void uid;
+    return profileRequest<{ studyChecklist: string[] }>('/settings', 'PATCH', { studyChecklist: safeList });
   },
 };

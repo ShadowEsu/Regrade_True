@@ -194,6 +194,7 @@ export default function App() {
             caseId={currentCaseId}
             onFinalize={handleFinalizeVerdict}
             onBack={exitAppealFlow}
+            onViewPaper={(id) => openPaperView(id, 'review')}
           />
         );
       }

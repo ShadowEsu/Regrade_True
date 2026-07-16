@@ -1,5 +1,5 @@
 import {Component, StrictMode, type ReactNode} from 'react';
-import {createRoot} from 'react-dom/client';
+import {createRoot, type Root} from 'react-dom/client';
 import App from './App.tsx';
 import AuthGate from './AuthGate.tsx';
 import { bootstrapTheme } from './lib/theme';
@@ -48,8 +48,14 @@ if (!el) {
   throw new Error('Missing #root element');
 }
 
+declare global {
+  interface Window { __regradeRoot?: Root }
+}
+
 try {
-  createRoot(el).render(
+  const root = window.__regradeRoot ?? createRoot(el);
+  window.__regradeRoot = root;
+  root.render(
     <StrictMode>
       <BootErrorBoundary>
         <MotionConfig reducedMotion="user">

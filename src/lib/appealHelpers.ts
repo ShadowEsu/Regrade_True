@@ -3,14 +3,39 @@ import type { Case } from '../services/caseService';
 export function getPossiblePointsBack(c: Case): number {
   const a = c.analysis;
   if (!a) return 0;
-  const unexplained =
-    a.case_analysis?.unexplained_deductions?.reduce((s, d) => s + (Number(d.points_lost) || 0), 0) ?? 0;
-  const calc =
-    a.case_analysis?.potential_calculation_errors?.reduce(
-      (s, d) => s + (Math.abs(Number(d.discrepancy)) || 0),
-      0,
-    ) ?? 0;
-  return unexplained + calc;
+  const byQuestion = new Map<string, number>();
+  const questionLoss = new Map(
+    (a.questions ?? []).map((question) => [
+      question.question_id,
+      question.points_possible != null && question.points_earned != null
+        ? Math.max(0, question.points_possible - question.points_earned)
+        : Math.max(0, Number(question.points_lost) || 0),
+    ]),
+  );
+  const record = (questionId: string, raw: number) => {
+    const evidenceBound = questionLoss.get(questionId);
+    const safe = Math.max(0, Number.isFinite(raw) ? raw : 0);
+    const bounded = evidenceBound == null ? safe : Math.min(safe, evidenceBound);
+    // A calculation flag and an unexplained-deduction flag can describe the
+    // same lost point. Count the strongest claim once, never both.
+    byQuestion.set(questionId, Math.max(byQuestion.get(questionId) ?? 0, bounded));
+  };
+  const caseStrength = a.case_analysis?.overall_case_strength;
+  const supportsAppealEstimate = caseStrength === 'moderate' || caseStrength === 'strong';
+  if (supportsAppealEstimate) {
+    for (const deduction of a.case_analysis?.unexplained_deductions ?? []) {
+      record(deduction.question_id, Number(deduction.points_lost));
+    }
+  }
+  for (const error of a.case_analysis?.potential_calculation_errors ?? []) {
+    // Only an under-award can be recovered. An over-award is not appeal value.
+    record(error.question_id, Number(error.expected_score) - Number(error.actual_score_shown));
+  }
+  const evidenceTotal = [...byQuestion.values()].reduce((sum, value) => sum + value, 0);
+  const overallGap = a.assignment.total_score_possible != null && a.assignment.total_score_earned != null
+    ? Math.max(0, a.assignment.total_score_possible - a.assignment.total_score_earned)
+    : Number.POSITIVE_INFINITY;
+  return Math.round(Math.min(evidenceTotal, overallGap) * 100) / 100;
 }
 
 export function getClassName(c: Case): string {

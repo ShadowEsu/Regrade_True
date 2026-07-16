@@ -76,15 +76,16 @@ export default function PaperView({
         <div className="rg3-paper-summary"><div><span>Final score</span><strong>{record.analysis?.assignment.total_score_display ?? 'Marked exam'}</strong></div><StatusBadge tone={annotations.some((item) => item.appealable) ? 'yellow' : 'green'}>{annotations.some((item) => item.appealable) ? `${annotations.filter((item) => item.appealable).length} to review` : 'Reviewed'}</StatusBadge></div>
         <div className="rg3-paper-actions"><button type="button"><ICONS.BookOpen />Understand</button><button type="button"><ICONS.RefreshCcw />Review again</button><button type="button" onClick={() => document.querySelector('.rg2-context-whale-head') instanceof HTMLElement && (document.querySelector('.rg2-context-whale-head') as HTMLElement).click()}><ICONS.Bot />Ask Mr Whale</button></div>
 
-        {pages.length === 0 ? (
-          <PaperMissingNotice mode={mode} />
-        ) : (
-          <div className="rg3-paper-workspace"><DocumentAnnotator caseId={record.id ?? caseId ?? ''} pageIndex={pageIndex} src={pages[pageIndex]} pageLabel={`Graded page ${pageIndex + 1} of ${pages.length}`} />{pages.length > 1 && <div className="rg3-page-nav"><button type="button" disabled={pageIndex === 0} onClick={() => setPageIndex((value) => Math.max(0,value-1))}><ICONS.ChevronLeft /></button><span>Page {pageIndex + 1} of {pages.length}</span><button type="button" disabled={pageIndex === pages.length - 1} onClick={() => setPageIndex((value) => Math.min(pages.length-1,value+1))}><ICONS.ChevronRight /></button></div>}</div>
-        )}
+        <div className="rg3-paper-review-layout">
+          <div>
+            {pages.length === 0 ? (
+              <PaperMissingNotice mode={mode} />
+            ) : (
+              <div className="rg3-paper-workspace"><DocumentAnnotator caseId={record.id ?? caseId ?? ''} pageIndex={pageIndex} src={pages[pageIndex]} pageLabel={`Graded page ${pageIndex + 1} of ${pages.length}`} />{pages.length > 1 && <div className="rg3-page-nav"><button type="button" disabled={pageIndex === 0} onClick={() => setPageIndex((value) => Math.max(0,value-1))}><ICONS.ChevronLeft /></button><span>Page {pageIndex + 1} of {pages.length}</span><button type="button" disabled={pageIndex === pages.length - 1} onClick={() => setPageIndex((value) => Math.min(pages.length-1,value+1))}><ICONS.ChevronRight /></button></div>}</div>
+            )}
+          </div>
 
-        {record.analysis && <ContextualWhale analysis={record.analysis} />}
-
-        <section className="space-y-3"><div className="rg3-section-title"><div><span>Evidence</span><h2>{mode === 'learn' ? 'What to understand next' : 'What Regrade found'}</h2></div><small>{annotations.length} notes</small></div>
+          <section className="rg3-paper-evidence space-y-3"><div className="rg3-section-title"><div><span>Evidence</span><h2>{mode === 'learn' ? 'What to understand next' : 'What Regrade found'}</h2></div><small>{annotations.length} notes</small></div>
 
           {teacherWroteNothing && (
             <p className="rg-glass-card p-4 text-[13px] text-ink-muted leading-relaxed">
@@ -102,7 +103,10 @@ export default function PaperView({
           )}
 
           <div className="space-y-2">{annotations.map((a) => <div key={a.id}><EvidenceRow value={a.appealable ? `+${Math.max(1,a.pointsLost)}` : a.pointsLost ? `−${a.pointsLost}` : 'i'} tone={a.appealable ? 'positive' : a.pointsLost ? 'negative' : 'neutral'} title={`${a.questionId} · ${a.heading}`} body={a.aiExplanation} tag={a.teacherQuote ? 'Teacher comment' : a.appealable ? 'Possible issue' : undefined} /></div>)}</div>
-        </section>
+          </section>
+        </div>
+
+        {record.analysis && <ContextualWhale analysis={record.analysis} />}
 
         {mode === 'review' && onOpenAppeal && annotations.some((a) => a.appealable) && (
           <PrimaryButton onClick={onOpenAppeal}>Draft appeal <ICONS.ArrowRight /></PrimaryButton>

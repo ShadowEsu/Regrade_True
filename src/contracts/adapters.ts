@@ -131,12 +131,17 @@ function isActionable(strength: AppealStrength): boolean {
 }
 
 /** Sum of pointsLost across findings with strength at least 'moderate'. */
-function computeRecoverablePoints(findings: RubricFinding[]): number {
-  return findings.reduce(
-    (sum, finding) =>
-      isActionable(finding.strength) ? sum + finding.pointsLost : sum,
-    0,
-  );
+function computeRecoverablePoints(findings: RubricFinding[], totalPossible: number, totalAwarded: number): number {
+  const byQuestion = new Map<string, number>();
+  for (const finding of findings) {
+    if (!isActionable(finding.strength)) continue;
+    const questionGap = Math.max(0, finding.pointsPossible - finding.pointsAwarded);
+    const bounded = Math.min(Math.max(0, finding.pointsLost), questionGap);
+    byQuestion.set(finding.questionId, Math.max(byQuestion.get(finding.questionId) ?? 0, bounded));
+  }
+  const evidenceTotal = [...byQuestion.values()].reduce((sum, value) => sum + value, 0);
+  const overallGap = totalPossible > 0 ? Math.max(0, totalPossible - totalAwarded) : Number.POSITIVE_INFINITY;
+  return Math.round(Math.min(evidenceTotal, overallGap) * 100) / 100;
 }
 
 function questionIndex(
@@ -195,11 +200,12 @@ export function fromLegacyAnalysis(
 
   for (const error of legacy.case_analysis.potential_calculation_errors) {
     const question = byId.get(error.question_id);
+    const underAward = Math.max(0, error.expected_score - error.actual_score_shown);
     findings.push({
       questionId: error.question_id,
       pointsPossible: question?.points_possible ?? error.expected_score,
       pointsAwarded: error.actual_score_shown,
-      pointsLost: Math.abs(error.discrepancy),
+      pointsLost: underAward,
       cause: 'arithmetic_error',
       strength: 'strong',
       evidence: error.explanation,
@@ -216,7 +222,11 @@ export function fromLegacyAnalysis(
     findings,
     missing: [],
     caseStrength,
-    recoverablePoints: computeRecoverablePoints(findings),
+    recoverablePoints: computeRecoverablePoints(
+      findings,
+      legacy.assignment.total_score_possible ?? 0,
+      legacy.assignment.total_score_earned ?? 0,
+    ),
     appealRecommended: isActionable(caseStrength),
     analyzedAt,
   };

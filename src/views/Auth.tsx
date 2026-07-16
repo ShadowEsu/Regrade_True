@@ -8,6 +8,7 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   auth,
+  db,
 } from '../lib/firebase';
 import { ICONS } from '../constants';
 import BrandSpinner from '../components/BrandSpinner';
@@ -17,6 +18,7 @@ import { APP_DELETE_ACCOUNT_URL, APP_MIN_AGE, APP_EULA_URL, APP_PRIVACY_URL, APP
 import { BRAND_ICON_SRC } from '../branding';
 import { userFacingError } from '../lib/userFacingError';
 import CoachWhale from '../components/CoachWhale';
+import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
 type Mode = 'signin' | 'signup' | 'forgot';
 
@@ -29,8 +31,35 @@ const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
+  const [waitlistEmail, setWaitlistEmail] = useState('');
+  const [waitlistBusy, setWaitlistBusy] = useState(false);
+  const [waitlistStatus, setWaitlistStatus] = useState<string | null>(null);
 
   const busy = loading || googleLoading || appleLoading;
+
+  const joinWaitlist = async (event: React.FormEvent) => {
+    event.preventDefault();
+    const normalizedEmail = waitlistEmail.trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(normalizedEmail)) {
+      setWaitlistStatus('Enter a valid email address.');
+      return;
+    }
+    setWaitlistBusy(true);
+    setWaitlistStatus(null);
+    try {
+      await addDoc(collection(db, 'waitlist'), {
+        email: normalizedEmail,
+        createdAt: serverTimestamp(),
+        source: 'regrade-app-auth',
+      });
+      setWaitlistStatus("You're on the list — we'll email you when private beta access opens.");
+      setWaitlistEmail('');
+    } catch {
+      setWaitlistStatus('We could not save your spot. Check your connection and try again.');
+    } finally {
+      setWaitlistBusy(false);
+    }
+  };
 
   const handleProviderLogin = async (provider: 'google' | 'apple') => {
     setError(null);
@@ -109,20 +138,43 @@ const Auth: React.FC = () => {
         </div>
 
         <div className="rg-auth-heading">
-          <AnimatePresence mode="wait">
-            <motion.h1
-              key={title}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -4 }}
-              transition={{ duration: 0.18 }}
-              className="rg-auth-title"
-            >
-              {title}
-            </motion.h1>
-          </AnimatePresence>
+          {/* Keyed remount, no AnimatePresence: a hung exit animation must
+              never leave a stale heading (observed with mode="wait"). */}
+          <motion.h1
+            key={title}
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.18 }}
+            className="rg-auth-title"
+          >
+            {title}
+          </motion.h1>
           <p className="rg-auth-subtitle">{subtitle}</p>
         </div>
+
+        <section className="rg-auth-beta" aria-labelledby="private-beta-title">
+          <div>
+            <span className="rg-auth-beta-kicker">Private beta</span>
+            <h2 id="private-beta-title">Regrade is coming to Mac, Windows, and mobile.</h2>
+            <p>Join the waitlist to be among the first invited to try it.</p>
+          </div>
+          <form onSubmit={joinWaitlist} className="rg-auth-beta-form">
+            <label htmlFor="regrade-waitlist-email" className="sr-only">Email for the private beta waitlist</label>
+            <input
+              id="regrade-waitlist-email"
+              type="email"
+              value={waitlistEmail}
+              onChange={(event) => setWaitlistEmail(event.target.value)}
+              placeholder="you@email.com"
+              autoComplete="email"
+              required
+            />
+            <button type="submit" disabled={waitlistBusy}>
+              {waitlistBusy ? 'Joining…' : 'Join waitlist'}
+            </button>
+          </form>
+          {waitlistStatus && <p className="rg-auth-beta-status" role="status">{waitlistStatus}</p>}
+        </section>
 
         <AnimatePresence>
           {error && (

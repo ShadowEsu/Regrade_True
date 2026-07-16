@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { motion } from 'motion/react';
 import { auth } from '../lib/firebase';
 import { userService } from '../services/userService';
 import { notificationService } from '../services/notificationService';
@@ -322,18 +322,17 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
             </div>
           </>
         )}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 10 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -10 }}
-            transition={{ duration: 0.2 }}
-            className={step === 'complete' ? '' : 'rg-welcome-body'}
-          >
-            {content}
-          </motion.div>
-        </AnimatePresence>
+        {/* Keyed remount keeps the slide-in without AnimatePresence:
+            a hung exit animation must never be able to block onboarding. */}
+        <motion.div
+          key={step}
+          initial={{ opacity: 0, x: 10 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.2 }}
+          className={step === 'complete' ? '' : 'rg-welcome-body'}
+        >
+          {content}
+        </motion.div>
       </motion.section>
     </main>
   );

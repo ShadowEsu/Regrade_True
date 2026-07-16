@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { auth, completeAuthRedirectIfNeeded } from './lib/firebase';
+import { auth, completeAuthRedirectIfNeeded, isNativeApp } from './lib/firebase';
 import Auth from './views/Auth';
 import BrandSpinner from './components/BrandSpinner';
 import BootSplash from './components/BootSplash';
@@ -20,23 +20,40 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   useEffect(() => {
-    let unsub: (() => void) | undefined;
     let cancelled = false;
+    let authResolved = false;
 
-    void (async () => {
-      await completeAuthRedirectIfNeeded();
-      if (cancelled) return;
-      unsub = onAuthStateChanged(auth, async (u) => {
+    const startupFallback = window.setTimeout(() => {
+      if (cancelled || authResolved) return;
+      // Native WebViews can occasionally fail to deliver Firebase's first
+      // observer callback (for example after an interrupted OAuth hand-off).
+      // Never trap the user on an indefinite splash: render from the SDK's
+      // current in-memory state and let the live observer reconcile later.
+      const currentUser = auth.currentUser;
+      setUser(currentUser);
+      setLoading(false);
+      setOnboardingLoading(false);
+    }, 4_000);
+
+    // Register the auth observer before resolving an OAuth redirect. On an
+    // embedded native WebView, getRedirectResult can remain pending while the
+    // browser hands control back to the app. Waiting for it here used to leave
+    // first launch stuck on the splash screen indefinitely.
+    const unsub = onAuthStateChanged(auth, async (u) => {
         if (cancelled) return;
+        authResolved = true;
+        window.clearTimeout(startupFallback);
         setUser(u);
         setLoading(false);
         if (u) {
           try {
+            // Passive boot-time sync: fills missing identity fields on first
+            // launch but never overwrites a name the user chose themselves.
             await userService.syncProfile(u.uid, {
               name: u.displayName?.trim() || u.email?.split('@')[0] || 'Student',
               email: u.email || '',
               avatarUrl: u.photoURL || '',
-            });
+            }, { passive: true });
           } catch (err) {
             console.error('Institutional profile out of sync:', err);
           } finally {
@@ -53,11 +70,18 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
           setOnboardingLoading(false);
         }
       });
-    })();
+
+    // Redirect completion may update the observer above. It is deliberately
+    // non-blocking so email sessions and signed-out launches can render now.
+    // Native Apple authentication exchanges its credential directly. Running
+    // Firebase's web redirect resolver inside WKWebView can trigger a hidden JS
+    // dialog before first paint and freeze the native splash indefinitely.
+    if (!isNativeApp()) void completeAuthRedirectIfNeeded();
 
     return () => {
       cancelled = true;
-      unsub?.();
+      window.clearTimeout(startupFallback);
+      unsub();
     };
   }, []);
 

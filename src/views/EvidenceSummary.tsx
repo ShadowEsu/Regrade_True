@@ -29,10 +29,12 @@ export default function EvidenceSummary({
   caseId,
   onFinalize,
   onBack,
+  onViewPaper,
 }: {
   caseId: string | null;
   onFinalize: () => void;
   onBack?: () => void;
+  onViewPaper?: (caseId: string) => void;
 }) {
   const [currentCase, setCurrentCase] = useState<Case | null>(null);
 
@@ -106,14 +108,21 @@ export default function EvidenceSummary({
             </div>
             {pts > 0 && (
               <div className="text-right">
-                <p className="rg-meta-k">Recoverable</p>
+                <p className="rg-meta-k">Possible to review</p>
                 <p className="text-[22px] font-semibold text-primary tracking-tight mt-0.5 leading-none">
-                  +{pts}
+                  +{pts} pts
                 </p>
+                <p className="mt-1 text-[10px] text-ink-muted">Evidence estimate, not guaranteed</p>
               </div>
             )}
           </div>
         )}
+
+        {currentCase?.id && onViewPaper && (currentCase.pageImages?.length || currentCase.pageImageUrls?.length) ? (
+          <button type="button" onClick={() => onViewPaper(currentCase.id!)} className="rg3-secondary-button w-full">
+            <ICONS.FileText className="h-4 w-4" /> View marked paper and annotations
+          </button>
+        ) : null}
 
         <div className="space-y-2">
           {insights.map((item, i) => (

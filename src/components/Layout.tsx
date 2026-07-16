@@ -5,7 +5,6 @@ import type { ProfileSection } from '../views/Profile';
 import { caseService } from '../services/caseService';
 import { automationService } from '../services/automationService';
 import AppHeaderMenu from './AppHeaderMenu';
-import ThemeQuickToggle from './ThemeQuickToggle';
 import NotificationQuickToggle from './NotificationQuickToggle';
 
 interface LayoutProps {
@@ -73,7 +72,6 @@ export default function Layout({
       <main className="flex flex-col flex-1 min-h-0 pb-[calc(4.25rem+env(safe-area-inset-bottom))]">
         <div className="rg-app-shell flex shrink-0 items-center justify-end gap-2 px-1 pt-[max(0.55rem,env(safe-area-inset-top))]">
           <NotificationQuickToggle />
-          <ThemeQuickToggle />
           <AppHeaderMenu onTabChange={selectTab} onProfileSectionChange={onProfileSectionChange} onShowHelp={onShowHelp} />
         </div>
         <motion.div

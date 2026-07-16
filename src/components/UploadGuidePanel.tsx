@@ -198,7 +198,7 @@ export default function UploadGuidePanel({
           </div>
         </div>
 
-        <AnimatePresence mode="wait">
+        {/* Exit-gated swaps removed: mode="wait" hangs were observed live. */}
           <motion.div
             key={active.id}
             initial={{ opacity: 0, y: 6 }}
@@ -273,7 +273,6 @@ export default function UploadGuidePanel({
               </p>
             )}
           </motion.div>
-        </AnimatePresence>
       </div>
 
       <p className="text-[13px] font-medium text-ink-muted border-t border-hairline pt-5 max-w-md mx-auto">

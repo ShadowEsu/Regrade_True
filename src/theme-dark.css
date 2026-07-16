@@ -84,12 +84,19 @@
 }
 
 .rg-theme-option {
+  min-width: 0;
   border-radius: 14px;
   padding: 0.75rem 0.5rem;
   text-align: center;
   transition: all 0.2s ease;
   background: rgba(255, 255, 255, 0.5);
   border: 1px solid rgba(0, 102, 204, 0.12);
+}
+
+@media (max-width: 359px) {
+  .rg-theme-picker { gap: 0.35rem; }
+  .rg-theme-option { padding: 0.65rem 0.25rem; }
+  .rg-theme-option-icon { height: 2rem; width: 2rem; }
 }
 
 .rg-theme-option:hover:not(:disabled) {

@@ -189,6 +189,47 @@ describe('fromLegacyAnalysis', () => {
     expect(strongCase.recoverablePoints).toBe(8);
   });
 
+  it('never reports more recoverable points than the score can increase', () => {
+    const analysis = fromLegacyAnalysis(makeLegacy({
+      assignment: {
+        ...makeLegacy().assignment,
+        total_score_earned: 89,
+        total_score_possible: 100,
+        total_score_display: '89/100',
+      },
+      questions: [{
+        question_id: 'q1',
+        question_description: 'Show the final calculation.',
+        points_possible: 10,
+        points_earned: 4,
+        points_lost: 6,
+        scoring_direction: 'deducted_from_full',
+        partial_credit_awarded: true,
+        rubric_items_applied: [],
+        professor_comments: [],
+        deductions_with_no_comment: true,
+      }],
+      case_analysis: makeCaseAnalysis({
+        overall_case_strength: 'strong',
+        unexplained_deductions: [{ question_id: 'q1', points_lost: 30, what_is_missing: 'No explanation.' }],
+        potential_calculation_errors: [{ question_id: 'q1', expected_score: 10, actual_score_shown: 4, discrepancy: 20, explanation: 'Check the total.' }],
+      }),
+    }));
+
+    // Duplicate findings on one question count once, stay within that
+    // question's six-point gap, and can never exceed 100 - 89 overall.
+    expect(analysis.recoverablePoints).toBe(6);
+  });
+
+  it('does not call an over-award a recoverable calculation error', () => {
+    const analysis = fromLegacyAnalysis(makeLegacy({
+      case_analysis: makeCaseAnalysis({
+        potential_calculation_errors: [{ question_id: 'q1', expected_score: 7, actual_score_shown: 10, discrepancy: 3, explanation: 'The shown score is higher.' }],
+      }),
+    }));
+    expect(analysis.recoverablePoints).toBe(0);
+  });
+
   it('recommends an appeal only for moderate or strong cases', () => {
     const strengths: ['strong' | 'moderate' | 'weak' | 'no_case', boolean][] = [
       ['strong', true],

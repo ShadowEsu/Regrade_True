@@ -3,6 +3,7 @@ import { initializeAppCheck, ReCaptchaEnterpriseProvider, type AppCheck } from '
 import type { Auth } from 'firebase/auth';
 import {
   getAuth,
+  connectAuthEmulator,
   GoogleAuthProvider,
   OAuthProvider,
   createUserWithEmailAndPassword,
@@ -13,7 +14,7 @@ import {
   deleteUser,
 } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
-import { getFirestore } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
 import { resolveFirebaseWebConfig, resolveFirestoreDatabaseId } from './firebaseWebConfig';
 
 export enum OperationType {
@@ -56,6 +57,13 @@ if (appCheckSiteKey) {
 }
 const auth: Auth = getAuth(app);
 const db: Firestore = getFirestore(app, firestoreDatabaseId);
+
+// Local verification only: point the SDK at the Firebase Emulator Suite.
+// Never set VITE_FIREBASE_EMULATOR in a production build.
+if (import.meta.env.VITE_FIREBASE_EMULATOR === 'true') {
+  connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
+  connectFirestoreEmulator(db, '127.0.0.1', 8080);
+}
 const googleProvider = new GoogleAuthProvider();
 const appleProvider = new OAuthProvider('apple.com');
 appleProvider.addScope('email');
