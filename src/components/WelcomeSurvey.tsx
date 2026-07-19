@@ -7,6 +7,7 @@ import { ConnectScreen } from '../features/connect';
 import { ICONS } from '../constants';
 import { BRAND_ICON_SRC } from '../branding';
 import { userFacingError } from '../lib/userFacingError';
+import { markPendingOnboardingComplete } from '../lib/onboardingCompletion';
 import CoachWhale from './CoachWhale';
 import type { AccountRole } from '../services/userService';
 
@@ -61,6 +62,12 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
       setStep('connector');
     } catch (err) {
       if (import.meta.env.DEV) console.error('Welcome survey save failed', err);
+      // School is optional. A profile API outage must never turn "Skip" into
+      // a dead end; the complete-onboarding call will retry later if needed.
+      if (schoolOverride !== undefined) {
+        setStep('connector');
+        return;
+      }
       setError(userFacingError(err, 'We could not save that yet. Please try again.'));
     } finally {
       setSaving(false);
@@ -81,7 +88,10 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
       setStep('complete');
     } catch (err) {
       if (import.meta.env.DEV) console.error('Welcome survey finish failed', err);
-      setError(userFacingError(err, 'We could not finish setup. Please try again.'));
+      // Do not hold the product hostage to an optional profile write. The
+      // marker keeps this account out of setup on the next launch as well.
+      markPendingOnboardingComplete(user.uid);
+      setStep('complete');
     } finally {
       setSaving(false);
     }

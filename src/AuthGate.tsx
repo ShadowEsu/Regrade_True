@@ -8,6 +8,10 @@ import { userService } from './services/userService';
 import { needsEmailVerification } from './lib/authVerification';
 import VerifyEmailPrompt from './components/VerifyEmailPrompt';
 import WelcomeSurvey from './components/WelcomeSurvey';
+import {
+  clearPendingOnboardingComplete,
+  hasPendingOnboardingComplete,
+} from './lib/onboardingCompletion';
 
 interface AuthGateProps {
   children: React.ReactNode;
@@ -74,7 +78,9 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
           } finally {
             try {
               const profile = await withDeadline(userService.getProfile(u.uid));
-              setNeedsOnboarding(profile?.onboardingComplete !== true);
+              const complete = profile?.onboardingComplete === true;
+              if (complete) clearPendingOnboardingComplete(u.uid);
+              setNeedsOnboarding(!complete && !hasPendingOnboardingComplete(u.uid));
             } catch {
               // A temporary Firestore issue should not trap someone at launch.
               setNeedsOnboarding(false);
