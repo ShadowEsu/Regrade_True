@@ -1,6 +1,6 @@
 import { apiFetch } from '../lib/api';
 
-export type ImportItem = { externalId: string; platformId: string; title: string; course?: string | null; gradedAt?: string | null; score?: number | string | null; pointsPossible?: number | null; kind: 'graded_record' | 'file' };
+export type ImportItem = { externalId: string; platformId: string; title: string; course?: string | null; gradedAt?: string | null; score?: number | string | null; pointsPossible?: number | null; feedback?: string | null; kind: 'graded_record' | 'file'; assessmentType?: 'exam' | 'quiz' | 'test' | 'assessment' | 'assignment' | 'unknown' };
 export const IMPORTABLE_PLATFORMS = new Set(['canvas', 'google_classroom', 'google_drive', 'dropbox', 'onedrive']);
 
 async function payload<T>(response: Response): Promise<T> {
@@ -16,7 +16,7 @@ export const connectorImportService = {
   async importManual(platformId: string, externalId: string): Promise<void> {
     await payload(await apiFetch(`/v1/imports/${encodeURIComponent(platformId)}/manual`, { method: 'POST', body: JSON.stringify({ externalId }) }));
   },
-  async runAutomatic(platformId: string): Promise<{ imported: number; ignoredOlderCount: number }> {
+  async runAutomatic(platformId: string): Promise<{ imported: number; ignoredOlderCount: number; ignoredNonExamCount: number }> {
     return payload(await apiFetch(`/v1/imports/${encodeURIComponent(platformId)}/automatic`, { method: 'POST' }));
   },
 };

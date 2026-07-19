@@ -13,6 +13,21 @@ interface AuthGateProps {
   children: React.ReactNode;
 }
 
+/**
+ * Authentication must never be held hostage by a slow Firestore request.
+ * Profile sync is useful after a provider sign-in, but the Firebase auth
+ * session is already valid by that point. A short deadline lets the app open
+ * while the next live profile refresh reconciles any delayed data.
+ */
+function withDeadline<T>(promise: Promise<T>, timeoutMs = 5_000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      window.setTimeout(() => reject(new Error('Profile sync timed out.')), timeoutMs);
+    }),
+  ]);
+}
+
 const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,16 +64,16 @@ const AuthGate: React.FC<AuthGateProps> = ({ children }) => {
           try {
             // Passive boot-time sync: fills missing identity fields on first
             // launch but never overwrites a name the user chose themselves.
-            await userService.syncProfile(u.uid, {
+            await withDeadline(userService.syncProfile(u.uid, {
               name: u.displayName?.trim() || u.email?.split('@')[0] || 'Student',
               email: u.email || '',
               avatarUrl: u.photoURL || '',
-            }, { passive: true });
+            }, { passive: true }));
           } catch (err) {
             console.error('Institutional profile out of sync:', err);
           } finally {
             try {
-              const profile = await userService.getProfile(u.uid);
+              const profile = await withDeadline(userService.getProfile(u.uid));
               setNeedsOnboarding(profile?.onboardingComplete !== true);
             } catch {
               // A temporary Firestore issue should not trap someone at launch.

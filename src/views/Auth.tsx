@@ -7,6 +7,7 @@ import {
   loginWithApple,
   sendPasswordResetEmail,
   sendEmailVerification,
+  signInAnonymously,
   auth,
   db,
 } from '../lib/firebase';
@@ -31,11 +32,12 @@ const Auth: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appleLoading, setAppleLoading] = useState(false);
+  const [guestLoading, setGuestLoading] = useState(false);
   const [waitlistEmail, setWaitlistEmail] = useState('');
   const [waitlistBusy, setWaitlistBusy] = useState(false);
   const [waitlistStatus, setWaitlistStatus] = useState<string | null>(null);
 
-  const busy = loading || googleLoading || appleLoading;
+  const busy = loading || googleLoading || appleLoading || guestLoading;
 
   const joinWaitlist = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -72,12 +74,24 @@ const Auth: React.FC = () => {
       const e = err as { code?: string; message?: string };
       if (e.code === 'auth/popup-closed-by-user' || e.message?.includes('popup-closed-by-user')) return;
       if (e.code === 'auth/unauthorized-domain') {
-        setError('Google sign-in is blocked on this address. Open http://localhost:3000 in Chrome, or use Continue with email.');
+        setError('Google sign-in is not authorized for this Regrade address yet. Continue with email or contact Regrade support.');
       } else {
-        setError(userFacingError(err, 'Google sign-in could not finish. Try Chrome, or use Continue with email.'));
+        setError(userFacingError(err, 'Google sign-in could not finish. Continue with email or try again.'));
       }    } finally {
       if (provider === 'google') setGoogleLoading(false);
       else setAppleLoading(false);
+    }
+  };
+
+  const handleGuestLogin = async () => {
+    setError(null);
+    setGuestLoading(true);
+    try {
+      await signInAnonymously(auth);
+    } catch (err) {
+      setError(userFacingError(err, 'Guest access could not start. Check your connection and try again.'));
+    } finally {
+      setGuestLoading(false);
     }
   };
 
@@ -198,6 +212,18 @@ const Auth: React.FC = () => {
             <ContinueWithAppleButton onClick={() => void handleProviderLogin('apple')} disabled={busy} loading={appleLoading} />
             <ContinueWithGoogleButton onClick={() => void handleProviderLogin('google')} disabled={busy} loading={googleLoading} />
           </div>
+        )}
+
+        {mode === 'signin' && !showEmail && (
+          <button
+            type="button"
+            className="rg-auth-guest"
+            onClick={() => void handleGuestLogin()}
+            disabled={busy}
+          >
+            <span><strong>{guestLoading ? 'Starting guest session…' : 'Explore as guest'}</strong><small>No email or password needed</small></span>
+            <ICONS.ArrowRight aria-hidden />
+          </button>
         )}
 
         {mode !== 'forgot' && !showEmail && (

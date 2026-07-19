@@ -2045,6 +2045,13 @@ header.bg-gradient-to-b {
 .rg-auth-screen .rg-auth-divider em { color: rgba(255,255,255,.68) !important; }
 .rg-auth-screen .rg-auth-divider span { background: rgba(255,255,255,.35) !important; }
 .rg-auth-screen .rg-auth-email-toggle:hover { background: rgba(255,255,255,.22) !important; }
+.rg-auth-screen .rg-auth-guest { display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 15px; border: 1px solid rgba(255,255,255,.26); border-radius: 14px; background: transparent; color: rgba(255,255,255,.95); text-align: left; }
+.rg-auth-screen .rg-auth-guest:hover:not(:disabled) { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.42); }
+.rg-auth-screen .rg-auth-guest:disabled { opacity: .55; cursor: not-allowed; }
+.rg-auth-screen .rg-auth-guest span { display: grid; gap: 2px; }
+.rg-auth-screen .rg-auth-guest strong { font-size: 14px; }
+.rg-auth-screen .rg-auth-guest small { color: rgba(255,255,255,.7); font-size: 11px; }
+.rg-auth-screen .rg-auth-guest > svg { width: 17px; opacity: .75; }
 .rg-auth-screen .rg-auth-cta { background: #fff !important; color: #2f43a7 !important; box-shadow: none !important; }
 .rg-auth-beta { display: grid; gap: 11px; padding: 15px; border: 1px solid rgba(255,255,255,.32); border-radius: 18px; background: rgba(20,36,103,.18); color: #fff; box-shadow: inset 0 1px 0 rgba(255,255,255,.13); }
 .rg-auth-beta-kicker { display: block; color: rgba(255,255,255,.72); font-family: var(--font-mono); font-size: 9px; font-weight: 800; letter-spacing: .15em; text-transform: uppercase; }
@@ -2517,6 +2524,93 @@ nav[aria-label="Main"] { padding-inline: 10px !important; padding-top: 4px !impo
 .rg-permission-benefits { display: grid; gap: 11px; margin: 0; padding: 0; list-style: none; color: var(--color-ink); font-size: 13px; }
 .rg-permission-benefits li { display: flex; align-items: center; gap: 10px; }
 .rg-permission-benefits svg { width: 17px; height: 17px; color: var(--color-primary); }
+
+/* Onboarding is a focused, blue Regrade workspace rather than a generic form.
+   These rules deliberately override the earlier experimental welcome styles. */
+.rg-welcome-shell {
+  isolation: isolate;
+  padding: clamp(16px, 4vw, 42px);
+  background: #edf4ff !important;
+}
+.rg-welcome-shell::before {
+  inset: 0 !important;
+  width: auto !important;
+  height: auto !important;
+  background:
+    radial-gradient(48rem 28rem at 100% -8%, rgba(48, 104, 229, .17), transparent 62%),
+    radial-gradient(34rem 26rem at -8% 100%, rgba(118, 174, 255, .2), transparent 66%) !important;
+}
+.rg-welcome-card {
+  z-index: 1;
+  width: min(100%, 540px) !important;
+  min-height: min(720px, calc(100dvh - 32px));
+  padding: 22px clamp(20px, 5vw, 38px) 30px !important;
+  border: 1px solid rgba(42, 86, 178, .14) !important;
+  border-radius: 32px !important;
+  background: rgba(255, 255, 255, .96) !important;
+  box-shadow: 0 28px 80px rgba(31, 72, 157, .16) !important;
+}
+.rg-welcome-topbar {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e8eefb;
+}
+.rg-welcome-brand { gap: 9px; color: #182b61; font-size: 16px; font-weight: 800; opacity: 1; }
+.rg-welcome-brand img { width: 32px; height: 32px; border-radius: 10px; animation: none; }
+.rg-onboarding-whale { margin: 0; gap: 5px; color: #315fe2; font-size: 11px; }
+.rg-onboarding-whale span { padding: 7px 9px; border-color: #d9e4ff; border-radius: 999px; background: #f2f6ff; box-shadow: none; }
+.rg-welcome-progress-wrap { display: grid; gap: 10px; margin: 17px 0 0; }
+.rg-welcome-progress-label { display: flex; align-items: center; justify-content: space-between; color: #6f7c9a; font-size: 11px; font-weight: 750; letter-spacing: .05em; text-transform: uppercase; }
+.rg-welcome-back { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid #dce6fb; border-radius: 10px; background: #fff; color: #315fe2; transition: background-color .18s ease, transform .18s ease; }
+.rg-welcome-back:hover:not(:disabled) { background: #eff4ff; transform: translateX(-2px); }
+.rg-welcome-dots { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; width: 100%; }
+.rg-welcome-dots span, .rg-welcome-dots span[data-state="active"] { width: auto; height: 5px; border-radius: 999px; background: #dfe7f7; opacity: 1; }
+.rg-welcome-dots span[data-state="done"] { background: #9ab5ff; opacity: 1; }
+.rg-welcome-dots span[data-state="active"] { background: #315fe2; }
+.rg-welcome-body { padding-top: clamp(28px, 5vw, 42px); }
+.rg-welcome-eyebrow { margin-bottom: 11px; color: #315fe2; font-size: 10px; font-weight: 850; letter-spacing: .16em; opacity: 1; }
+.rg-welcome-title { max-width: 11ch; color: #172449; font-size: clamp(32px, 7vw, 44px); line-height: 1.04; letter-spacing: -.045em; }
+.rg-welcome-hint { max-width: 38rem; margin-top: 13px; color: #67718a; font-size: 14px; line-height: 1.6; }
+.rg-welcome-card .rg-auth-field { gap: 9px; }
+.rg-welcome-card .rg-auth-field > span { color: #3c4967; font-size: 12px; font-weight: 750; opacity: 1; }
+.rg-welcome-card .rg-auth-field-input { height: 58px; border-color: #dce4f4 !important; border-radius: 17px !important; background: #f8faff !important; }
+.rg-welcome-card .rg-auth-field-input:focus-within { border-color: #5c85ee !important; box-shadow: 0 0 0 4px rgba(49, 95, 226, .12) !important; }
+.rg-welcome-card .rg-auth-cta { height: 56px; border-radius: 17px; background: #315fe2; box-shadow: 0 14px 28px -16px rgba(49, 95, 226, .72); font-size: 15px; font-weight: 800; }
+.rg-welcome-card .rg-auth-cta:hover:not(:disabled) { background: #254fc9; transform: translateY(-1px); }
+.rg-welcome-card .rg-btn-ghost { min-height: 48px; border-radius: 15px; color: #315fe2; font-weight: 750; }
+.rg-welcome-skip { display: block; width: 100%; margin-top: -11px; padding: 10px; color: #53627f; font-size: 13px; font-weight: 700; text-align: center; }
+.rg-welcome-skip:hover:not(:disabled) { color: #315fe2; }
+.rg-survey-role-card { min-height: 84px; border-color: #e0e7f5 !important; border-radius: 19px !important; background: #fbfcff !important; }
+.rg-survey-role-card:hover { border-color: #9ab5ff !important; background: #f5f8ff !important; }
+.rg-survey-role-card-active { border-color: #668ded !important; background: #edf3ff !important; box-shadow: 0 10px 25px rgba(49, 95, 226, .08) !important; }
+.rg-survey-role-icon { width: 42px; height: 42px; border-radius: 14px; background: #eaf1ff; color: #315fe2; }
+.rg-survey-role-card strong { color: #1c2a4d; font-weight: 800; }
+.rg-survey-role-card small { color: #71809d; line-height: 1.4; }
+.rg-intro-slide { min-height: min(590px, calc(100dvh - 132px)); gap: 22px; justify-content: center; }
+.rg-intro-visual { min-height: 220px; border: 1px solid #dbe6ff; border-radius: 28px; background: #eaf1ff; }
+.rg-intro-visual > span { width: 84px; height: 84px; border-radius: 27px; background: #315fe2; box-shadow: 0 18px 28px rgba(49, 95, 226, .25); }
+.rg-intro-visual > i { border-color: #7095f2; }
+.rg-intro-dots span[data-active="true"] { background: #315fe2; }
+.rg-notification-primer { border: 1px solid #dbe6ff; border-radius: 28px; background: #eaf1ff; }
+.rg-notification-primer span { background: #315fe2; box-shadow: 0 16px 26px rgba(49, 95, 226, .26); }
+.rg-notification-primer i { border-color: #315fe2; }
+.rg-permission-benefits { padding: 1px 3px; color: #40506e; }
+.rg-permission-benefits svg { color: #315fe2; }
+.rg-survey-complete-check { background: #315fe2; box-shadow: 0 16px 32px rgba(49, 95, 226, .28); }
+@media (max-width: 520px) {
+  .rg-welcome-shell { align-items: stretch; padding: 0; }
+  .rg-welcome-card { min-height: 100dvh; padding: 18px 22px 28px !important; border-width: 0 !important; border-radius: 0 !important; }
+  .rg-welcome-title { font-size: clamp(31px, 10vw, 39px); }
+  .rg-intro-slide { min-height: calc(100dvh - 110px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rg-welcome-card, .rg-welcome-brand img { animation: none !important; }
+  .rg-welcome-back:hover:not(:disabled), .rg-welcome-card .rg-auth-cta:hover:not(:disabled) { transform: none; }
+}
 .rg-account-summary { display: flex; align-items: center; gap: 15px; padding: 20px; border: 1px solid var(--color-hairline); border-radius: 24px; background: var(--rg-group); }
 .rg-account-summary > img { width: 72px; height: 72px; flex: none; border-radius: 50%; object-fit: cover; border: 1px solid var(--color-hairline); }
 .rg-account-summary h2 { overflow: hidden; font-family: var(--font-sans); font-size: 19px; font-weight: 750; text-overflow: ellipsis; white-space: nowrap; }

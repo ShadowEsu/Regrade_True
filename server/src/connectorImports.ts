@@ -6,13 +6,43 @@ import type { Env } from "./env.js";
 import { hasAutomationEntitlement } from "./billing.js";
 import { loadConnectionCredential, safeCanvasBaseUrl } from "./connections.js";
 import { ApiError } from "./http/errors.js";
-import { automaticImportCandidates, type ConnectorImportItem } from "./importPolicy.js";
+import { automaticImportCandidates, isAutomaticAssessment, type ConnectorImportItem } from "./importPolicy.js";
 import { validate } from "./middleware/validate.js";
 
 const SUPPORTED = ["canvas", "google_classroom", "google_drive", "dropbox", "onedrive"] as const;
 const PlatformParam = z.object({ platformId: z.enum(SUPPORTED) });
 const ListQuery = z.object({ mode: z.enum(["automatic", "manual"]).default("manual") });
 const ManualSchema = z.object({ externalId: z.string().min(1).max(500) });
+
+function assessmentType(title: string, providerType?: string): ConnectorImportItem["assessmentType"] {
+  const normalized = `${providerType ?? ""} ${title}`.toLowerCase();
+  if (/\b(quiz|exam|test|final|midterm|assessment|checkpoint|mock|paper)\b/.test(normalized)) {
+    if (/\bquiz\b/.test(normalized)) return "quiz";
+    if (/\btest\b/.test(normalized)) return "test";
+    if (/\bexam|final|midterm|mock|paper\b/.test(normalized)) return "exam";
+    return "assessment";
+  }
+  if (/\bassignment\b/.test(normalized)) return "assignment";
+  return "unknown";
+}
+
+function ignoredSummary(all: ConnectorImportItem[], eligible: ConnectorImportItem[]) {
+  const graded = all.filter((item) => item.kind === "graded_record");
+  const eligibleIds = new Set(eligible.map((item) => item.externalId));
+  const now = Date.now();
+  const threshold = now - (7 * 24 * 60 * 60_000);
+  const olderIds = new Set(graded.filter((item) => {
+    const timestamp = item.gradedAt ? new Date(item.gradedAt).getTime() : Number.NaN;
+    return !eligibleIds.has(item.externalId) && Number.isFinite(timestamp) && timestamp < threshold;
+  }).map((item) => item.externalId));
+  return {
+    ignoredOlderCount: olderIds.size,
+    // Keep these categories mutually exclusive so the user-facing summary
+    // never reports one record twice. Unknown work is treated conservatively
+    // as non-assessment until the learner chooses it manually.
+    ignoredNonExamCount: graded.filter((item) => !eligibleIds.has(item.externalId) && !olderIds.has(item.externalId) && !isAutomaticAssessment(item)).length,
+  };
+}
 
 function uidOf(req: Request): string {
   const uid = (req as Request & { firebase?: { uid?: string } }).firebase?.uid;
@@ -53,7 +83,8 @@ async function canvasItems(uid: string, env: Env): Promise<ConnectorImportItem[]
     return assignments.flatMap((assignment): ConnectorImportItem[] => {
       const submission = assignment.submission;
       if (!submission || !["graded", "returned"].includes(String(submission.workflow_state))) return [];
-      return [{ externalId: `${course.id}:${assignment.id}`, platformId: "canvas", title: String(assignment.name || "Canvas assessment"), course: course.name || null, gradedAt: submission.graded_at || submission.posted_at || submission.updated_at || null, score: submission.score ?? submission.grade ?? null, pointsPossible: Number.isFinite(assignment.points_possible) ? assignment.points_possible : null, feedback: null, kind: "graded_record" }];
+      const title = String(assignment.name || "Canvas assessment");
+      return [{ externalId: `${course.id}:${assignment.id}`, platformId: "canvas", title, course: course.name || null, gradedAt: submission.graded_at || submission.posted_at || submission.updated_at || null, score: submission.score ?? submission.grade ?? null, pointsPossible: Number.isFinite(assignment.points_possible) ? assignment.points_possible : null, feedback: null, kind: "graded_record", assessmentType: assessmentType(title, assignment.is_quiz_assignment ? "quiz" : undefined) }];
     });
   }));
   return groups.flat();
@@ -65,13 +96,14 @@ async function classroomItems(uid: string, env: Env): Promise<ConnectorImportIte
   const headers = { authorization: `Bearer ${accessToken(grant.secret)}` };
   const coursesBody = await providerFetch("https://classroom.googleapis.com/v1/courses?courseStates=ACTIVE&pageSize=100", { headers }) as { courses?: Array<{ id: string; name?: string }> };
   const groups = await Promise.all((coursesBody.courses ?? []).slice(0, 30).map(async (course) => {
-    const work = await providerFetch(`https://classroom.googleapis.com/v1/courses/${course.id}/courseWork?pageSize=100`, { headers }) as { courseWork?: Array<{ id: string; title?: string; maxPoints?: number }> };
+    const work = await providerFetch(`https://classroom.googleapis.com/v1/courses/${course.id}/courseWork?pageSize=100`, { headers }) as { courseWork?: Array<{ id: string; title?: string; maxPoints?: number; workType?: string }> };
     const submissions = await providerFetch(`https://classroom.googleapis.com/v1/courses/${course.id}/courseWork/-/studentSubmissions?userId=me&pageSize=100`, { headers }) as { studentSubmissions?: Array<any> };
     const byWork = new Map((work.courseWork ?? []).map((item) => [item.id, item]));
     return (submissions.studentSubmissions ?? []).flatMap((submission): ConnectorImportItem[] => {
       if (submission.state !== "RETURNED" || submission.assignedGrade == null) return [];
       const workItem = byWork.get(submission.courseWorkId);
-      return [{ externalId: `${course.id}:${submission.courseWorkId}:${submission.id}`, platformId: "google_classroom", title: workItem?.title || "Classroom assessment", course: course.name || null, gradedAt: submission.updateTime || null, score: submission.assignedGrade, pointsPossible: workItem?.maxPoints ?? null, feedback: null, kind: "graded_record" }];
+      const title = workItem?.title || "Classroom assessment";
+      return [{ externalId: `${course.id}:${submission.courseWorkId}:${submission.id}`, platformId: "google_classroom", title, course: course.name || null, gradedAt: submission.updateTime || null, score: submission.assignedGrade, pointsPossible: workItem?.maxPoints ?? null, feedback: null, kind: "graded_record", assessmentType: assessmentType(title, workItem?.workType) }];
     });
   }));
   return groups.flat();
@@ -133,19 +165,21 @@ async function ensureAutomation(uid: string): Promise<void> {
   if (!(await hasAutomationEntitlement(uid))) throw new ApiError({ status: 403, code: "FORBIDDEN", message: "Automatic grade detection requires Plus or Pro." });
 }
 
-export async function runAutomaticImportsForUser(uid: string, env: Env): Promise<{ imported: number; ignoredOlderCount: number }> {
+export async function runAutomaticImportsForUser(uid: string, env: Env): Promise<{ imported: number; ignoredOlderCount: number; ignoredNonExamCount: number }> {
   await ensureAutomation(uid);
   const connections = await admin.firestore().collection("users").doc(uid).collection("connections").get();
-  let imported = 0; let ignoredOlderCount = 0;
+  let imported = 0; let ignoredOlderCount = 0; let ignoredNonExamCount = 0;
   for (const platformId of ["canvas", "google_classroom"] as const) {
     if (!connections.docs.some((doc) => doc.id === platformId)) continue;
     const all = await itemsFor(uid, platformId, env);
     const eligible = automaticImportCandidates(all);
     await Promise.all(eligible.map((item) => persistImport(uid, item, "automatic")));
     imported += eligible.length;
-    ignoredOlderCount += all.filter((item) => item.kind === "graded_record").length - eligible.length;
+    const ignored = ignoredSummary(all, eligible);
+    ignoredOlderCount += ignored.ignoredOlderCount;
+    ignoredNonExamCount += ignored.ignoredNonExamCount;
   }
-  return { imported, ignoredOlderCount };
+  return { imported, ignoredOlderCount, ignoredNonExamCount };
 }
 
 export function createConnectorImportsRouter(env: Env): Router {
@@ -155,7 +189,8 @@ export function createConnectorImportsRouter(env: Env): Router {
       const uid = uidOf(req); const platformId = (req.params as z.infer<typeof PlatformParam>).platformId; const mode = (req.query as z.infer<typeof ListQuery>).mode;
       const all = await itemsFor(uid, platformId, env);
       const items = mode === "automatic" ? automaticImportCandidates(all) : all;
-      res.json({ items, ignoredOlderCount: mode === "automatic" ? all.filter((item) => item.kind === "graded_record").length - items.length : 0, empty: items.length === 0 });
+      const ignored = mode === "automatic" ? ignoredSummary(all, items) : { ignoredOlderCount: 0, ignoredNonExamCount: 0 };
+      res.json({ items, ...ignored, empty: items.length === 0 });
     })().catch(next);
   });
   router.post("/:platformId/automatic", validate(PlatformParam, "params"), (req, res, next) => {
@@ -164,7 +199,7 @@ export function createConnectorImportsRouter(env: Env): Router {
       const platformId = (req.params as z.infer<typeof PlatformParam>).platformId;
       const all = await itemsFor(uid, platformId, env); const eligible = automaticImportCandidates(all);
       const ids = await Promise.all(eligible.map((item) => persistImport(uid, item, "automatic")));
-      res.json({ imported: ids.length, ignoredOlderCount: all.filter((item) => item.kind === "graded_record").length - eligible.length, empty: eligible.length === 0 });
+      res.json({ imported: ids.length, ...ignoredSummary(all, eligible), empty: eligible.length === 0 });
     })().catch(next);
   });
   router.post("/:platformId/manual", validate(PlatformParam, "params"), validate(ManualSchema, "body"), (req, res, next) => {

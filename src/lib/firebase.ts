@@ -12,6 +12,7 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail,
   deleteUser,
+  signInAnonymously,
 } from 'firebase/auth';
 import type { Firestore } from 'firebase/firestore';
 import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
@@ -81,6 +82,7 @@ export {
   sendEmailVerification,
   sendPasswordResetEmail,
   deleteUser,
+  signInAnonymously,
 };
 
 export { loginWithGoogle, loginWithApple, completeAuthRedirectIfNeeded, isNativeApp } from './nativeAuth';

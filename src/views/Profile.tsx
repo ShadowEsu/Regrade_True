@@ -259,7 +259,6 @@ const Profile: React.FC<ProfileProps & { section?: ProfileSection; onSectionChan
     setAutomaticGradeDetection(next);
     try {
       await automationService.update({ automaticGradeDetection: next });
-      await userService.setAutomaticGradeDetection(user.uid, next);
     } catch {
       setAutomaticGradeDetection(!next);
       setAutomationError('Automatic grade detection could not be updated. Check your connection and try again.');

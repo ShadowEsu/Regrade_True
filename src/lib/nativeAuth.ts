@@ -32,7 +32,12 @@ export function isDesktopShell(): boolean {
 }
 
 function preferRedirectAuth(): boolean {
-  return isNativeApp() || isDesktopShell();
+  // Firebase redirect auth is reliable inside Capacitor WebViews, where the
+  // operating system returns control to the app. In Electron it replaces the
+  // local application shell with the Google/Firebase handler and can leave
+  // the user waiting without a completed result. Electron can safely use its
+  // controlled OAuth popup instead.
+  return isNativeApp();
 }
 
 function isRecoverablePopupError(error: unknown): boolean {
@@ -69,6 +74,11 @@ export async function loginWithGoogle(): Promise<UserCredential | null> {
     return await signInWithPopup(auth, googleProvider);
   } catch (error) {
     if (!isRecoverablePopupError(error)) throw error;
+    // Do not turn a recoverable desktop popup failure into a redirect. The
+    // Electron shell has no stable Firebase redirect return origin until its
+    // production OAuth configuration is verified. Surface the actionable
+    // Firebase error instead of an apparently endless sign-in.
+    if (isDesktopShell()) throw error;
     // Embedded browsers / blocked popups / hung passkey dialogs: fall back to full-page redirect.
     await signInWithRedirect(auth, googleProvider);
     return null;
@@ -102,6 +112,7 @@ export async function loginWithApple(): Promise<UserCredential | null> {
     return await signInWithPopup(auth, appleProvider);
   } catch (error) {
     if (!isRecoverablePopupError(error)) throw error;
+    if (isDesktopShell()) throw error;
     await signInWithRedirect(auth, appleProvider);
     return null;
   }

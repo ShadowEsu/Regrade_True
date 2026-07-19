@@ -1,7 +1,8 @@
 /** Keep in sync with server inline image caps and JSON body budget. */
 export const MAX_UPLOAD_FILE_BYTES = 25 * 1024 * 1024;
 export const MAX_STAGED_UPLOAD_FILES = 12;
-export const MAX_INLINE_IMAGES_TO_API = 12;
+/** Keep in sync with server/src/regradeGemini.ts AnalyzeSchema. */
+export const MAX_INLINE_IMAGES_TO_API = 8;
 
 const BLOCKED_IMAGE_MIMES = new Set(["image/svg+xml", "image/svg"]);
 

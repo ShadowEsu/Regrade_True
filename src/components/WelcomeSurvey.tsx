@@ -31,6 +31,16 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
   const [error, setError] = useState<string | null>(null);
 
   const stepIndex = step === 'complete' ? ORDER.length : step === 'intro' ? -1 : ORDER.indexOf(step);
+  const canGoBack = step !== 'intro' && step !== 'complete';
+
+  const goBack = () => {
+    setError(null);
+    if (step === 'role') setStep('intro');
+    if (step === 'name') setStep('role');
+    if (step === 'institution') setStep('name');
+    if (step === 'connector') setStep('institution');
+    if (step === 'notifications') setStep('connector');
+  };
 
   useEffect(() => {
     if (step !== 'complete') return;
@@ -38,14 +48,14 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
     return () => window.clearTimeout(timer);
   }, [step, onComplete]);
 
-  const saveDetails = async () => {
+  const saveDetails = async (schoolOverride?: string) => {
     if (!user || !name.trim()) return;
     setSaving(true);
     setError(null);
     try {
       await userService.saveOnboardingDetails(user.uid, {
         name: name.trim(),
-        school: institution.trim(),
+        school: (schoolOverride ?? institution).trim(),
         accountRole: role,
       });
       setStep('connector');
@@ -105,7 +115,7 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
     ) : step === 'role' ? (
       <div className="space-y-7">
         <div>
-          <p className="rg-welcome-eyebrow">Welcome</p>
+          <p className="rg-welcome-eyebrow">Choose your space</p>
           <h1 className="rg-welcome-title">How will you use Regrade?</h1>
           <p className="rg-welcome-hint">Pick the one that fits you best. You can change it later.</p>
         </div>
@@ -164,7 +174,7 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
     ) : step === 'name' ? (
       <div className="space-y-7">
         <div>
-          <p className="rg-welcome-eyebrow">About you</p>
+          <p className="rg-welcome-eyebrow">A quick introduction</p>
           <h1 className="rg-welcome-title">What should we call you?</h1>
           <p className="rg-welcome-hint">First name is fine. Mr Whale will use it when guiding you.</p>
         </div>
@@ -192,7 +202,7 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
     ) : step === 'institution' ? (
       <div className="space-y-7">
         <div>
-          <p className="rg-welcome-eyebrow">Your school</p>
+          <p className="rg-welcome-eyebrow">Your learning context</p>
           <h1 className="rg-welcome-title">{role === 'student' ? 'Where do you study?' : 'Which school are you supporting?'}</h1>
           <p className="rg-welcome-hint">Optional. It helps keep learner work and school context organized.</p>
         </div>
@@ -219,13 +229,24 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
           onClick={() => void saveDetails()}
           className="rg-auth-cta w-full"
         >
-          {saving ? 'Saving…' : 'Continue'}
+          {saving ? 'Saving your details…' : 'Save and continue'}
+        </button>
+        <button
+          type="button"
+          disabled={saving}
+          onClick={() => {
+            setInstitution('');
+            void saveDetails('');
+          }}
+          className="rg-welcome-skip"
+        >
+          Skip for now
         </button>
       </div>
     ) : step === 'connector' ? (
       <div className="space-y-6">
         <div>
-          <p className="rg-welcome-eyebrow">Set up</p>
+          <p className="rg-welcome-eyebrow">Bring in your work</p>
           <h1 className="rg-welcome-title">Connect a platform.</h1>
           <p className="rg-welcome-hint">Optional. You can skip and connect one later from Profile.</p>
         </div>
@@ -248,7 +269,7 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
     ) : step === 'notifications' ? (
       <div className="space-y-7">
         <div>
-          <p className="rg-welcome-eyebrow">Stay informed</p>
+          <p className="rg-welcome-eyebrow">Stay in the loop</p>
           <h1 className="rg-welcome-title">Know when a review is ready.</h1>
           <p className="rg-welcome-hint">You can change this any time in Settings.</p>
         </div>
@@ -296,31 +317,27 @@ export default function WelcomeSurvey({ onComplete }: { onComplete: () => void }
         transition={{ duration: 0.42, ease: [0.22, 1, 0.36, 1] }}
         className="rg-welcome-card"
       >
-        {step !== 'complete' && <div className="rg-onboarding-whale" aria-hidden><CoachWhale size={58} /><span>Hi, I&apos;m Mr Whale.</span></div>}
-        {step !== 'complete' && step !== 'intro' && (
-          <>
-            <div className="rg-welcome-head">
-              <div className="rg-welcome-brand">
-                <img src={BRAND_ICON_SRC} alt="" aria-hidden draggable={false} />
-                <span>Regrade</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="rg-welcome-dots" aria-hidden>
-                  {ORDER.map((id, i) => (
-                    <span
-                      key={id}
-                      data-state={
-                        i < stepIndex ? 'done' : i === stepIndex ? 'active' : 'upcoming'
-                      }
-                    />
-                  ))}
-                </div>
-                <span className="rg-welcome-step-count">
-                  {stepIndex + 1} / {ORDER.length}
-                </span>
-              </div>
+        {step !== 'complete' && (
+          <header className="rg-welcome-topbar">
+            <div className="rg-welcome-brand">
+              <img src={BRAND_ICON_SRC} alt="" aria-hidden draggable={false} />
+              <span>Regrade</span>
             </div>
-          </>
+            {step !== 'intro' && <div className="rg-onboarding-whale" aria-hidden><CoachWhale size={42} /><span>Mr Whale</span></div>}
+          </header>
+        )}
+        {step !== 'complete' && step !== 'intro' && (
+          <div className="rg-welcome-progress-wrap">
+            <div className="rg-welcome-progress-label">
+              <button type="button" onClick={goBack} disabled={!canGoBack} className="rg-welcome-back" aria-label="Go back">
+                <ICONS.ChevronLeft size={18} />
+              </button>
+              <span>Step {stepIndex + 1} of {ORDER.length}</span>
+            </div>
+            <div className="rg-welcome-dots" aria-label={`Setup progress: step ${stepIndex + 1} of ${ORDER.length}`}>
+              {ORDER.map((id, i) => <span key={id} data-state={i < stepIndex ? 'done' : i === stepIndex ? 'active' : 'upcoming'} />)}
+            </div>
+          </div>
         )}
         {/* Keyed remount keeps the slide-in without AnimatePresence:
             a hung exit animation must never be able to block onboarding. */}

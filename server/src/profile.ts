@@ -163,7 +163,13 @@ export function createProfileRouter(): Router {
       const body = req.body as z.infer<typeof OnboardingSchema>;
       const authUser = await admin.auth().getUser(uid);
       const email = authUser.email?.trim();
-      if (!email) {
+      // Anonymous Firebase users are the deliberate guest-preview path. They
+      // do not have an email address until they link a real sign-in method,
+      // but they still need a private profile in order to move through the
+      // app. Phone accounts are not treated as guests here because their
+      // provider data identifies the account without an email.
+      const isAnonymousGuest = !email && authUser.providerData.length === 0;
+      if (!email && !isAnonymousGuest) {
         throw new ApiError({
           status: 400,
           code: "BAD_REQUEST",
@@ -179,7 +185,7 @@ export function createProfileRouter(): Router {
       if (!snap.exists) {
         await ref.set({
           name: body.name,
-          email,
+          email: email ?? "",
           major: "Undeclared",
           school: body.school,
           university: "",
